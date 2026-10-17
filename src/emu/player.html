@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<title>Smash Emu</title>
+	<link rel="stylesheet" href="smash://app/renderer/themes.css">
+	<link rel="stylesheet" href="smash://app/renderer/fonts.css">
+	<link rel="stylesheet" href="player.css">
+</head>
+<body>
+	<header class="bar" id="bar">
+		<div class="bar-left drag">
+			<span class="logo" id="logo"></span>
+			<div class="game-title">
+				<span id="game-name">Chargement…</span>
+				<span class="sub" id="game-sub"></span>
+			</div>
+		</div>
+		<div class="bar-center">
+			<button class="tb" data-action="toggle-pause" id="btn-pause" data-tip="Pause (Échap / P)"></button>
+			<div class="speed" id="speed"></div>
+			<div class="sep"></div>
+			<button class="tb wide" data-action="quick-save" data-tip="Sauvegarder l'état (F5)"><span data-icon="save"></span><span id="save-label">Sauver 1</span></button>
+			<button class="tb wide" data-action="quick-load" data-tip="Charger l'état (F7)"><span data-icon="history"></span><span id="load-label">Charger 1</span></button>
+			<button class="tb" data-action="slots" data-tip="Emplacements de sauvegarde"><span data-icon="layers"></span></button>
+			<div class="sep"></div>
+			<button class="tb" data-action="screenshot" data-tip="Capture d'écran (F12)"><span data-icon="camera"></span></button>
+			<button class="tb" data-action="reset" data-tip="Réinitialiser la partie"><span data-icon="rotate-ccw"></span></button>
+			<button class="tb" data-action="controls" data-tip="Touches et manettes"><span data-icon="keyboard"></span></button>
+			<div class="volume"><button class="tb" data-action="mute" id="btn-mute" data-tip="Couper le son"></button><input type="range" min="0" max="100" id="volume"></div>
+		</div>
+		<div class="bar-right">
+			<button class="tb smash-btn" data-action="features" data-tip="66 fonctions (F2)"><span data-icon="sparkles"></span>66</button>
+			<button class="tb" data-action="help" data-tip="Raccourcis (F1)"><span data-icon="info"></span></button>
+			<button class="wc" data-action="minimize"><span data-icon="minus"></span></button>
+			<button class="wc" data-action="fullscreen" id="btn-fs" data-tip="Plein écran (F11)"><span data-icon="maximize"></span></button>
+			<button class="wc close" data-action="close"><span data-icon="x"></span></button>
+		</div>
+	</header>
+
+	<main id="stage">
+		<div id="game"></div>
+		<div class="turbo hidden" id="turbo">TURBO</div>
+		<div id="fx"></div>
+		<div class="hud" id="hud"></div>
+	</main>
+
+	<div class="overlay" id="loading">
+		<div class="splash-logo" id="splash-logo"></div>
+		<div class="loading-name" id="loading-name"></div>
+		<div class="loading-bar"><div id="loading-progress"></div></div>
+		<div class="loading-text" id="loading-text">Démarrage de l'émulateur…</div>
+	</div>
+
+	<div class="overlay hidden" id="pause">
+		<div class="pause-box">
+			<div class="pause-title">PAUSE</div>
+			<div class="pause-actions">
+				<button class="pbtn primary" data-action="toggle-pause"><span data-icon="play"></span>Reprendre</button>
+				<button class="pbtn" data-action="reset"><span data-icon="rotate-ccw"></span>Réinitialiser</button>
+				<button class="pbtn" data-action="controls"><span data-icon="keyboard"></span>Touches</button>
+				<button class="pbtn" data-action="close"><span data-icon="log-out"></span>Quitter</button>
+			</div>
+			<div class="slots-title">Sauvegardes d'état</div>
+			<div class="slots" id="slots"></div>
+		</div>
+	</div>
+
+	<div class="overlay hidden" id="help">
+		<div class="pause-box help">
+			<div class="pause-title small">RACCOURCIS</div>
+			<div class="help-grid">
+				<div><h4>Smash Emu</h4>
+					<p><kbd>Échap</kbd> <kbd>P</kbd> Pause / menu</p>
+					<p><kbd>F5</kbd> Sauvegarder l'état</p>
+					<p><kbd>F7</kbd> Charger l'état</p>
+					<p><kbd>F6</kbd> Emplacement suivant</p>
+					<p><kbd>F3</kbd> Vitesse suivante</p>
+					<p><kbd>Espace</kbd> maintenu : turbo ×3</p>
+					<p><kbd>F11</kbd> Plein écran</p>
+					<p><kbd>F12</kbd> Capture d'écran</p>
+				</div>
+				<div id="pad-help"></div>
+			</div>
+			<button class="pbtn primary" data-action="help">Fermer</button>
+		</div>
+	</div>
+
+	<aside class="panel hidden" id="panel"></aside>
+	<div class="toasts" id="toasts"></div>
+	<div class="tooltip hidden" id="tooltip"></div>
+
+	<script src="smash://app/renderer/icons.js"></script>
+	<script src="smash://app/renderer/logo.js"></script>
+	<script src="smash-shaders.js"></script>
+	<script src="player.js"></script>
+	<script src="features.js"></script>
+</body>
+</html>

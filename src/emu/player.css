@@ -1,0 +1,384 @@
+/* Fenêtre de jeu Smash Emu — barre d'outils, menu pause et emplacements de sauvegarde. */
+
+* { box-sizing: border-box; }
+
+html, body {
+	margin: 0;
+	height: 100%;
+	background: #000;
+	color: var(--text);
+	font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+	font-size: 14px;
+	overflow: hidden;
+	user-select: none;
+}
+
+button { font: inherit; color: inherit; }
+svg.icon { width: 18px; height: 18px; flex-shrink: 0; }
+.hidden { display: none !important; }
+
+/* ---------- Barre ---------- */
+
+.bar {
+	position: fixed;
+	top: 0; left: 0; right: 0;
+	height: 48px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding-left: 12px;
+	background: linear-gradient(180deg, rgba(10, 10, 11, 0.98), rgba(10, 10, 11, 0.9));
+	border-bottom: 2px solid var(--brand);
+	box-shadow: 0 2px 18px rgba(var(--brand-rgb), 0.25);
+	z-index: 35;
+	transition: transform 0.25s ease, opacity 0.25s ease;
+	-webkit-app-region: drag;
+}
+
+body.immersive .bar { transform: translateY(-100%); opacity: 0; }
+.bar button, .bar input, .bar .speed { -webkit-app-region: no-drag; }
+
+.bar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.bar-center { display: flex; align-items: center; gap: 4px; }
+.bar-right { display: flex; align-items: center; height: 100%; flex: 1; justify-content: flex-end; }
+
+.logo { display: flex; }
+.game-title { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.game-title .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#game-name { color: #fff; font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-title .sub { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--brand); margin-top: 3px; letter-spacing: 0.5px; }
+
+.tb {
+	height: 34px;
+	min-width: 34px;
+	padding: 0 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	border: none;
+	border-radius: 9px;
+	background: transparent;
+	color: #d5d5da;
+	cursor: pointer;
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.tb:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.tb.active { background: rgba(var(--brand-rgb), 0.2); color: var(--brand); }
+.tb.wide { padding: 0 10px; }
+.sep { width: 1px; height: 22px; background: rgba(255, 255, 255, 0.12); margin: 0 6px; }
+
+.speed { display: flex; background: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 3px; gap: 2px; }
+.speed button {
+	border: none;
+	background: transparent;
+	color: #b9b9c0;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	padding: 7px 7px;
+	border-radius: 7px;
+	cursor: pointer;
+}
+
+.speed button:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.speed button.on { background: var(--brand); color: var(--on-brand); box-shadow: var(--glow); }
+
+.volume { display: flex; align-items: center; }
+.volume input { width: 80px; accent-color: var(--brand); cursor: pointer; }
+
+.wc { width: 44px; height: 100%; border: none; background: transparent; color: #cfcfd4; cursor: pointer; display: grid; place-items: center; }
+.wc:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.wc.close:hover { background: #e81123; }
+
+/* ---------- Jeu ---------- */
+
+#stage { position: fixed; inset: 48px 0 0 0; background: #000; transition: inset 0.25s ease; }
+body.immersive #stage { inset: 0; }
+#game { width: 100%; height: 100%; }
+
+/* Interface d'origine d'EmulatorJS masquée : Smash Emu fournit la sienne. */
+#game .ejs_message, #game .ejs_menu_bar, #game .ejs_context_menu, #game .ejs_virtualGamepad_parent, #game .ejs_start_button { display: none !important; }
+#game .ejs_message {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	color: #fff;
+	text-shadow: 2px 2px 0 #000;
+}
+
+.turbo {
+	z-index: 13;
+	position: absolute;
+	top: 16px; right: 18px;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 12px;
+	color: var(--on-brand);
+	background: var(--brand);
+	padding: 8px 10px;
+	border-radius: 6px;
+	box-shadow: var(--glow);
+	animation: blink 0.6s steps(2) infinite;
+}
+
+/* ---------- Superpositions ---------- */
+
+.overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 30;
+	display: grid;
+	place-items: center;
+	background: rgba(0, 0, 0, 0.72);
+	backdrop-filter: blur(6px);
+	animation: fade 0.15s ease-out;
+}
+
+/* Menu pause : l'image figée du jeu (--frozen), assombrie et floutée, en fond. */
+#pause { inset: 48px 0 0 0; background: #000; }
+#pause::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.7)), var(--frozen, none) center / contain no-repeat;
+	filter: blur(3px) saturate(0.75);
+}
+
+#loading { background: radial-gradient(circle at 50% 40%, rgba(var(--brand-rgb), 0.18), #000 65%); align-content: center; gap: 18px; justify-items: center; }
+.splash-logo { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.splash-logo .wordmark { font-size: 26px; }
+.loading-name { color: #fff; font-weight: 800; font-size: 18px; }
+.loading-bar { width: 280px; height: 10px; background: #1a1a1d; border: 2px solid #2a2a2f; image-rendering: pixelated; }
+.loading-bar div { height: 100%; width: 8%; background: repeating-linear-gradient(90deg, var(--brand) 0 10px, var(--brand-hover) 10px 12px); transition: width 0.3s steps(6); }
+.loading-text { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #9a9aa2; }
+.loading-error { color: var(--danger); font-family: 'Inter', sans-serif; font-size: 14px; max-width: 520px; text-align: center; line-height: 1.5; }
+
+.pause-box {
+	background: rgba(17, 17, 19, 0.96);
+	border: 2px solid var(--brand);
+	box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.6), var(--glow);
+	border-radius: 16px;
+	padding: 26px 28px;
+	width: min(760px, calc(100vw - 40px));
+	max-height: calc(100vh - 40px);
+	overflow-y: auto;
+	animation: pop 0.15s ease-out;
+}
+
+.pause-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 34px;
+	color: #fff;
+	text-align: center;
+	text-shadow: 4px 4px 0 var(--brand);
+	margin-bottom: 22px;
+	letter-spacing: 4px;
+}
+
+.pause-title.small { font-size: 18px; text-shadow: 3px 3px 0 var(--brand); }
+.pause-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+
+.pbtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	height: 44px;
+	border-radius: 12px;
+	border: none;
+	background: #242427;
+	color: #fff;
+	font-weight: 800;
+	cursor: pointer;
+	transition: transform 0.06s, background 0.12s;
+}
+
+.pbtn:hover { background: #303035; }
+.pbtn:active { transform: scale(0.97); }
+.pbtn.primary { background: var(--brand); color: var(--on-brand); box-shadow: var(--glow); }
+.pbtn.primary:hover { background: var(--brand-hover); }
+.pbtn.sm { height: 32px; font-size: 12px; padding: 0 10px; border-radius: 9px; }
+
+.slots-title { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #a1a1a8; margin-bottom: 12px; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+.slot {
+	background: #1a1a1d;
+	border: 2px solid #26262a;
+	border-radius: 12px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.slot.active { border-color: var(--brand); box-shadow: var(--glow); }
+.slot .thumb { aspect-ratio: 4 / 3; background: #0d0d0f; display: grid; place-items: center; cursor: pointer; }
+.slot .thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.slot .thumb .empty { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #55555c; }
+.slot .meta { padding: 8px 10px 4px; }
+.slot .meta b { color: #fff; font-size: 13px; }
+.slot .meta span { display: block; color: #8a8a92; font-size: 11px; margin-top: 2px; }
+.slot .acts { display: flex; gap: 6px; padding: 6px 8px 10px; }
+.slot .acts .pbtn { flex: 1; }
+
+.help { width: min(640px, calc(100vw - 40px)); }
+.help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
+.help h4 { color: var(--brand); margin: 0 0 10px; font-size: 14px; }
+.help p { margin: 0 0 8px; color: #cfcfd5; font-size: 13px; }
+.help p.dim { color: #85858c; font-size: 12px; line-height: 1.5; }
+kbd {
+	display: inline-block;
+	min-width: 22px;
+	padding: 2px 6px;
+	margin-right: 3px;
+	text-align: center;
+	background: #26262a;
+	border: 1px solid #3a3a40;
+	border-bottom-width: 3px;
+	border-radius: 6px;
+	color: #fff;
+	font-family: 'Inter', sans-serif;
+	font-size: 11px;
+	font-weight: 800;
+}
+
+.toasts { position: fixed; left: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 40; }
+.toast {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: rgba(17, 17, 19, 0.95);
+	border-left: 4px solid var(--brand);
+	color: #fff;
+	padding: 10px 14px;
+	border-radius: 10px;
+	font-weight: 700;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+	animation: slide 0.18s ease-out;
+}
+
+.toast.error { border-left-color: var(--danger); }
+.toast a { color: var(--brand); cursor: pointer; text-decoration: underline; font-weight: 600; }
+
+.tooltip {
+	position: fixed;
+	z-index: 50;
+	background: #000;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 6px 9px;
+	border-radius: 7px;
+	border: 1px solid #2a2a2f;
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+/* Popups d'EmulatorJS (réglage des touches) aux couleurs du thème. */
+.ejs_popup_container { z-index: 60 !important; }
+.ejs_popup_container .ejs_popup_box { background: #141416 !important; border: 2px solid var(--brand) !important; border-radius: 14px !important; }
+
+/* Fenêtre étroite : on garde les commandes, on retire d'abord le titre puis les libellés. */
+@media (max-width: 1120px) { .game-title { display: none; } }
+@media (max-width: 880px) {
+	.tb.wide span:last-child, .volume input { display: none; }
+	.speed button { padding: 7px 5px; }
+}
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { transform: scale(0.95); opacity: 0; } }
+@keyframes slide { from { transform: translateX(-20px); opacity: 0; } }
+@keyframes blink { 50% { opacity: 0.55; } }
+
+/* =====================================================================
+   Panneau « Smash » (66 fonctions), HUD et effets d'image
+   ===================================================================== */
+
+.smash-btn { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--brand); gap: 6px; }
+
+.panel {
+	position: fixed;
+	top: 48px; right: 0; bottom: 0;
+	width: 400px;
+	z-index: 34;
+	background: rgba(12, 12, 14, 0.97);
+	border-left: 2px solid var(--brand);
+	box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+	display: flex;
+	flex-direction: column;
+	animation: panel-in 0.18s ease-out;
+}
+
+@keyframes panel-in { from { transform: translateX(30px); opacity: 0; } }
+.panel-head { display: flex; align-items: center; padding: 12px 6px 6px 16px; }
+.panel-title { flex: 1; font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 var(--brand); }
+.panel-head .wc { height: 36px; border-radius: 8px; }
+.panel-search { margin: 6px 14px 10px; height: 38px; border-radius: 10px; border: 2px solid transparent; background: #1d1d21; color: #fff; padding: 0 12px; font: inherit; outline: none; }
+.panel-search:focus { border-color: var(--brand); }
+.panel-cats { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 14px 10px; }
+.panel-cats button { border: none; background: #1d1d21; color: #b9b9c0; border-radius: 999px; padding: 5px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.panel-cats button.on { background: var(--brand); color: var(--on-brand); }
+.panel-list { flex: 1; overflow-y: auto; padding: 0 10px 16px; display: flex; flex-direction: column; gap: 6px; }
+.panel-list::-webkit-scrollbar { width: 8px; }
+.panel-list::-webkit-scrollbar-thumb { background: #2a2a2f; border-radius: 8px; }
+
+.feat { background: #17171a; border: 1px solid #222226; border-radius: 12px; padding: 9px 10px; }
+.feat:hover { border-color: #33333a; }
+.feat-top { display: flex; align-items: center; gap: 10px; }
+.feat-top > svg.icon { color: var(--brand); width: 18px; height: 18px; }
+.feat-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.feat-txt b { color: #fff; font-size: 13px; }
+.feat-txt span { color: #8a8a92; font-size: 11.5px; margin-top: 1px; }
+.feat kbd { font-size: 10px; }
+.feat .pbtn.sm { height: 28px; font-size: 11.5px; padding: 0 10px; }
+
+.sw { width: 38px; height: 22px; border-radius: 11px; border: none; background: #33333a; position: relative; cursor: pointer; flex-shrink: 0; }
+.sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.sw.on { background: var(--brand); }
+.sw.on::after { transform: translateX(16px); }
+
+.opts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.opts button { border: none; background: #232327; color: #c9c9ce; border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.opts button.on { background: rgba(var(--brand-rgb), 0.22); color: var(--brand); box-shadow: inset 0 0 0 1.5px var(--brand); }
+.slide { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.slide input { flex: 1; accent-color: var(--brand); }
+.slide b { color: #fff; font-size: 12px; width: 48px; text-align: right; }
+
+.cheats { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cheat { display: flex; align-items: center; gap: 8px; background: #1d1d21; border-radius: 8px; padding: 6px 8px; font-size: 12px; color: #ddd; }
+.cheat span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cheat .x { border: none; background: none; color: #888; cursor: pointer; }
+.cheat-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+.cheat-add input { min-width: 0; height: 30px; border-radius: 8px; border: 1px solid #2a2a2f; background: #111; color: #fff; padding: 0 8px; font: inherit; font-size: 12px; }
+
+/* HUD */
+.hud { position: fixed; left: 14px; top: 62px; display: flex; flex-direction: column; gap: 6px; z-index: 12; pointer-events: none; }
+.hud span { align-self: flex-start; font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; background: rgba(0, 0, 0, 0.6); padding: 6px 8px; border-radius: 6px; border-left: 3px solid var(--brand); }
+.hud .timer.on { color: #7dff9b; }
+.hud .keys kbd { margin-right: 2px; }
+
+/* Effets superposés au jeu */
+#fx { position: fixed; inset: 48px 0 0 0; pointer-events: none; z-index: 11; transition: inset 0.25s ease; }
+body.immersive #fx, body.photo #fx { inset: 0; }
+body.immersive .hud { top: 14px; }
+#fx.scanlines { background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px); }
+#fx.vignette { box-shadow: inset 0 0 160px 40px rgba(0, 0, 0, 0.85); }
+#fx.lcd { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.22) 1px, transparent 1px), linear-gradient(0deg, rgba(0, 0, 0, 0.22) 1px, transparent 1px); background-size: 3px 3px; }
+#fx.scanlines.lcd { background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px), linear-gradient(90deg, rgba(0, 0, 0, 0.2) 1px, transparent 1px); background-size: auto, 3px 3px; }
+#fx.curve { border-radius: 38px / 30px; box-shadow: inset 0 0 0 14px #000, inset 0 0 90px rgba(0, 0, 0, 0.7); background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.07), transparent 45%); }
+#fx.glow { box-shadow: inset 0 0 80px rgba(var(--brand-rgb), 0.35); }
+#game canvas { transition: filter 0.2s, transform 0.25s; }
+#game canvas.shake { animation: shake 0.12s infinite; }
+@keyframes shake { 25% { translate: -6px 3px; } 50% { translate: 5px -4px; } 75% { translate: -3px -5px; } }
+
+body.no-cursor #stage { cursor: none; }
+body.photo .bar, body.photo .toasts, body.photo .hud, body.photo .turbo { display: none !important; }
+body.photo #stage { inset: 0; }
+body.recording .bar { border-bottom-color: #ff2a2a; }
+body.recording .bar::after { content: '● REC'; position: absolute; right: 230px; font-family: 'Press Start 2P', monospace; font-size: 10px; color: #ff4040; animation: blink 1s steps(2) infinite; }
+
+.coreopts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.coreopts label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #cfcfd5; }
+.coreopts label span { flex: 1; }
+.coreopts select { max-width: 170px; height: 28px; border-radius: 7px; border: 1px solid #2a2a2f; background: #111; color: #fff; font: inherit; font-size: 12px; padding: 0 6px; }

@@ -1,0 +1,137 @@
+/* Thèmes de Smash Emu, partagés par la fenêtre principale et la fenêtre de jeu.
+   --brand-rgb sert aux transparences : rgba(var(--brand-rgb), 0.2). */
+
+:root, :root[data-theme="smash"] {
+	--bg: #0a0a0b;
+	--raised: #161618;
+	--raised-2: #111113;
+	--button: #242427;
+	--button-hover: #303035;
+	--divider: #1f1f23;
+	--brand: #ff1f3d;
+	--brand-hover: #ff4a63;
+	--brand-rgb: 255, 31, 61;
+	--on-brand: #ffffff;
+	--text: #c9c9ce;
+	--text-dim: #85858c;
+	--contrast: #ffffff;
+	--danger: #ff8a3d;
+	--danger-rgb: 255, 138, 61;
+	--glow: 0 0 22px rgba(255, 31, 61, 0.35);
+	color-scheme: dark;
+}
+
+:root[data-theme="modrinth"] {
+	--bg: #16181c;
+	--raised: #27292e;
+	--raised-2: #1f2125;
+	--button: #34363c;
+	--button-hover: #3e4148;
+	--divider: #2f3237;
+	--brand: #1bd96a;
+	--brand-hover: #3ee584;
+	--brand-rgb: 27, 217, 106;
+	--on-brand: #0b0d0f;
+	--text: #b0bac5;
+	--text-dim: #8a939c;
+	--contrast: #ecf9fb;
+	--danger: #ff496e;
+	--danger-rgb: 255, 73, 110;
+	--glow: 0 0 22px rgba(27, 217, 106, 0.25);
+}
+
+:root[data-theme="neon"] {
+	--bg: #0c0a14;
+	--raised: #17132a;
+	--raised-2: #120f20;
+	--button: #261f40;
+	--button-hover: #32294f;
+	--divider: #221c39;
+	--brand: #c04dff;
+	--brand-hover: #d27cff;
+	--brand-rgb: 192, 77, 255;
+	--on-brand: #ffffff;
+	--text: #c8bfe0;
+	--text-dim: #8a80a6;
+	--contrast: #ffffff;
+	--danger: #ff4d8d;
+	--danger-rgb: 255, 77, 141;
+	--glow: 0 0 24px rgba(192, 77, 255, 0.45);
+}
+
+:root[data-theme="ocean"] {
+	--bg: #0a111c;
+	--raised: #13202f;
+	--raised-2: #0f1926;
+	--button: #1d2f44;
+	--button-hover: #273d57;
+	--divider: #1a2a3c;
+	--brand: #2f9bff;
+	--brand-hover: #5cb2ff;
+	--brand-rgb: 47, 155, 255;
+	--on-brand: #ffffff;
+	--text: #b6c7da;
+	--text-dim: #7d91a8;
+	--contrast: #f2f8ff;
+	--danger: #ff6b6b;
+	--danger-rgb: 255, 107, 107;
+	--glow: 0 0 22px rgba(47, 155, 255, 0.35);
+}
+
+:root[data-theme="gameboy"] {
+	--bg: #0e1a0e;
+	--raised: #18291a;
+	--raised-2: #132114;
+	--button: #233a24;
+	--button-hover: #2e4a2f;
+	--divider: #1e331f;
+	--brand: #9bbc0f;
+	--brand-hover: #b3d42a;
+	--brand-rgb: 155, 188, 15;
+	--on-brand: #0f380f;
+	--text: #c4d8a0;
+	--text-dim: #86a06a;
+	--contrast: #e0f8d0;
+	--danger: #e0a83a;
+	--danger-rgb: 224, 168, 58;
+	--glow: 0 0 22px rgba(155, 188, 15, 0.3);
+}
+
+:root[data-theme="gold"] {
+	--bg: #0b0a08;
+	--raised: #171510;
+	--raised-2: #12100c;
+	--button: #26221a;
+	--button-hover: #322c21;
+	--divider: #201c15;
+	--brand: #ffc23d;
+	--brand-hover: #ffd36e;
+	--brand-rgb: 255, 194, 61;
+	--on-brand: #1a1408;
+	--text: #d6cdb8;
+	--text-dim: #958b76;
+	--contrast: #fff8e6;
+	--danger: #ff6b4a;
+	--danger-rgb: 255, 107, 74;
+	--glow: 0 0 22px rgba(255, 194, 61, 0.3);
+}
+
+:root[data-theme="light"] {
+	--bg: #f3f3f6;
+	--raised: #ffffff;
+	--raised-2: #ebebf0;
+	--button: #e4e4ea;
+	--button-hover: #d6d6de;
+	--divider: #e0e0e6;
+	--brand: #e3002b;
+	--brand-hover: #ff1f45;
+	--brand-rgb: 227, 0, 43;
+	--on-brand: #ffffff;
+	--text: #3c3c45;
+	--text-dim: #7a7a85;
+	--contrast: #111114;
+	--danger: #d9480f;
+	--danger-rgb: 217, 72, 15;
+	--glow: 0 0 18px rgba(227, 0, 43, 0.2);
+	color-scheme: light;
+}

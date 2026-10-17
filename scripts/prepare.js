@@ -1,0 +1,41 @@
+// Copie les polices (Inter, Press Start 2P) et génère src/renderer/icons.js à partir de lucide-static (icônes utilisées seulement).
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+const OUT = path.join(ROOT, 'src', 'renderer');
+const ICONS = [
+	'play', 'square', 'compass', 'globe', 'library', 'plus', 'settings', 'download', 'chevron-left', 'chevron-right',
+	'chevron-down', 'chevron-up', 'minus', 'x', 'ellipsis-vertical', 'search', 'folder-open', 'copy', 'trash-2', 'image',
+	'upload', 'refresh-cw', 'check', 'star', 'users', 'user', 'gamepad-2', 'map', 'zap', 'settings-2', 'user-cog', 'music',
+	'film', 'box', 'wrench', 'terminal', 'paw-print', 'laugh', 'footprints', 'external-link', 'file-archive', 'file-code',
+	'file', 'package', 'puzzle', 'clock', 'calendar', 'hard-drive', 'arrow-up', 'arrow-down', 'circle-x', 'triangle-alert',
+	'info', 'scroll-text', 'sliders-horizontal', 'layout-grid', 'heart', 'wifi', 'server', 'link', 'sparkles', 'monitor',
+	'maximize-2', 'square-stack', 'cpu', 'list-filter', 'house', 'cloud-download', 'eye', 'rocket', 'save', 'pencil', 'swords',
+	'pause', 'camera', 'rotate-ccw', 'keyboard', 'volume-2', 'volume-x', 'maximize', 'minimize', 'layers', 'history', 'log-out',
+	'palette', 'gauge', 'disc-3', 'joystick', 'fast-forward', 'file-plus', 'flame', 'trophy', 'zap-off',
+];
+
+const icons = {};
+const missing = [];
+for (const name of ICONS) {
+	const file = path.join(ROOT, 'node_modules', 'lucide-static', 'icons', `${name}.svg`);
+	if (!fs.existsSync(file)) { missing.push(name); continue; }
+	const svg = fs.readFileSync(file, 'utf8');
+	icons[name] = svg.slice(svg.indexOf('>', svg.indexOf('<svg')) + 1, svg.lastIndexOf('</svg>')).replace(/\s+/g, ' ').trim();
+}
+if (missing.length) console.warn('Icônes absentes de lucide-static :', missing.join(', '));
+
+fs.writeFileSync(path.join(OUT, 'icons.js'), `// Généré par scripts/prepare.js à partir de lucide-static (licence ISC).\nwindow.ICONS = ${JSON.stringify(icons, null, '\t')};\n`);
+
+const fontDir = path.join(OUT, 'assets', 'fonts');
+fs.mkdirSync(fontDir, { recursive: true });
+fs.copyFileSync(
+	path.join(ROOT, 'node_modules', '@fontsource-variable', 'inter', 'files', 'inter-latin-wght-normal.woff2'),
+	path.join(fontDir, 'inter-latin-wght-normal.woff2'),
+);
+fs.copyFileSync(
+	path.join(ROOT, 'node_modules', '@fontsource', 'press-start-2p', 'files', 'press-start-2p-latin-400-normal.woff2'),
+	path.join(fontDir, 'press-start-2p-latin-400-normal.woff2'),
+);
+console.log(`${Object.keys(icons).length} icônes générées, polices Inter et Press Start 2P copiées.`);

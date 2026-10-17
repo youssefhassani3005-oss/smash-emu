@@ -1,0 +1,26 @@
+@font-face {
+	font-family: 'Inter';
+	src: url('assets/fonts/inter-latin-wght-normal.woff2') format('woff2');
+	font-weight: 100 900;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Press Start 2P';
+	src: url('assets/fonts/press-start-2p-latin-400-normal.woff2') format('woff2');
+	font-display: block;
+}
+
+/* Logo texte pixel art : « SMASH » + « EMU » avec ombre décalée façon sprite. */
+.wordmark {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 15px;
+	letter-spacing: 1px;
+	line-height: 1;
+	white-space: nowrap;
+	text-shadow: 2px 2px 0 rgba(var(--brand-rgb), 0.35);
+}
+
+.wordmark .w1 { color: var(--contrast); }
+.wordmark .w2 { color: var(--brand); margin-left: 8px; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+.pixel-logo { image-rendering: pixelated; flex-shrink: 0; }

@@ -1,0 +1,94 @@
+{
+  "name": "smash-emu",
+  "productName": "Smash Emu",
+  "version": "2.0.0",
+  "description": "Smash Emu : émulateur N64 intégré (pause, vitesse, sauvegardes d'état), bibliothèque de ROM et launcher de mods (sm64coopdx, ROM hacks), interface inspirée de Modrinth App",
+  "main": "src/main/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"test/*.test.js\"",
+    "prepare-assets": "node scripts/prepare.js && node scripts/make-icon.js",
+    "dist": "npm run prepare-assets && node scripts/make-installer-art.js && electron-builder --win nsis --x64"
+  },
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "lucide-static": "^0.468.0"
+  },
+  "dependencies": {
+    "@emulatorjs/core-beetle_vb": "^4.2.3",
+    "@emulatorjs/core-fceumm": "^4.2.3",
+    "@emulatorjs/core-gambatte": "^4.2.3",
+    "@emulatorjs/core-genesis_plus_gx": "^4.2.3",
+    "@emulatorjs/core-handy": "^4.2.3",
+    "@emulatorjs/core-mednafen_pce": "^4.2.3",
+    "@emulatorjs/core-melonds": "^4.2.3",
+    "@emulatorjs/core-mgba": "^4.2.3",
+    "@emulatorjs/core-mupen64plus_next": "^4.2.3",
+    "@emulatorjs/core-opera": "^4.2.3",
+    "@emulatorjs/core-pcsx_rearmed": "^4.2.3",
+    "@emulatorjs/core-picodrive": "^4.2.3",
+    "@emulatorjs/core-ppsspp": "^4.2.3",
+    "@emulatorjs/core-prosystem": "^4.2.3",
+    "@emulatorjs/core-snes9x": "^4.2.3",
+    "@emulatorjs/core-stella2014": "^4.2.3",
+    "@emulatorjs/core-virtualjaguar": "^4.2.3",
+    "@emulatorjs/core-yabause": "^4.2.3",
+    "@emulatorjs/emulatorjs": "^4.2.3",
+    "@fontsource-variable/inter": "^5.1.0",
+    "@fontsource/press-start-2p": "^5.3.0",
+    "adm-zip": "^0.5.16"
+  },
+  "author": "Smash Emu",
+  "build": {
+    "appId": "com.smashemu.app",
+    "productName": "Smash Emu",
+    "copyright": "Smash Emu",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!**/*.map",
+      "!**/test/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/renderer/assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Smash Emu",
+      "installerIcon": "src/renderer/assets/icon.ico",
+      "uninstallerIcon": "src/renderer/assets/icon.ico",
+      "artifactName": "Smash-Emu-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false,
+      "language": "1036",
+      "installerLanguages": [
+        "fr_FR"
+      ],
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp",
+      "include": "build/installer.nsh",
+      "runAfterFinish": true
+    },
+    "afterPack": "scripts/after-pack.js"
+  }
+}
