@@ -1,6 +1,6 @@
 // Fenêtre Smash Emu autour d'un émulateur externe : la fenêtre de jeu de l'émulateur est incrustée sous la
 // barre Smash Emu, qui la pilote (pause, états avec vignettes, turbo, capture, réglages, plein écran).
-const { BrowserWindow, ipcMain, screen, shell, globalShortcut } = require('electron');
+const { BrowserWindow, ipcMain, screen, shell, globalShortcut, dialog } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -11,6 +11,7 @@ const emulators = require('./emulators');
 const winhelper = require('./winhelper');
 const systems = require('./systems');
 const games = require('./games');
+const switchkeys = require('./switchkeys');
 
 const SRC = path.join(__dirname, '..');
 const BAR = 48;
@@ -232,6 +233,12 @@ const ACTIONS = {
 		store.updateInstance(h.id, { options: { ...(inst.options || {}), dolphin: clean } });
 		if (extension) { if (!['None', 'Nunchuk', 'Classic'].includes(extension)) throw new Error('Extension inconnue.'); setExtension(extension); }
 		await relaunch(h);
+	},
+	// Clés Switch (Ryujinx) : état et import depuis le panneau.
+	switchStatus: () => switchkeys.status(),
+	switchImport: async (h) => {
+		const r = await dialog.showOpenDialog(h.win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'Clés Switch', extensions: ['keys'] }] });
+		return r.canceled ? null : switchkeys.importKeys(r.filePaths);
 	},
 	showPath: (h, file) => { if (path.resolve(file).startsWith(store.instanceDir(h.id))) shell.showItemInFolder(file); },
 	openFolder: (h) => { const d = path.join(store.instanceDir(h.id), 'screenshots'); fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },

@@ -1370,6 +1370,15 @@ const renderUpdate = () => {
 	return `<div class="row" style="gap:14px;align-items:flex-start"><div class="grow small">${line}</div>${btn === undefined ? `<button class="btn sm" data-action="update-check">${icon('refresh-cw')}Rechercher</button>` : btn}</div>`;
 };
 
+const installBtn = (id) => {
+	const p = (state.emuInstall || {})[id];
+	if (p && p.state && p.state !== 'done' && p.state !== 'error') {
+		const label = { resolving: 'Recherche…', downloading: p.percent != null ? `Téléchargement ${p.percent} %` : 'Téléchargement…', extracting: 'Installation…' }[p.state] || '…';
+		return `<button class="btn sm primary" disabled>${icon('download')}${label}</button>`;
+	}
+	return `<button class="btn sm primary" data-action="emu-install" data-id="${id}">${icon('download')}Installer</button>`;
+};
+
 const renderSwitchKeys = () => {
 	const k = state.switchKeys;
 	if (!k) return '';
@@ -1398,7 +1407,8 @@ const renderEmuList = () => {
 				<div class="small muted ellipsis">${cur.path ? esc(cur.path) : esc(e.note || 'Installe-le puis clique sur « Rechercher à nouveau », ou indique son emplacement.')}</div>
 			</div>
 			<button class="btn sm" data-action="emu-browse" data-id="${id}">${icon('folder-open')}Parcourir</button>
-			${cur.path ? '' : `<button class="btn sm primary" data-action="external" data-url="${esc(e.site)}">${icon('download')}Télécharger</button>`}
+			${cur.path ? '' : (cur.installable ? installBtn(id) : '')}
+			${cur.path ? '' : `<button class="btn sm ${cur.installable ? '' : 'primary'}" data-action="external" data-url="${esc(e.site)}">${icon(cur.installable ? 'globe' : 'download')}${cur.installable ? 'Site' : 'Télécharger'}</button>`}
 		</div>${id === 'ryujinx' ? renderSwitchKeys() : ''}`;
 	}).join('');
 };
@@ -1637,6 +1647,20 @@ const ACTIONS = {
 	'update-check': async () => { try { await api('update:check'); } catch (error) { toastError(error); } },
 	'update-download': () => api('update:download').catch(toastError),
 	'update-install': () => api('update:install').catch(toastError),
+	'emu-install': async (el) => {
+		const id = el.dataset.id;
+		state.emuInstall = { ...(state.emuInstall || {}), [id]: { state: 'resolving' } };
+		$('#emu-list').innerHTML = renderEmuList();
+		try {
+			state.emulators = await api('emulators:install', id);
+			toast(`${esc(state.info.externals[id].label)} installé : tu peux importer tes clés ci-dessous`);
+		} catch (error) { toastError(error); }
+		state.emuInstall[id] = { state: 'idle' };
+		const box = $('#emu-list');
+		if (box) box.innerHTML = renderEmuList();
+		state.switchKeys = await api('switch:status').catch(() => state.switchKeys);
+		if (box) box.innerHTML = renderEmuList();
+	},
 	'switch-import': async () => {
 		const files = await api('dialog:open', { multi: true, filters: [{ name: 'Clés Switch', extensions: ['keys'] }] });
 		if (!files) return;
@@ -1826,6 +1850,12 @@ window.launcher.on('opera:download', (file) => {
 });
 
 window.launcher.on('window:state', () => {});
+
+window.launcher.on('emuinstall', (p) => {
+	state.emuInstall = { ...(state.emuInstall || {}), [p.id]: p };
+	const box = $('#emu-list');
+	if (box && p.state !== 'done') box.innerHTML = renderEmuList();
+});
 
 let updToastVersion = null;
 window.launcher.on('update:state', (u) => {

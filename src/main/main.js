@@ -22,6 +22,7 @@ const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
 const updater = require('./updater');
+const emuinstall = require('./emuinstall');
 emu.registerScheme();
 Menu.setApplicationMenu(null);
 const games = require('./games');
@@ -172,7 +173,15 @@ const handlers = {
 		externals: Object.fromEntries(Object.entries(emulators.EXTERNAL).map(([id, e]) => [id, { label: e.label, systems: e.systems, site: e.site, note: e.note || null }])),
 		extensions: systems.supportedExtensions(),
 	}),
-	'emulators:status': refresh => emulators.status(!!refresh),
+	'emulators:status': (refresh) => {
+		const st = emulators.status(!!refresh);
+		for (const id of emuinstall.available()) if (st[id]) st[id].installable = true;
+		return st;
+	},
+	'emulators:install': async (id) => {
+		await emuinstall.install(id, p => send('emuinstall', { id, ...p }));
+		return emulators.status(true);
+	},
 	'emulators:set': (id, file) => {
 		const s = store.getSettings();
 		store.setSettings({ emulators: { ...(s.emulators || {}), [id]: file || '' } });

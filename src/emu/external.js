@@ -4,7 +4,7 @@
 const $ = s => document.querySelector(s);
 const icon = n => `<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ICONS.star || ''}</svg>`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const st = { cfg: null, slot: 1, turbo: false, paused: false, panel: false, tab: 'states', opts: {}, ext: null, frame: null, slotInfo: {}, immersive: false, top: false };
+const st = { cfg: null, slot: 1, turbo: false, paused: false, panel: false, tab: 'states', sw: null, opts: {}, ext: null, frame: null, slotInfo: {}, immersive: false, top: false };
 
 const toast = (html, error = false) => {
 	const el = document.createElement('div');
@@ -83,6 +83,15 @@ const tabGame = () => {
 	${st.cfg.extension ? `<div class="grp"><div class="lbl">Extension de la Wiimote <span>corrige « l’extension branchée n’est pas prise en charge »</span></div>${chips('ext', EXTS, st.ext || st.cfg.extension)}</div>` : ''}`;
 };
 
+const tabSwitch = () => {
+	const k = st.sw;
+	const tag = (ok, l) => `<span class="chip ${ok ? 'on' : ''}">${ok ? '✓ ' : ''}${l}</span>`;
+	return `<div class="grp"><div class="lbl">Clés Nintendo Switch <span>extraites de ta propre console</span></div>
+		${k ? `<div class="chips">${tag(k.prod, 'prod.keys')}${tag(k.title, 'title.keys')}</div>` : '<div class="note">Chargement…</div>'}
+		<div style="margin-top:12px"><button class="btn primary" data-act="swimport">${icon('upload')}Importer des clés (.keys)</button></div></div>
+		<div class="note">Les clés sont copiées dans le dossier de Ryujinx. Le firmware s’installe dans Ryujinx : menu Outils → Installer le firmware (depuis un fichier ZIP ou un dossier). Si le jeu ne démarre pas après l’import, ferme et relance le jeu.</div>`;
+};
+
 const tabTools = () => `
 	<div class="tools">
 		<button class="btn" data-act="shot">${icon('camera')}Capture d’écran</button>
@@ -97,8 +106,9 @@ const tabTools = () => `
 const dirty = () => JSON.stringify(st.opts) !== JSON.stringify(st.cfg.opts) || (st.ext && st.ext !== st.cfg.extension);
 
 const renderPanel = () => {
-	const tabs = [['states', 'États', 'save'], ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
-	const body = { states: tabStates, image: tabImage, game: tabGame, tools: tabTools }[st.tab]();
+	if (!st.cfg.can.states && st.tab === 'states') st.tab = st.cfg.emulatorId === 'ryujinx' ? 'switch' : 'tools';
+	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(st.cfg.emulatorId === 'ryujinx' ? [['switch', 'Clés', 'keyboard']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
+	const body = { states: tabStates, image: tabImage, game: tabGame, tools: tabTools, switch: tabSwitch }[st.tab]();
 	$('#panel').innerHTML = `<div class="pn">
 		<div class="pn-head"><span class="ttl">SMASH EMU</span>${tabs.map(([k, l, ic]) => `<button class="pn-tab ${st.tab === k ? 'on' : ''}" data-tab="${k}">${icon(ic)}${l}</button>`).join('')}
 			<span class="grow"></span><button class="btn primary" data-act="resume">${icon('play')}Reprendre</button></div>
@@ -114,6 +124,7 @@ const renderPanel = () => {
 };
 
 const openPanel = async () => {
+	if (st.cfg.emulatorId === 'ryujinx') smashExt.switchStatus().then((k) => { st.sw = k; if (st.panel) renderPanel(); }).catch(() => {});
 	if (st.panel || !st.attached) return;
 	st.panel = true;
 	st.opts = { ...st.cfg.opts };
@@ -155,6 +166,7 @@ $('#panel').addEventListener('click', async (e) => {
 	try {
 		switch (b.dataset.act) {
 			case 'resume': await closePanel(); break;
+			case 'swimport': { const r = await smashExt.switchImport(); if (r) { st.sw = r; renderPanel(); toast(`Clés importées : ${r.imported.join(', ')}`); } break; }
 			case 'psave': st.slotInfo[n] = await smashExt.panelSave(n); st.slot = n; $('#slot').textContent = n; renderPanel(); toast(`État sauvegardé · emplacement ${n}`); break;
 			case 'pload': await smashExt.loadSlot(n); st.slot = n; $('#slot').textContent = n; toast(`État chargé · emplacement ${n}`); await closePanel(); break;
 			case 'shot': { const file = await smashExt.screenshot().catch(() => null); toast(file ? 'Capture enregistrée' : 'Capture impossible pendant le menu', !file); break; }

@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('smashExt', {
 	panelClose: () => call('ext:panelClose'),
 	panelSave: n => call('ext:panelSave', n),
 	apply: (opts, extension) => call('ext:apply', opts, extension),
+	switchStatus: () => call('ext:switchStatus'),
+	switchImport: () => call('ext:switchImport'),
 	showPath: file => call('ext:showPath', file),
 	openFolder: () => call('ext:openFolder'),
 	immersive: on => call('ext:immersive', on),
