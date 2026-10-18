@@ -1,7 +1,7 @@
 {
   "name": "smash-emu",
   "productName": "Smash Emu",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Smash Emu : émulateur N64 intégré (pause, vitesse, sauvegardes d'état), bibliothèque de ROM et launcher de mods (sm64coopdx, ROM hacks), interface inspirée de Modrinth App",
   "main": "src/main/main.js",
   "private": true,
@@ -39,7 +39,8 @@
     "@emulatorjs/emulatorjs": "^4.2.3",
     "@fontsource-variable/inter": "^5.1.0",
     "@fontsource/press-start-2p": "^5.3.0",
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "electron-updater": "^6.3.9"
   },
   "author": "Smash Emu",
   "build": {
@@ -89,6 +90,14 @@
       "include": "build/installer.nsh",
       "runAfterFinish": true
     },
-    "afterPack": "scripts/after-pack.js"
+    "afterPack": "scripts/after-pack.js",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "youssefhassani3005-oss",
+        "repo": "smash-emu",
+        "releaseType": "release"
+      }
+    ]
   }
 }

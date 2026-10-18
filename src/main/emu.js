@@ -173,6 +173,7 @@ const HANDLERS = {
 		};
 	},
 	'emu:listStates': s => listStates(s.id),
+	'emu:controls': s => require('./controls').forPlayer(s.plan.system || 'n64'),
 	'emu:saveState': (s, slot, state, png) => {
 		slot = checkSlot(slot);
 		fs.mkdirSync(statesDir(s.id), { recursive: true });

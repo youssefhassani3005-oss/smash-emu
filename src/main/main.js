@@ -19,6 +19,9 @@ const systems = require('./systems');
 const emulators = require('./emulators');
 const external = require('./external');
 const soundtrack = require('./soundtrack');
+const controls = require('./controls');
+const switchkeys = require('./switchkeys');
+const updater = require('./updater');
 emu.registerScheme();
 Menu.setApplicationMenu(null);
 const games = require('./games');
@@ -251,6 +254,19 @@ const handlers = {
 
 	'suggest:list': (romId, opts) => suggest.list(romId, opts),
 	'suggest:install': opts => installSuggestion(opts),
+	'update:get': () => updater.get(),
+	'update:check': () => updater.check(),
+	'update:download': () => updater.download(),
+	'update:install': () => updater.install(),
+	'switch:status': () => switchkeys.status(),
+	'switch:import': (files) => switchkeys.importKeys(files),
+	'switch:folder': () => switchkeys.openFolder(),
+	'switch:open': () => switchkeys.openEmulator(),
+	'controls:list': () => controls.list(),
+	'controls:get': system => controls.get(system),
+	'controls:set': (system, profile) => controls.set(system, profile),
+	'controls:reset': system => controls.reset(system),
+	'controls:extension': (value) => { controls.setExtension(value); return controls.currentExtension(); },
 	'soundtrack:search': (name, consoleLabel) => soundtrack.search(name, consoleLabel),
 	'roms:list': () => romsWithUsage(),
 	'roms:import': (files) => {
@@ -343,6 +359,7 @@ app.whenReady().then(() => {
 		cb({ requestHeaders: headers });
 	});
 	createWindow();
+	updater.init(s => send('update:state', s));
 	const id = playArg();
 	if (id) win.webContents.once('did-finish-load', () => { try { runner.launch(id); } catch (error) { console.error(error.message); } });
 	startOperaWatch();

@@ -133,22 +133,30 @@ const renderTopbar = () => {
 
 // ---------- Navigation latérale ----------
 
+const navCollapsed = () => { try { return localStorage.getItem('smash-nav') === 'collapsed'; } catch { return false; } };
+
 const renderNav = () => {
 	const r = state.route;
-	const navBtn = (name, ic, tip) => `<button class="nav-btn ${r.name === name ? 'active' : ''}" data-action="nav" data-to="${name}" data-tip="${tip}">${icon(ic)}</button>`;
+	const collapsed = navCollapsed();
+	$('#app').classList.toggle('nav-collapsed', collapsed);
+	const navBtn = (name, ic, tip) => `<button class="nav-btn ${r.name === name ? 'active' : ''}" data-action="nav" data-to="${name}" data-tip="${collapsed ? tip : ''}">${icon(ic)}<span class="nav-label">${tip}</span></button>`;
 	const recent = [...state.instances].sort((a, b) => (b.lastPlayed || b.createdAt) - (a.lastPlayed || a.createdAt)).slice(0, 8);
+	$('#nav').classList.toggle('collapsed', collapsed);
 	$('#nav').innerHTML = `
+		<div class="nav-group">Jouer</div>
 		${navBtn('home', 'play', 'Accueil')}
 		${navBtn('roms', 'disc-3', 'Jeux')}
-		${navBtn('discover', 'compass', 'Découvrir des mods')}
-		${navBtn('opera', 'globe', 'Recherche Opera')}
 		${navBtn('library', 'library', 'Bibliothèque')}
-		${recent.length ? '<div class="nav-sep"></div>' : ''}
-		${recent.map(i => `<div class="nav-inst ${r.name === 'instance' && r.params.id === i.id ? 'active' : ''} ${isRunning(i.id) ? 'running' : ''}" data-action="open-instance" data-id="${esc(i.id)}" data-tip="${esc(i.name)}">${instIcon(i, 'sm')}</div>`).join('')}
-		<div class="nav-sep"></div>
-		<button class="nav-btn" data-action="new-instance" data-tip="Nouvelle instance">${icon('plus')}</button>
+		${navBtn('controls', 'gamepad-2', 'Manettes')}
+		<div class="nav-group">Mods</div>
+		${navBtn('discover', 'compass', 'Découvrir')}
+		${navBtn('opera', 'globe', 'Recherche Opera')}
+		${recent.length ? '<div class="nav-group">Récents</div>' : '<div class="nav-sep"></div>'}
+		${recent.map(i => `<div class="nav-inst ${r.name === 'instance' && r.params.id === i.id ? 'active' : ''} ${isRunning(i.id) ? 'running' : ''}" data-action="open-instance" data-id="${esc(i.id)}" data-tip="${collapsed ? esc(i.name) : ''}"><span class="nav-inst-ic">${instIcon(i, 'sm')}</span><span class="nav-label">${esc(i.name)}</span></div>`).join('')}
+		<button class="nav-btn" data-action="new-instance" data-tip="${collapsed ? 'Nouvelle instance' : ''}">${icon('plus')}<span class="nav-label">Nouvelle instance</span></button>
 		<div class="grow"></div>
-		${navBtn('settings', 'settings', 'Paramètres')}`;
+		${navBtn('settings', 'settings', 'Paramètres')}
+		<button class="nav-btn nav-toggle" data-action="nav-collapse" data-tip="${collapsed ? 'Agrandir le menu' : ''}">${icon(collapsed ? 'chevron-right' : 'chevron-left')}<span class="nav-label">Réduire le menu</span></button>`;
 };
 
 const render = () => {
@@ -1268,6 +1276,7 @@ PAGES.opera = (params) => {
 
 PAGES.settings = () => {
 	if (!state.emulators) api('emulators:status').then((st) => { state.emulators = st; const box = $('#emu-list'); if (box) box.innerHTML = renderEmuList(); });
+	api('switch:status').then((k) => { state.switchKeys = k; const box = $('#emu-list'); if (box) box.innerHTML = renderEmuList(); }).catch(() => {});
 	const s = state.settings;
 	const p = state.info.paths;
 	const st = state.opera.status || {};
@@ -1329,11 +1338,52 @@ PAGES.settings = () => {
 				${toggle('discord', 'Intégration Discord', 'Affiche ton activité de jeu sur Discord (sm64coopdx).')}
 				${toggle('closeOnLaunch', 'Réduire Smash Emu au lancement d’un jeu', 'La fenêtre principale se réduit quand un jeu démarre.')}
 			</div>
+			<div class="card col"><h3>Mises à jour</h3><div id="upd-box">${renderUpdate()}</div></div>
 			<div class="card col"><h3>À propos</h3>
 				<div class="row">${SmashLogo.svg(40)}<div class="grow small"><div style="margin-bottom:6px">${SmashLogo.wordmark()}</div>v${esc(state.info.version)} — données dans <b>${esc(state.info.dataDir)}</b></div><button class="btn sm" data-action="show-path" data-path="${esc(state.info.dataDir)}">${icon('folder-open')}Ouvrir</button></div>
 				<div class="small muted">Émulation N64 : EmulatorJS et mupen64plus (GPL-3.0). Interface inspirée de Modrinth App. Mods Coop DX : mods.sm64coopdx.com. Icônes Lucide (ISC), polices Inter et Press Start 2P (OFL). Smash Emu ne fournit aucun jeu : utilise les ROM de tes propres cartouches.</div>
 			</div>
 		</div>`);
+};
+
+// ---------- Mises à jour ----------
+
+const renderUpdate = () => {
+	const u = state.update || { state: 'idle', current: state.info.version };
+	const line = {
+		idle: `Version <b>${esc(u.current)}</b>. Smash Emu vérifie les nouvelles versions au démarrage.`,
+		dev: `Version <b>${esc(u.current)}</b> (lancée depuis le code source : pas de mise à jour automatique).`,
+		checking: 'Recherche d’une nouvelle version…',
+		none: `Tu as la dernière version (<b>${esc(u.current)}</b>).`,
+		available: `Nouvelle version <b>${esc(u.version)}</b> disponible (tu as la ${esc(u.current)}).${u.notes ? `<div class="small muted" style="margin-top:6px;white-space:pre-line">${esc(u.notes)}</div>` : ''}`,
+		downloading: `Téléchargement de la version ${esc(u.version || '')}… <b>${u.percent || 0} %</b><div class="bar-track"><div class="bar-fill" style="width:${u.percent || 0}%"></div></div>`,
+		ready: `La version <b>${esc(u.version)}</b> est prête : Smash Emu va se fermer, s’installer puis se relancer.`,
+		error: `Mise à jour impossible : ${esc(u.error || 'erreur inconnue')}`,
+	}[u.state] || '';
+	const btn = {
+		available: `<button class="btn primary" data-action="update-download">${icon('download')}Télécharger la mise à jour</button>`,
+		ready: `<button class="btn primary" data-action="update-install">${icon('refresh-cw')}Redémarrer et installer</button>`,
+		downloading: '',
+		checking: '',
+		dev: '',
+	}[u.state];
+	return `<div class="row" style="gap:14px;align-items:flex-start"><div class="grow small">${line}</div>${btn === undefined ? `<button class="btn sm" data-action="update-check">${icon('refresh-cw')}Rechercher</button>` : btn}</div>`;
+};
+
+const renderSwitchKeys = () => {
+	const k = state.switchKeys;
+	if (!k) return '';
+	const tag = (ok, label) => `<span class="tag ${ok ? 'green' : ''}">${ok ? icon('check') : ''}${label}</span>`;
+	return `<div class="sug-row sw-keys">
+		<div class="avatar">${icon('keyboard')}</div>
+		<div class="grow">
+			<div class="row wrap" style="gap:8px"><span class="bold">Clés Nintendo Switch</span>${tag(k.prod, 'prod.keys')}${tag(k.title, 'title.keys')}</div>
+			<div class="small muted">Importe les clés extraites de <b>ta propre</b> console (Lockpick_RCM). Smash Emu les copie dans ${esc(k.dir)}. Le firmware s’installe dans Ryujinx (Outils → Installer le firmware).</div>
+		</div>
+		<button class="btn sm primary" data-action="switch-import">${icon('upload')}Importer les clés</button>
+		<button class="btn sm" data-action="switch-folder">${icon('folder-open')}Dossier</button>
+		${k.installed ? `<button class="btn sm" data-action="switch-open">${icon('cpu')}Ouvrir Ryujinx</button>` : ''}
+	</div>`;
 };
 
 const renderEmuList = () => {
@@ -1349,7 +1399,7 @@ const renderEmuList = () => {
 			</div>
 			<button class="btn sm" data-action="emu-browse" data-id="${id}">${icon('folder-open')}Parcourir</button>
 			${cur.path ? '' : `<button class="btn sm primary" data-action="external" data-url="${esc(e.site)}">${icon('download')}Télécharger</button>`}
-		</div>`;
+		</div>${id === 'ryujinx' ? renderSwitchKeys() : ''}`;
 	}).join('');
 };
 
@@ -1368,6 +1418,7 @@ const saveSetting = debounce(async (key, value) => {
 // =====================================================================
 
 const ACTIONS = {
+	'nav-collapse': () => { try { localStorage.setItem('smash-nav', navCollapsed() ? 'open' : 'collapsed'); } catch { /* ignoré */ } renderNav(); },
 	back: goBack,
 	forward: goForward,
 	crumb: (el) => { const c = TITLES[state.route.name](state.route.params)[+el.dataset.i]; if (c && c.to) go(...c.to); },
@@ -1583,6 +1634,21 @@ const ACTIONS = {
 		state.emulators = await api('emulators:status', true);
 		$('#emu-list').innerHTML = renderEmuList();
 	},
+	'update-check': async () => { try { await api('update:check'); } catch (error) { toastError(error); } },
+	'update-download': () => api('update:download').catch(toastError),
+	'update-install': () => api('update:install').catch(toastError),
+	'switch-import': async () => {
+		const files = await api('dialog:open', { multi: true, filters: [{ name: 'Clés Switch', extensions: ['keys'] }] });
+		if (!files) return;
+		try {
+			const r = await api('switch:import', files);
+			state.switchKeys = r;
+			$('#emu-list').innerHTML = renderEmuList();
+			toast(`Clés importées : ${r.imported.join(', ')}`);
+		} catch (error) { toastError(error); }
+	},
+	'switch-folder': () => api('switch:folder'),
+	'switch-open': () => api('switch:open').catch(toastError),
 	'emu-browse': async (el) => {
 		const p = await api('dialog:open', { filters: [{ name: 'Programme', extensions: ['exe'] }] });
 		if (!p) return;
@@ -1760,6 +1826,19 @@ window.launcher.on('opera:download', (file) => {
 });
 
 window.launcher.on('window:state', () => {});
+
+let updToastVersion = null;
+window.launcher.on('update:state', (u) => {
+	state.update = u;
+	const box = $('#upd-box');
+	if (box) box.innerHTML = renderUpdate();
+	if (u.state === 'available' && updToastVersion !== u.version) {
+		updToastVersion = u.version;
+		toast(`Smash Emu <b>${esc(u.version)}</b> est disponible`, { type: 'info', timeout: 12000, actions: [{ label: 'Télécharger', run: () => api('update:download').catch(toastError) }] });
+	}
+	if (u.state === 'ready') toast('Mise à jour prête', { type: 'success', timeout: 15000, actions: [{ label: 'Redémarrer et installer', run: () => api('update:install') }] });
+});
+api('update:get').then((u) => { state.update = u; }).catch(() => {});
 
 // ---------- Démarrage ----------
 

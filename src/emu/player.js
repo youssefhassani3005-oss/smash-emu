@@ -362,7 +362,24 @@ const renderPadHelp = (system) => {
 
 const rewindWanted = () => { try { return !!(JSON.parse(localStorage.getItem('smash-emu-features')) || {}).rewind; } catch { return false; } };
 
+// Touches et boutons choisis dans la page « Manettes » : clavier pour le joueur 1, manettes pour tous les joueurs.
+const applyControls = async () => {
+	try {
+		const prof = await smashEmu.controls();
+		const E = window.EJS_emulator;
+		if (!E || !E.controls) return;
+		for (let p = 0; p < 4; p++) {
+			if (!E.controls[p]) E.controls[p] = {};
+			for (const [id, pad] of Object.entries(prof.pad || {})) E.controls[p][id] = { ...(E.controls[p][id] || {}), value2: pad };
+		}
+		for (const [id, k] of Object.entries(prof.kb || {})) E.controls[0][id] = { ...(E.controls[0][id] || {}), value: k.code };
+		if (E.checkGamepadInputs) E.checkGamepadInputs();
+		log('profil de manette appliqué');
+	} catch (error) { log('profil de manette ignoré :', error.message); }
+};
+
 const onStarted = () => {
+	applyControls();
 	clearInterval(loadingTimer);
 	st.started = true;
 	$('#loading-progress').style.width = '100%';

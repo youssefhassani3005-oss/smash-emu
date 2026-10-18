@@ -53,7 +53,7 @@ const EXTERNAL = {
 	},
 	azahar: { label: 'Azahar', systems: ['3ds'], exe: ['azahar.exe', 'lime3ds.exe', 'citra-qt.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-f']), f], site: 'https://azahar-emu.org/pages/download/' },
 	cemu: { label: 'Cemu', systems: ['wiiu'], exe: ['Cemu.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-f']), '-g', f], site: 'https://cemu.info/' },
-	ryujinx: { label: 'Ryujinx', systems: ['switch'], exe: ['Ryujinx.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://ryujinx.app/download', note: 'Nécessite les clés (prod.keys) et le firmware de ta propre Switch.' },
+	ryujinx: { label: 'Ryujinx', systems: ['switch'], exe: ['Ryujinx.exe', 'Ryujinx.Ava.exe', 'Ryubing.exe'], keys: true, args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://ryujinx.app/download', note: 'Nécessite les clés (prod.keys) et le firmware de ta propre Switch : importe-les ci-dessous.' },
 	duckstation: { label: 'DuckStation', systems: ['psx'], exe: ['duckstation-qt-x64-ReleaseLTCG.exe', 'duckstation-qt.exe'], args: (f, o = {}) => ['-batch', ...(o.embed ? [] : ['-fullscreen']), '--', f], site: 'https://www.duckstation.org/', note: 'Nécessite le BIOS de ta PlayStation.' },
 	pcsx2: { label: 'PCSX2', systems: ['ps2'], exe: ['pcsx2-qt.exe', 'pcsx2.exe'], args: (f, o = {}) => ['-batch', ...(o.embed ? [] : ['-fullscreen']), '--', f], site: 'https://pcsx2.net/downloads/', note: 'Nécessite le BIOS de ta PlayStation 2.' },
 	ppsspp: { label: 'PPSSPP', systems: ['psp'], exe: ['PPSSPPWindows64.exe', 'PPSSPPWindows.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://www.ppsspp.org/download/' },
@@ -107,7 +107,7 @@ const pathFor = (id) => {
 
 const status = (refresh = false) => {
 	detectAll(refresh);
-	return Object.fromEntries(Object.entries(EXTERNAL).map(([id, e]) => [id, { id, label: e.label, systems: e.systems, site: e.site, note: e.note || null, path: pathFor(id) }]));
+	return Object.fromEntries(Object.entries(EXTERNAL).map(([id, e]) => [id, { id, label: e.label, systems: e.systems, site: e.site, note: e.note || null, keys: !!e.keys, path: pathFor(id) }]));
 };
 
 module.exports = { EXTERNAL, pathFor, status, detectAll };

@@ -245,3 +245,28 @@ test('consoles : cartouches validées, jeu NES lancé dans l’émulateur intég
 	games.setGame(wiiInst.id, romlib.get(wiiGame.id));
 	assert.strictEqual(games.engineFor(store.getInstance(wiiInst.id)), 'dolphin');
 });
+
+test('clés Switch : reconnaissance du type de fichier', () => {
+	const M = require('module');
+	const load = M._load;
+	M._load = function (request, ...rest) { return request === 'electron' ? { shell: {} } : load.call(this, request, ...rest); };
+	let classify;
+	try { ({ classify } = require('../src/main/switchkeys')); } finally { M._load = load; }
+	const hex = n => 'ab'.repeat(n / 2);
+	assert.equal(classify(`header_key = ${hex(64)}\nmaster_key_00 = ${hex(32)}\n`), 'prod.keys');
+	assert.equal(classify(`${hex(32)} = ${hex(32)}\n${'cd'.repeat(16)} = ${hex(32)}\n`), 'title.keys');
+	assert.equal(classify('ceci n’est pas un fichier de clés'), null);
+	assert.equal(classify(''), null);
+});
+
+test('manettes : boutons par console lus dans EmulatorJS', () => {
+	const M = require('module');
+	const load = M._load;
+	M._load = function (request, ...rest) { return /store$/.test(request) ? { getSettings: () => ({}), setSettings() {} } : load.call(this, request, ...rest); };
+	let controls;
+	try { controls = require('../src/main/controls'); } finally { M._load = load; }
+	const n64 = controls.get('n64').buttons.map(b => b.label);
+	assert.ok(n64.includes('Z') && n64.includes('C-PAD UP'));
+	assert.ok(controls.get('psx').buttons.some(b => b.label === 'L2'));
+	assert.ok(controls.list().some(s => s.id === 'wii' && s.dolphin));
+});
