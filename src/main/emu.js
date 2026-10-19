@@ -177,7 +177,7 @@ const openEmu = (id, plan) => {
 		frame: false,
 		backgroundColor: '#000000',
 		title: `${plan.name} — Smash Emu`,
-		icon: path.join(SRC, 'renderer', 'assets', 'icon.png'),
+		icon: store.windowIcon(),
 		webPreferences: {
 			preload: path.join(SRC, 'emu-preload.js'),
 			contextIsolation: true,
@@ -235,6 +235,7 @@ const HANDLERS = {
 			core: s.plan.core || 'mupen64plus_next',
 			threads: !!s.plan.threads,
 			theme: settings.theme,
+			logo: settings.logo || 'classic',
 			volume: typeof inst.options.emuVolume === 'number' ? inst.options.emuVolume : settings.emuVolume,
 			slots: listStates(s.id),
 			activeSlot: inst.options.emuSlot || 1,

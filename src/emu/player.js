@@ -570,6 +570,11 @@ const onStarted = () => {
 		showError(e.message);
 		return;
 	}
+	if (st.cfg.logo && st.cfg.logo !== SmashLogo.variant()) {
+		SmashLogo.setVariant(st.cfg.logo);
+		$('#logo').innerHTML = SmashLogo.svg(26);
+		$('#splash-logo').innerHTML = SmashLogo.svg(96) + SmashLogo.wordmark();
+	}
 	const cfg = st.cfg;
 	document.documentElement.dataset.theme = cfg.theme || 'smash';
 	document.title = `${cfg.name} — Smash Emu`;

@@ -30,6 +30,9 @@ const THEME_INFO = {
 };
 
 const applyTheme = (theme) => { document.documentElement.dataset.theme = THEME_INFO[theme] ? theme : 'smash'; };
+// Logo choisi : gardé aussi en local pour l'écran de démarrage, affiché avant la lecture des réglages.
+const applyLogo = (v) => { SmashLogo.setVariant(v); try { localStorage.setItem('smash-logo', SmashLogo.variant()); } catch { /* */ } };
+try { SmashLogo.setVariant(localStorage.getItem('smash-logo') || 'classic'); } catch { /* */ }
 
 const TYPE_ICON = { coopdx: 'users', rom: 'joystick' };
 
@@ -79,6 +82,7 @@ const refreshInstances = async () => { state.instances = await api('instances:li
 const refreshAll = async () => {
 	[state.info, state.settings, state.meta, state.running] = await Promise.all([api('app:info'), api('settings:get'), api('catalog:meta'), api('run:status')]);
 	applyTheme(state.settings.theme);
+	applyLogo(state.settings.logo);
 	await refreshInstances();
 	state.roms = await api('roms:list').catch(() => []);
 	state.opera.status = await api('opera:status').catch(() => null);
@@ -1339,6 +1343,10 @@ PAGES.settings = () => {
 		<div class="narrow col" style="gap:18px">
 			<h1>Paramètres</h1>
 			<div class="card col"><h3>Apparence</h3>
+				<div class="field"><span class="label">Logo</span>
+					<div class="logo-pick">${[['classic', 'Classique'], ['manette', 'Manette']].map(([v, l]) => `<button class="logo-card ${(s.logo || 'classic') === v ? 'active' : ''}" data-action="set-logo" data-v="${v}">${SmashLogo.svg(56, v)}<span>${l}</span></button>`).join('')}</div>
+					<span class="hint">Le logo change dans toute l’application et sur l’icône des fenêtres (l’icône du raccourci reste la classique).</span>
+				</div>
 				<div class="theme-grid">${Object.entries(THEME_INFO).map(([id, t]) => `
 					<button class="theme-card ${(s.theme || 'smash') === id ? 'active' : ''}" data-action="set-theme" data-v="${id}">
 						<div class="theme-preview" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><span style="background:${t.colors[2]}"></span><i style="background:${t.colors[2]}"></i></div>
@@ -1769,6 +1777,11 @@ const ACTIONS = {
 	'set-theme': async (el) => {
 		state.settings = await api('settings:set', { theme: el.dataset.v });
 		applyTheme(state.settings.theme);
+		render();
+	},
+	'set-logo': async (el) => {
+		state.settings = await api('settings:set', { logo: el.dataset.v });
+		applyLogo(state.settings.logo);
 		render();
 	},
 	'set-resume': async (el) => { state.settings = await api('settings:set', { resumeMode: el.dataset.v }); render(); },

@@ -22,8 +22,8 @@ const chunk = (type, data) => {
 };
 
 // PNG RGBA agrandi sans lissage (chaque pixel du logo devient un carré net).
-const png = (size) => {
-	const m = logo.matrix();
+const png = (size, variant = 'classic') => {
+	const m = logo.matrix(variant);
 	const scale = size / logo.SIZE;
 	const raw = Buffer.alloc(size * (size * 4 + 1));
 	for (let y = 0; y < size; y++) {
@@ -60,5 +60,7 @@ const ico = (sizes) => {
 const out = path.join(__dirname, '..', 'src', 'renderer', 'assets');
 fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, 'icon.png'), png(256));
+// Icône de fenêtre pour le second logo (l'exécutable garde l'icône classique).
+fs.writeFileSync(path.join(out, 'icon-manette.png'), png(256, 'manette'));
 fs.writeFileSync(path.join(out, 'icon.ico'), ico([256, 64, 48, 32, 16]));
 console.log('Icône pixel art générée : icon.png, icon.ico');

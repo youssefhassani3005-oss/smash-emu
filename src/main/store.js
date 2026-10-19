@@ -42,7 +42,8 @@ const DEFAULT_SETTINGS = {
 	emuShowFps: false,
 	saveBackups: 10,      // copies de secours gardées par jeu pour les sauvegardes en jeu
 	savesSyncDir: '',     // dossier cloud (Dropbox, Drive, Syncthing…) servant de miroir, vide = désactivé
-	resumeMode: 'ask',    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
+	resumeMode: 'ask',
+	logo: 'classic',      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
 };
 
 // Reprend les données de l'ancien nom (Launcher 64) au premier démarrage de Smash Emu.
@@ -68,6 +69,9 @@ const writeJson = (file, data) => {
 	fs.writeFileSync(tmp, JSON.stringify(data, null, '\t'));
 	fs.renameSync(tmp, file);
 };
+
+// Icône des fenêtres selon le logo choisi (l'exécutable installé garde l'icône classique).
+const windowIcon = () => path.join(__dirname, '..', 'renderer', 'assets', getSettings().logo === 'manette' ? 'icon-manette.png' : 'icon.png');
 
 const getSettings = () => ({ ...DEFAULT_SETTINGS, ...readJson(SETTINGS_FILE, {}) });
 const setSettings = (patch) => {
@@ -124,6 +128,6 @@ const deleteInstance = id => fs.rmSync(instanceDir(id), { recursive: true, force
 
 module.exports = {
 	ROOT, INSTANCES_DIR, ROMS_DIR, CACHE_DIR, ELECTRON_DIR, GAME_TYPES, ENGINES, THEMES,
-	ensureDirs, readJson, writeJson, getSettings, setSettings,
+	ensureDirs, readJson, writeJson, getSettings, setSettings, windowIcon,
 	instanceDir, listInstances, getInstance, saveInstance, updateInstance, createInstance, deleteInstance,
 };

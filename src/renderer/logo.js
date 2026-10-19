@@ -1,5 +1,7 @@
-// Logo pixel art de Smash Emu (16 × 16) : tuile aux bords en relief et « S » blanc à ombre portée.
-// Utilisé par l'interface (SVG) et par scripts/make-icon.js (icône PNG / ICO).
+// Logos pixel art de Smash Emu (16 × 16), au choix dans Paramètres → Apparence :
+//  - « classic » : tuile aux bords en relief et « S » blanc à ombre portée ;
+//  - « manette » : manette avec croix directionnelle, boutons et étincelle.
+// Utilisés par l'interface (SVG) et par scripts/make-icon.js (icônes PNG / ICO).
 (function (root) {
 	const SIZE = 16;
 	const GLYPH = [
@@ -22,7 +24,7 @@
 	};
 
 	// Codes : . vide, B couleur, H reflet, D ombre du bord, W lettre, K ombre de la lettre.
-	const matrix = () => {
+	const classic = () => {
 		const m = [];
 		for (let y = 0; y < SIZE; y++) {
 			let row = '';
@@ -39,6 +41,32 @@
 		return m;
 	};
 
+	// Manette dessinée à la main (mêmes codes de couleur).
+	const MANETTE = [
+		'................',
+		'..............H.',
+		'.............HHH',
+		'..............H.',
+		'..HHHHHHHHHHHH..',
+		'.HBBBBBBBBBBBBD.',
+		'HBBBWBBBBBBBWBBD',
+		'HBBWWWBBBBBWBWBD',
+		'HBBBWKBBBBBBWBKD',
+		'HBBBBKBBBBBBBKBD',
+		'HBBBBBDDDDBBBBBD',
+		'.HBBBD....HBBBD.',
+		'..DBD......DBD..',
+		'...D........D...',
+		'................',
+		'................',
+	];
+
+	const VARIANTS = { classic, manette: () => MANETTE.slice() };
+	let current = 'classic';
+	const setVariant = (v) => { current = VARIANTS[v] ? v : 'classic'; return current; };
+	const variant = () => current;
+	const matrix = (v = current) => (VARIANTS[v] || classic)();
+
 	const FILL = {
 		B: 'fill:var(--brand)',
 		H: 'fill:var(--brand-hover)',
@@ -48,9 +76,9 @@
 	};
 
 	// SVG : une bande <rect> par suite de pixels identiques.
-	const svg = (size = 28) => {
+	const svg = (size = 28, v = current) => {
 		let rects = '';
-		matrix().forEach((row, y) => {
+		matrix(v).forEach((row, y) => {
 			for (let x = 0; x < SIZE;) {
 				const c = row[x];
 				let w = 1;
@@ -67,7 +95,7 @@
 
 	const wordmark = () => '<span class="wordmark"><span class="w1">SMASH</span><span class="w2">EMU</span></span>';
 
-	const api = { SIZE, matrix, svg, wordmark };
+	const api = { SIZE, matrix, svg, wordmark, setVariant, variant, VARIANTS: Object.keys(VARIANTS) };
 	root.SmashLogo = api;
 	if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

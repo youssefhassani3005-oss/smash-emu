@@ -91,7 +91,7 @@ const openExternalHost = (id, plan) => {
 	const win = new BrowserWindow({
 		width: 1280, height: 808, minWidth: 640, minHeight: 480, frame: false, backgroundColor: '#000000',
 		title: `${plan.name} — Smash Emu`,
-		icon: path.join(SRC, 'renderer', 'assets', 'icon.png'),
+		icon: store.windowIcon(),
 		webPreferences: { preload: path.join(SRC, 'ext-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
 	});
 	const wcId = win.webContents.id;
@@ -190,7 +190,7 @@ const ACTIONS = {
 		const idx = slotsIndex(h);
 		return {
 			name: h.plan.name, emulator: ext.label || h.plan.emulator, emulatorId: h.plan.emulator, system: (systems.SYSTEMS[h.plan.system] || {}).label || '',
-			systemId: h.plan.system, theme: store.getSettings().theme,
+			systemId: h.plan.system, theme: store.getSettings().theme, logo: store.getSettings().logo || 'classic',
 			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable },
 			slots: k.slots || 1,
 			shaders: ext.shaders || [],

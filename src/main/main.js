@@ -192,6 +192,7 @@ const handlers = {
 	'settings:get': () => store.getSettings(),
 	'settings:set': (patch) => {
 		const s = store.setSettings(patch);
+		if ('logo' in patch && win && !win.isDestroyed()) win.setIcon(store.windowIcon());
 		if ('watchOperaDownloads' in patch) startOperaWatch();
 		return s;
 	},
@@ -362,7 +363,7 @@ const createWindow = () => {
 		frame: false,
 		backgroundColor: '#0a0a0b',
 		title: 'Smash Emu',
-		icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
+		icon: store.windowIcon(),
 		webPreferences: {
 			preload: path.join(__dirname, '..', 'preload.js'),
 			contextIsolation: true,
