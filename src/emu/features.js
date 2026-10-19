@@ -388,6 +388,10 @@ const FEATURES = [
 
 	// Outils
 	T('fps', 'Compteur FPS', 'Images par seconde réelles de l’émulation', { cat: 'Outils', icon: 'gauge' }),
+	A('Enregistrer une macro', 'Enregistre tes touches, rejoue-les avec Ctrl+1 à 4', () => window.smashInputs.toggleMacroRecording(), { cat: 'Outils', icon: 'keyboard', keyHint: 'Ctrl+M', active: () => !!(window.smashInputs && window.smashInputs.recordingMacro) }),
+	A('Effacer les macros', 'Libère Ctrl+1 à Ctrl+4', () => window.smashInputs.clearMacros(), { cat: 'Outils', icon: 'x' }),
+	A('Film d’entrées : enregistrer', 'Démarre ou arrête l’enregistrement image par image (état de départ inclus)', () => window.smashInputs.toggleMovieRecording(), { cat: 'Outils', icon: 'film', active: () => !!(window.smashInputs && window.smashInputs.movieMode === 'rec') }),
+	A('Film d’entrées : rejouer', 'Rejoue le dernier film ; une touche te rend la main', () => window.smashInputs.playMovie(), { cat: 'Outils', icon: 'play', active: () => !!(window.smashInputs && window.smashInputs.movieMode === 'play') }),
 	A('Statistiques détaillées', 'FPS, temps par image (graphe), processeur, mémoire, latence audio', () => window.smashStats && window.smashStats.toggle(), { cat: 'Outils', icon: 'gauge', keyHint: 'Maj+F2', active: () => !!(window.smashStats && window.smashStats.on) }),
 	T('speedHud', 'Vitesse à l’écran', 'Affiche la vitesse actuelle', { cat: 'Outils', icon: 'fast-forward' }),
 	T('timer', 'Chrono speedrun', 'F10 démarre / arrête, Maj+F10 remet à zéro', { cat: 'Outils', icon: 'clock', keyHint: 'F10' }),

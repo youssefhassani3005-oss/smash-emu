@@ -13,7 +13,13 @@ const CTL_AXES = ['LEFT_STICK_X', 'LEFT_STICK_Y', 'RIGHT_STICK_X', 'RIGHT_STICK_
 const CTL_TYPES = { ps: 'PlayStation', xbox: 'Xbox', switch: 'Nintendo Switch', generic: 'Manette' };
 const CTL_DIRS = { DPAD_UP: '↑', DPAD_DOWN: '↓', DPAD_LEFT: '←', DPAD_RIGHT: '→' };
 
-const ctl = { systems: null, sel: null, data: null, listening: null, raf: 0, last: {}, saveTimer: 0, msg: '' };
+const ctl = { systems: null, sel: null, scope: null, data: null, listening: null, raf: 0, last: {}, saveTimer: 0, msg: '' };
+const TURBO_HZ = [6, 10, 12, 15, 20, 30];
+
+// Profil modifié : celui du jeu choisi, sinon celui de la console.
+const target = () => (ctl.scope ? ctl.data.game : ctl.data.profile);
+// Jeux de la console jouables dans le lecteur intégré (profils par jeu).
+const gamesOf = system => state.instances.filter(i => i.type === 'rom' && sysOf(i) === system && instEngine(i) === 'smash');
 
 const padType = (id = '') => {
 	const s = id.toLowerCase();
@@ -49,27 +55,38 @@ const livePads = () => Array.from(navigator.getGamepads ? navigator.getGamepads(
 const mainPad = () => livePads()[0] || null;
 const curType = () => { const p = mainPad(); return p ? padType(p.id) : 'generic'; };
 
-const ctlLoad = async (id) => {
+const ctlLoad = async (id, scope = null) => {
+	if (scope && !gamesOf(id).some(i => i.id === scope)) scope = null;
 	ctl.sel = id;
+	ctl.scope = scope;
 	state.ui.ctlSystem = id;
-	ctl.data = await api('controls:get', id);
+	state.ui.ctlScope = scope;
+	ctl.data = await api('controls:get', id, scope);
 	ctl.listening = null;
 	ctlRender();
 };
 
 const ctlSave = () => {
 	clearTimeout(ctl.saveTimer);
-	ctl.saveTimer = setTimeout(() => api('controls:set', ctl.sel, ctl.data.profile).catch(e => toast(e.message, { type: 'error' })), 250);
+	const sys = ctl.sel;
+	const scope = ctl.scope;
+	const prof = target();
+	ctl.saveTimer = setTimeout(() => api('controls:set', sys, prof, scope).catch(e => toast(e.message, { type: 'error' })), 250);
 };
 
+// Valeur affichée : profil du jeu, sinon de la console, sinon défaut d'EmulatorJS.
 const rowValues = (b) => {
 	const d = ctl.data;
-	const kb = d.profile.kb[b.id];
-	const pad = d.profile.pad[b.id];
+	const g = ctl.scope ? d.game : null;
+	const c = d.profile;
 	const def = d.defaults[b.id] || {};
+	const kb = (g && g.kb[b.id]) || c.kb[b.id];
+	const pad = g && g.pad[b.id] !== undefined ? g.pad[b.id] : c.pad[b.id];
+	const turbo = g && g.turbo[b.id] !== undefined ? g.turbo[b.id] : !!c.turbo[b.id];
 	return {
-		kb: kb ? kb.name : defaultKeyName(def.kb), kbCustom: !!kb,
-		pad: pad !== undefined ? pad : (def.pad || ''), padCustom: pad !== undefined,
+		kb: kb ? kb.name : defaultKeyName(def.kb), kbCustom: !!(g ? g.kb[b.id] : c.kb[b.id]), kbInherited: !!(g && !g.kb[b.id] && c.kb[b.id]),
+		pad: pad !== undefined ? pad : (def.pad || ''), padCustom: g ? g.pad[b.id] !== undefined : c.pad[b.id] !== undefined, padInherited: !!(g && g.pad[b.id] === undefined && c.pad[b.id] !== undefined),
+		turbo,
 	};
 };
 
@@ -83,9 +100,10 @@ const ctlRender = () => {
 		const listenPad = ctl.listening && ctl.listening.id === b.id && ctl.listening.kind === 'pad';
 		return `<div class="ctl-row" data-btn="${b.id}" data-pad="${esc(v.pad)}">
 			<div class="ctl-name">${esc(b.label)}</div>
-			<button class="ctl-key ${v.kbCustom ? 'custom' : ''} ${listenKb ? 'listening' : ''}" data-action="ctl-listen" data-kind="kb" data-id="${b.id}">${icon('keyboard')}<span>${listenKb ? 'Appuie sur une touche…' : esc(v.kb || '—')}</span></button>
-			<button class="ctl-key ${v.padCustom ? 'custom' : ''} ${listenPad ? 'listening' : ''}" data-action="ctl-listen" data-kind="pad" data-id="${b.id}">${icon('gamepad-2')}<span>${listenPad ? 'Appuie sur la manette…' : esc(padLabel(v.pad, type))}</span></button>
-			<button class="icon-btn" data-action="ctl-clear-one" data-id="${b.id}" data-tip="Remettre par défaut">${icon('rotate-ccw')}</button>
+			<button class="ctl-key ${v.kbCustom ? 'custom' : ''} ${v.kbInherited ? 'inherited' : ''} ${listenKb ? 'listening' : ''}" data-action="ctl-listen" data-kind="kb" data-id="${b.id}">${icon('keyboard')}<span>${listenKb ? 'Appuie sur une touche…' : esc(v.kb || '—')}</span></button>
+			<button class="ctl-key ${v.padCustom ? 'custom' : ''} ${v.padInherited ? 'inherited' : ''} ${listenPad ? 'listening' : ''}" data-action="ctl-listen" data-kind="pad" data-id="${b.id}">${icon('gamepad-2')}<span>${listenPad ? 'Appuie sur la manette…' : esc(padLabel(v.pad, type))}</span></button>
+			${b.id < 24 ? `<button class="ctl-turbo ${v.turbo ? 'on' : ''}" data-action="ctl-turbo" data-id="${b.id}" data-tip="Turbo : le bouton se répète tout seul tant qu’il est maintenu">${icon('zap')}</button>` : '<span></span>'}
+			<button class="icon-btn" data-action="ctl-clear-one" data-id="${b.id}" data-tip="${ctl.scope ? 'Reprendre le réglage de la console' : 'Remettre par défaut'}">${icon('rotate-ccw')}</button>
 		</div>`;
 	}).join('');
 	const list = ctl.systems.map(s => `<button class="ctl-sys ${ctl.sel === s.id ? 'active' : ''}" data-action="ctl-sys" data-id="${s.id}">${esc(s.label)}</button>`).join('');
@@ -94,8 +112,8 @@ const ctlRender = () => {
 		<div class="chips">${[['None', 'Aucune'], ['Nunchuk', 'Nunchuk'], ['Classic', 'Classic Controller']].map(([v, l]) => `<button class="chip ${d.extension === v ? 'active' : ''}" data-action="ctl-ext" data-v="${v}">${l}</button>`).join('')}</div></div>` : '';
 	const dolphinOnly = d.system === 'gc' || d.system === 'wii';
 	setMain(`
-		<div class="section-title"><h1>Manettes</h1><span class="muted">profil par console · enregistré automatiquement</span><div class="grow"></div>
-			<button class="btn" data-action="ctl-reset">${icon('rotate-ccw')}Tout remettre par défaut</button></div>
+		<div class="section-title"><h1>Manettes</h1><span class="muted">profil par console ou par jeu · enregistré automatiquement</span><div class="grow"></div>
+			<button class="btn" data-action="ctl-reset">${icon('rotate-ccw')}${ctl.scope ? 'Effacer le profil de ce jeu' : 'Tout remettre par défaut'}</button></div>
 		<div class="ctl-layout">
 			<aside class="ctl-side"><div class="ctl-side-title">Consoles</div>${list}</aside>
 			<div class="ctl-main">
@@ -105,8 +123,13 @@ const ctlRender = () => {
 				<div class="card ctl-card">
 					<div class="ctl-head"><h3>${icon('sliders-horizontal')}Boutons · ${esc(d.label)}</h3>
 						<div class="chips"><button class="chip" data-action="ctl-preset" data-v="nintendo">Style Nintendo (A↔B, X↔Y)</button><button class="chip" data-action="ctl-preset" data-v="default">Par défaut</button></div></div>
-					<p class="small muted">Clique sur une case puis appuie sur la touche ou le bouton voulu. <b>Retour arrière</b> efface, <b>Échap</b> annule. Les manettes se règlent aussi par joueur : le clavier est pour le joueur 1.</p>
-					<div class="ctl-table"><div class="ctl-row ctl-header"><div>Action</div><div>Clavier</div><div>Manette</div><div></div></div>${rows}</div>
+					<div class="field"><span class="label">Profil</span><div class="chips">
+						<button class="chip ${ctl.scope ? '' : 'active'}" data-action="ctl-scope" data-v="">Toutes les parties ${esc(d.label)}</button>
+						${gamesOf(d.system).map(i => `<button class="chip ${ctl.scope === i.id ? 'active' : ''}" data-action="ctl-scope" data-v="${esc(i.id)}">${esc(i.name)}</button>`).join('')}
+					</div>${ctl.scope ? '<span class="hint">Profil de ce jeu : seuls les boutons modifiés ici remplacent ceux de la console (en gris : repris de la console).</span>' : ''}</div>
+					<div class="field"><span class="label">Vitesse du turbo</span><div class="chips">${TURBO_HZ.map(hz => `<button class="chip ${(target().turboHz || (ctl.scope && ctl.data.profile.turboHz) || 12) === hz ? 'active' : ''}" data-action="ctl-turbo-hz" data-v="${hz}">${hz} / s</button>`).join('')}</div></div>
+					<p class="small muted">Clique sur une case puis appuie sur la touche ou le bouton voulu. <b>Retour arrière</b> efface, <b>Échap</b> annule. ${icon('zap')} active le turbo du bouton. Le clavier est pour le joueur 1 ; les manettes suivent l’ordre de branchement.</p>
+					<div class="ctl-table"><div class="ctl-row ctl-header"><div>Action</div><div>Clavier</div><div>Manette</div><div>Turbo</div><div></div></div>${rows}</div>
 				</div>`}
 			</div>
 		</div>`);
@@ -156,7 +179,7 @@ const ctlLoop = () => {
 const ctlRenderRowsOnly = () => { if (ctl.data) ctlRender(); };
 
 const ctlSetPad = (id, value) => {
-	ctl.data.profile.pad[id] = value;
+	target().pad[id] = value;
 	ctl.listening = null;
 	ctlSave();
 	ctlRender();
@@ -168,8 +191,8 @@ window.addEventListener('keydown', (e) => {
 	e.stopPropagation();
 	const id = ctl.listening.id;
 	if (e.key === 'Escape') { ctl.listening = null; ctlRender(); return; }
-	if (e.key === 'Backspace') { ctl.data.profile.kb[id] = { code: 0, name: '' }; }
-	else ctl.data.profile.kb[id] = { code: e.keyCode, name: keyName(e) };
+	if (e.key === 'Backspace') { target().kb[id] = { code: 0, name: '' }; }
+	else target().kb[id] = { code: e.keyCode, name: keyName(e) };
 	ctl.listening = null;
 	ctlSave();
 	ctlRender();
@@ -192,17 +215,32 @@ const NINTENDO_SWAP = { BUTTON_1: 'BUTTON_2', BUTTON_2: 'BUTTON_1', BUTTON_3: 'B
 
 Object.assign(ACTIONS, {
 	'ctl-sys': el => ctlLoad(el.dataset.id),
-	'ctl-listen': (el) => { ctl.listening = { id: +el.dataset.id, kind: el.dataset.kind }; ctl.last = {}; ctlRender(); },
-	'ctl-clear-one': (el) => {
+	'ctl-scope': el => ctlLoad(ctl.sel, el.dataset.v || null),
+	'ctl-turbo': (el) => {
 		const id = el.dataset.id;
-		delete ctl.data.profile.kb[id];
-		delete ctl.data.profile.pad[id];
+		const cur = rowValues({ id: +id }).turbo;
+		target().turbo[id] = !cur;
 		ctlSave();
 		ctlRender();
 	},
-	'ctl-reset': async () => { ctl.data.profile = await api('controls:reset', ctl.sel); ctlRender(); toast('Profil remis par défaut'); },
+	'ctl-turbo-hz': (el) => { target().turboHz = +el.dataset.v; ctlSave(); ctlRender(); },
+	'ctl-listen': (el) => { ctl.listening = { id: +el.dataset.id, kind: el.dataset.kind }; ctl.last = {}; ctlRender(); },
+	'ctl-clear-one': (el) => {
+		const id = el.dataset.id;
+		delete target().kb[id];
+		delete target().pad[id];
+		delete target().turbo[id];
+		ctlSave();
+		ctlRender();
+	},
+	'ctl-reset': async () => {
+		const fresh = await api('controls:reset', ctl.sel, ctl.scope);
+		if (ctl.scope) ctl.data.game = fresh; else ctl.data.profile = fresh;
+		ctlRender();
+		toast(ctl.scope ? 'Profil du jeu effacé : il reprend celui de la console' : 'Profil remis par défaut');
+	},
 	'ctl-preset': (el) => {
-		const prof = ctl.data.profile;
+		const prof = target();
 		prof.pad = {};
 		if (el.dataset.v === 'nintendo') {
 			for (const [id, def] of Object.entries(ctl.data.defaults)) if (NINTENDO_SWAP[def.pad]) prof.pad[id] = NINTENDO_SWAP[def.pad];
@@ -217,10 +255,11 @@ Object.assign(ACTIONS, {
 
 TITLES.controls = () => [{ label: 'Manettes' }];
 
-PAGES.controls = async () => {
+PAGES.controls = async (params = {}) => {
 	if (!ctl.systems) ctl.systems = await api('controls:list');
-	const want = state.ui.ctlSystem && ctl.systems.some(s => s.id === state.ui.ctlSystem) ? state.ui.ctlSystem : 'n64';
+	const asked = params.system || state.ui.ctlSystem;
+	const want = asked && ctl.systems.some(s => s.id === asked) ? asked : 'n64';
 	setMain('<div class="loading"><div class="spinner"></div></div>');
-	await ctlLoad(want);
+	await ctlLoad(want, params.instance || (want === state.ui.ctlSystem ? state.ui.ctlScope : null) || null);
 	if (!ctl.raf) ctl.raf = requestAnimationFrame(ctlLoop);
 };

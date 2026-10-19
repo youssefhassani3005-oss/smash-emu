@@ -365,6 +365,10 @@ kbd {
 
 /* HUD */
 body.shooting .bar, body.shooting .hud, body.shooting .stats, body.shooting .toasts, body.shooting .tooltip, body.shooting .turbo, body.shooting .panel { visibility: hidden !important; }
+body.movie-rec #stage::after, body.movie-play #stage::after { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 15; font-family: 'Press Start 2P', monospace; font-size: 10px; padding: 7px 10px; border-radius: 6px; pointer-events: none; }
+body.movie-rec #stage::after { content: '● REC ENTRÉES'; background: #e81123; color: #fff; }
+body.movie-play #stage::after { content: '▶ LECTURE DU FILM'; background: var(--brand); color: var(--on-brand); }
+body.immersive.movie-rec #stage::after, body.immersive.movie-play #stage::after { top: 14px; }
 .stats { position: fixed; right: 14px; top: 62px; width: 268px; z-index: 14; pointer-events: none; background: rgba(8, 8, 10, 0.82); border: 1px solid rgba(255, 255, 255, 0.1); border-left: 3px solid var(--brand); border-radius: 10px; padding: 10px 12px; color: #e8e8ec; font-size: 12px; backdrop-filter: blur(6px); }
 body.immersive .stats { top: 14px; }
 body.photo .stats { display: none; }

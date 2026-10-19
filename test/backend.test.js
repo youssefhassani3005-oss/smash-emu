@@ -324,3 +324,26 @@ test('sauvegardes en jeu : synchronisation avec un dossier cloud', () => {
 	fs.writeFileSync(c.meta, JSON.stringify({ hash: 'x'.repeat(40), size: 3, savedAt: t0 + 99999, source: 'game' }));
 	assert.equal(saves.sync(a, c).action, 'skipped');
 });
+
+test('manettes : profil par jeu fusionné avec celui de la console', () => {
+	const M = require('module');
+	const load = M._load;
+	const settings = {};
+	M._load = function (request, ...rest) {
+		return /store$/.test(request) ? { getSettings: () => settings, setSettings: p => Object.assign(settings, p), getInstance: id => (id === 'zelda' ? { id } : null) } : load.call(this, request, ...rest);
+	};
+	let controls;
+	try { delete require.cache[require.resolve('../src/main/controls')]; controls = require('../src/main/controls'); } finally { M._load = load; }
+	controls.set('n64', { kb: { 0: { code: 88, name: 'X' } }, pad: { 0: 'BUTTON_2' }, turbo: { 0: true }, turboHz: 15 });
+	controls.set('n64', { pad: { 0: 'BUTTON_1', 8: '' }, turbo: { 0: false } }, 'zelda');
+	const p = controls.forPlayer('n64', 'zelda');
+	assert.equal(p.kb[0].code, 88, 'le clavier de la console est repris');
+	assert.equal(p.pad[0], 'BUTTON_1', 'le jeu remplace le bouton');
+	assert.equal(p.pad[8], '', 'un bouton peut être désassigné pour ce jeu');
+	assert.equal(p.turbo[0], false);
+	assert.equal(p.turboHz, 15);
+	assert.equal(controls.forPlayer('n64').pad[0], 'BUTTON_2', 'les autres jeux gardent le profil de la console');
+	assert.throws(() => controls.set('n64', {}, 'inconnu'), /introuvable/);
+	assert.equal(controls.cleanProfile({ turboHz: 999, pad: { 1: '<script>' } }).turboHz, 30);
+	assert.equal(controls.cleanProfile({ pad: { 1: '<script>' } }).pad[1], undefined);
+});

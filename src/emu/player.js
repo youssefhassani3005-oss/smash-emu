@@ -533,6 +533,8 @@ const applyControls = async () => {
 		}
 		for (const [id, k] of Object.entries(prof.kb || {})) E.controls[0][id] = { ...(E.controls[0][id] || {}), value: k.code };
 		if (E.checkGamepadInputs) E.checkGamepadInputs();
+		st.controls = prof;
+		if (window.smashInputs) window.smashInputs.configure(prof);
 		log('profil de manette appliqué');
 	} catch (error) { log('profil de manette ignoré :', error.message); }
 };
@@ -553,6 +555,7 @@ const onStarted = () => {
 	toast('<b>F2</b> : 66 fonctions · <b>F1</b> : raccourcis · <b>Échap</b> : pause', { ms: 4500 });
 	if (window.smashFeaturesStart) window.smashFeaturesStart();
 	if (window.smashStats) window.smashStats.start();
+	if (window.smashInputs) window.smashInputs.start();
 };
 
 (async () => {

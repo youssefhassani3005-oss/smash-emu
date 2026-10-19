@@ -54,9 +54,13 @@ const list = () => Object.entries(systems.SYSTEMS)
 	.filter(([id, s]) => s.ejs || ['gc', 'wii'].includes(id))
 	.map(([id, s]) => ({ id, label: s.label, dolphin: ['gc', 'wii'].includes(id) }));
 
-const getProfile = system => (store.getSettings().controls || {})[system] || { kb: {}, pad: {}, rumble: true };
+// Profils : un par console (settings.controls[console]) et, facultatif, un par jeu qui remplace seulement les
+// boutons qu'il définit (settings.controlsGame[instance]). Le turbo par bouton suit la même règle.
+const EMPTY = () => ({ kb: {}, pad: {}, turbo: {}, turboHz: null });
+const getProfile = system => ({ ...EMPTY(), ...((store.getSettings().controls || {})[system] || {}) });
+const getGameProfile = id => (id ? ((store.getSettings().controlsGame || {})[id] || null) : null);
 
-const get = (system) => {
+const get = (system, instanceId = null) => {
 	const sc = schemes();
 	const scheme = schemeOf(system);
 	const buttons = scheme ? (sc[scheme] || sc.default || []) : [];
@@ -65,30 +69,60 @@ const get = (system) => {
 		buttons: [...buttons, ...EXTRA],
 		defaults: Object.fromEntries([...Object.entries(DEFAULTS).map(([id, [kb, pad]]) => [id, { kb, pad }]), ...Object.entries(EXTRA_DEFAULTS).map(([id, kb]) => [id, { kb, pad: '' }])]),
 		profile: getProfile(system),
+		game: instanceId ? { ...EMPTY(), ...(getGameProfile(instanceId) || {}) } : null,
+		instanceId,
 		extension: system === 'wii' ? currentExtension() : null,
 	};
 };
 
-const set = (system, profile) => {
-	const clean = { kb: {}, pad: {}, rumble: profile.rumble !== false };
+const cleanProfile = (profile = {}) => {
+	const clean = EMPTY();
 	for (const [id, v] of Object.entries(profile.kb || {})) if (/^\d+$/.test(id) && v && typeof v.code === 'number') clean.kb[id] = { code: v.code, name: String(v.name || '').slice(0, 20) };
-	for (const [id, v] of Object.entries(profile.pad || {})) if (/^\d+$/.test(id) && typeof v === 'string' && /^[A-Z0-9_:+\-]{1,32}$/.test(v)) clean.pad[id] = v;
-	const all = { ...(store.getSettings().controls || {}), [system]: clean };
-	store.setSettings({ controls: all });
+	for (const [id, v] of Object.entries(profile.pad || {})) if (/^\d+$/.test(id) && typeof v === 'string' && /^[A-Z0-9_:+\-]{0,32}$/.test(v)) clean.pad[id] = v;
+	for (const [id, v] of Object.entries(profile.turbo || {})) if (/^\d+$/.test(id) && typeof v === 'boolean') clean.turbo[id] = v;
+	if (Number.isFinite(profile.turboHz)) clean.turboHz = Math.max(2, Math.min(30, Math.round(profile.turboHz)));
 	return clean;
 };
 
-const reset = (system) => {
+const set = (system, profile, instanceId = null) => {
+	const clean = cleanProfile(profile);
+	if (instanceId) {
+		if (!store.getInstance(instanceId)) throw new Error('Jeu introuvable.');
+		store.setSettings({ controlsGame: { ...(store.getSettings().controlsGame || {}), [instanceId]: clean } });
+	} else {
+		store.setSettings({ controls: { ...(store.getSettings().controls || {}), [system]: clean } });
+	}
+	return clean;
+};
+
+const reset = (system, instanceId = null) => {
+	if (instanceId) {
+		const all = { ...(store.getSettings().controlsGame || {}) };
+		delete all[instanceId];
+		store.setSettings({ controlsGame: all });
+		return EMPTY();
+	}
 	const all = { ...(store.getSettings().controls || {}) };
 	delete all[system];
 	store.setSettings({ controls: all });
 	return getProfile(system);
 };
 
+// Fusion console + jeu (le jeu l'emporte bouton par bouton).
+const merge = (base, over) => {
+	if (!over) return base;
+	return {
+		kb: { ...base.kb, ...over.kb },
+		pad: { ...base.pad, ...over.pad },
+		turbo: { ...base.turbo, ...over.turbo },
+		turboHz: over.turboHz || base.turboHz,
+	};
+};
+
 // Ce que le lecteur applique au démarrage de la partie.
-const forPlayer = (system) => {
-	const p = getProfile(system);
-	return { kb: p.kb || {}, pad: p.pad || {} };
+const forPlayer = (system, instanceId = null) => {
+	const p = merge(getProfile(system), getGameProfile(instanceId));
+	return { kb: p.kb || {}, pad: p.pad || {}, turbo: p.turbo || {}, turboHz: p.turboHz || 12 };
 };
 
 // ---------- Dolphin : extension de la Wiimote 1 (WiimoteNew.ini, lu au lancement) ----------
@@ -111,4 +145,4 @@ const currentExtension = () => {
 	try { const m = fs.readFileSync(WIIMOTE_INI, 'utf8').match(/\[Wiimote1\][\s\S]*?^Extension\s*=\s*(\w+)/m); return m ? m[1] : 'None'; } catch { return 'None'; }
 };
 
-module.exports = { schemes, list, get, set, reset, forPlayer, setExtension, currentExtension };
+module.exports = { schemes, list, get, set, reset, forPlayer, merge, cleanProfile, setExtension, currentExtension };

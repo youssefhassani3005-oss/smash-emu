@@ -191,6 +191,7 @@ const playButton = (inst, cls = '') => isRunning(inst.id)
 const instanceMenu = (anchor, inst) => menu(anchor, [
 	isRunning(inst.id) ? { icon: 'square', label: 'Arrêter', run: () => stopInstance(inst.id) } : { icon: 'play', label: 'Jouer', run: () => launchInstance(inst.id) },
 	{ icon: 'music', label: 'Bande-son', run: () => openSoundtrack(instGameName(inst), sysOf(inst)) },
+	...(inst.type === 'rom' && instEngine(inst) === 'smash' ? [{ icon: 'gamepad-2', label: 'Manettes de ce jeu', run: () => go('controls', { system: sysOf(inst), instance: inst.id }) }] : []),
 	{ icon: 'puzzle', label: 'Ajouter du contenu', run: () => openDiscoverFor(inst) },
 	{ icon: 'folder-open', label: 'Ouvrir le dossier', run: () => api('instance:openFolder', inst.id) },
 	{ icon: 'copy', label: 'Dupliquer', run: () => duplicateInstance(inst.id) },

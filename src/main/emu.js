@@ -125,6 +125,22 @@ const mediaFile = (s, kind, ext) => {
 	return file;
 };
 
+// ---------- Macros et films d'entrées (voir src/emu/inputs.js) ----------
+
+const MAX_EVENTS = 200000;
+// Une entrée : image (relative), joueur 0-3, bouton 0-29, valeur (0/1, ou ±32767 pour les sticks).
+const cleanEvents = (events) => {
+	if (!Array.isArray(events) || events.length > MAX_EVENTS) throw new Error('Séquence d’entrées invalide.');
+	return events.map((e) => {
+		const ev = { f: Math.trunc(+e.f), p: Math.trunc(+e.p), i: Math.trunc(+e.i), v: Math.trunc(+e.v) };
+		if (!(ev.f >= 0 && ev.p >= 0 && ev.p <= 3 && ev.i >= 0 && ev.i <= 29 && Math.abs(ev.v) <= 0x7fff)) throw new Error('Entrée invalide dans la séquence.');
+		return ev;
+	});
+};
+const macrosFile = id => path.join(store.instanceDir(id), 'macros.json');
+const moviesDir = id => path.join(store.instanceDir(id), 'movies');
+const MOVIE_NAME = /^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}$/;
+
 // ---------- Sauvegardes en jeu (voir saves.js) ----------
 
 // Contexte d'une sauvegarde : dossier local, miroir cloud éventuel, nombre de copies de secours.
@@ -226,7 +242,7 @@ const HANDLERS = {
 		};
 	},
 	'emu:listStates': s => listStates(s.id),
-	'emu:controls': s => require('./controls').forPlayer(s.plan.system || 'n64'),
+	'emu:controls': s => require('./controls').forPlayer(s.plan.system || 'n64', s.id),
 	'emu:saveState': (s, slot, state, png) => {
 		slot = checkSlot(slot);
 		fs.mkdirSync(statesDir(s.id), { recursive: true });
@@ -259,6 +275,34 @@ const HANDLERS = {
 		const out = { cpu: pct(me, 'me'), mem: me ? me.memory.workingSetSize : null, gpuCpu: pct(gpu, 'gpu') };
 		s.cpuSample = { me: me && { cum: me.cpu.cumulativeCPUUsage, t: now }, gpu: gpu && { cum: gpu.cpu.cumulativeCPUUsage, t: now } };
 		return out;
+	},
+	'emu:macros': (s) => { try { const m = JSON.parse(fs.readFileSync(macrosFile(s.id), 'utf8')); return Array.isArray(m) ? m : []; } catch { return []; } },
+	'emu:setMacros': (s, list) => {
+		if (!Array.isArray(list) || list.length > 4) throw new Error('4 macros au maximum.');
+		const clean = list.map(m => (m ? { name: String(m.name || '').slice(0, 40), length: Math.max(0, Math.trunc(+m.length || 0)), events: cleanEvents(m.events) } : null));
+		fs.writeFileSync(macrosFile(s.id), JSON.stringify(clean));
+		return clean;
+	},
+	// Film d'entrées : état de départ + toutes les entrées image par image + empreinte de l'état final.
+	'emu:saveMovie': (s, meta, state) => {
+		if (!state || !state.length) throw new Error('État de départ manquant.');
+		const d = new Date();
+		const p2 = n => String(n).padStart(2, '0');
+		const name = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}-${p2(d.getMinutes())}-${p2(d.getSeconds())}`;
+		const dir = moviesDir(s.id);
+		fs.mkdirSync(dir, { recursive: true });
+		const clean = { version: 1, core: s.plan.core || null, frames: Math.max(0, Math.trunc(+meta.frames || 0)), endPrint: typeof meta.endPrint === 'string' && meta.endPrint.length < 200000 ? meta.endPrint : null, events: cleanEvents(meta.events), savedAt: Date.now() };
+		fs.writeFileSync(path.join(dir, `${name}.state`), Buffer.from(state));
+		fs.writeFileSync(path.join(dir, `${name}.json`), JSON.stringify(clean));
+		return name;
+	},
+	'emu:listMovies': (s) => {
+		try { return fs.readdirSync(moviesDir(s.id)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).filter(n => MOVIE_NAME.test(n)).sort().reverse(); } catch { return []; }
+	},
+	'emu:loadMovie': (s, name) => {
+		if (!MOVIE_NAME.test(name || '')) throw new Error('Film introuvable.');
+		const dir = moviesDir(s.id);
+		return { meta: JSON.parse(fs.readFileSync(path.join(dir, `${name}.json`), 'utf8')), state: fs.readFileSync(path.join(dir, `${name}.state`)) };
 	},
 	'emu:saveResume': (s, state, png) => {
 		if (!state || !state.length) return null;
