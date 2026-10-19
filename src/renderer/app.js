@@ -29,7 +29,23 @@ const THEME_INFO = {
 	light: { label: 'Clair', desc: 'Blanc & rouge', colors: ['#f3f3f6', '#ffffff', '#e3002b'] },
 };
 
+// Thèmes inspirés des jeux (game-themes.js), ajoutés après les thèmes de base.
+for (const t of SmashThemes.THEMES) {
+	const v = SmashThemes.vars(t);
+	THEME_INFO[t.id] = { label: t.label, desc: t.game, colors: [v['--bg'], v['--raised'], t.accent], game: true };
+}
+
 const applyTheme = (theme) => { document.documentElement.dataset.theme = THEME_INFO[theme] ? theme : 'smash'; };
+// Thème affiché : celui du jeu sur sa page (thème automatique), sinon celui choisi.
+const currentTheme = () => {
+	const s = state.settings || {};
+	if (s.autoTheme !== false && state.route && state.route.name === 'instance') {
+		const inst = instById(state.route.params.id);
+		const t = inst && SmashThemes.match(instGameName(inst), sysOf(inst));
+		if (t) return t;
+	}
+	return s.theme;
+};
 // Logo choisi : gardé aussi en local pour l'écran de démarrage, affiché avant la lecture des réglages.
 const applyLogo = (v) => { SmashLogo.setVariant(v); try { localStorage.setItem('smash-logo', SmashLogo.variant()); } catch { /* */ } };
 try { SmashLogo.setVariant(localStorage.getItem('smash-logo') || 'classic'); } catch { /* */ }
@@ -164,6 +180,7 @@ const renderNav = () => {
 };
 
 const render = () => {
+	if (state.settings) applyTheme(currentTheme());
 	renderTopbar();
 	renderNav();
 	const page = PAGES[state.route.name] || PAGES.home;
@@ -1347,7 +1364,12 @@ PAGES.settings = () => {
 					<div class="logo-pick">${[['classic', 'Classique'], ['manette', 'Manette']].map(([v, l]) => `<button class="logo-card ${(s.logo || 'classic') === v ? 'active' : ''}" data-action="set-logo" data-v="${v}">${SmashLogo.svg(56, v)}<span>${l}</span></button>`).join('')}</div>
 					<span class="hint">Le logo change dans toute l’application et sur l’icône des fenêtres (l’icône du raccourci reste la classique).</span>
 				</div>
-				<div class="theme-grid">${Object.entries(THEME_INFO).map(([id, t]) => `
+				<div class="row wrap" style="gap:10px;align-items:center">
+					<button class="chip ${s.autoTheme !== false ? 'active' : ''}" data-action="set-autotheme">${icon('sparkles')}Thème automatique selon le jeu</button>
+					<input class="input grow" id="theme-search" placeholder="Chercher parmi ${Object.keys(THEME_INFO).length} thèmes (Zelda, Pokémon, Sonic, néon…)" value="" style="min-width:220px">
+				</div>
+				<span class="hint">${s.autoTheme !== false ? 'La fenêtre de jeu et la page d’un jeu prennent les couleurs de ce jeu quand il est reconnu ; sinon ton thème ci-dessous.' : 'Le thème ci-dessous est utilisé partout.'}</span>
+				<div class="theme-grid" id="theme-grid">${Object.entries(THEME_INFO).map(([id, t]) => `
 					<button class="theme-card ${(s.theme || 'smash') === id ? 'active' : ''}" data-action="set-theme" data-v="${id}">
 						<div class="theme-preview" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><span style="background:${t.colors[2]}"></span><i style="background:${t.colors[2]}"></i></div>
 						<div class="bold">${esc(t.label)}</div><div class="small muted">${esc(t.desc)}</div>
@@ -1779,6 +1801,7 @@ const ACTIONS = {
 		applyTheme(state.settings.theme);
 		render();
 	},
+	'set-autotheme': async () => { state.settings = await api('settings:set', { autoTheme: state.settings.autoTheme === false }); render(); },
 	'set-logo': async (el) => {
 		state.settings = await api('settings:set', { logo: el.dataset.v });
 		applyLogo(state.settings.logo);
@@ -1856,6 +1879,12 @@ const INPUTS = {
 
 document.addEventListener('input', (e) => {
 	const el = e.target;
+	if (el.id === 'theme-search') {
+		// Filtre la grille sans la redessiner (le champ garde le focus).
+		const q = el.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+		for (const card of document.querySelectorAll('#theme-grid .theme-card')) card.classList.toggle('hidden', !!q && !card.textContent.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q));
+		return;
+	}
 	if (el.dataset.input && INPUTS[el.dataset.input]) INPUTS[el.dataset.input](el);
 	if (el.dataset.opt) saveOption(state.route.params.id, el.dataset.opt, el.value);
 	if (el.dataset.setting) saveSetting(el.dataset.setting, el.value.trim());

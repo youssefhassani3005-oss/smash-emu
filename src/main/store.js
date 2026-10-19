@@ -43,7 +43,8 @@ const DEFAULT_SETTINGS = {
 	saveBackups: 10,      // copies de secours gardées par jeu pour les sauvegardes en jeu
 	savesSyncDir: '',     // dossier cloud (Dropbox, Drive, Syncthing…) servant de miroir, vide = désactivé
 	resumeMode: 'ask',
-	logo: 'classic',      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
+	logo: 'classic',
+	autoTheme: true,      // thème choisi d'après le jeu lancé (fenêtre de jeu et page du jeu)      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
 };
 
 // Reprend les données de l'ancien nom (Launcher 64) au premier démarrage de Smash Emu.
@@ -68,6 +69,15 @@ const writeJson = (file, data) => {
 	const tmp = `${file}.tmp`;
 	fs.writeFileSync(tmp, JSON.stringify(data, null, '\t'));
 	fs.renameSync(tmp, file);
+};
+
+// Thème d'une fenêtre de jeu : celui du jeu si le thème automatique est actif, sinon celui de l'utilisateur.
+const themeFor = (inst, system) => {
+	const s = getSettings();
+	if (!s.autoTheme || !inst) return s.theme;
+	const info = inst.rom && inst.rom.info;
+	const name = inst.type === 'coopdx' ? 'Super Mario 64' : (info && (info.known || info.title)) || inst.name;
+	return require('../renderer/game-themes.js').match(name, system) || s.theme;
 };
 
 // Icône des fenêtres selon le logo choisi (l'exécutable installé garde l'icône classique).
@@ -128,6 +138,6 @@ const deleteInstance = id => fs.rmSync(instanceDir(id), { recursive: true, force
 
 module.exports = {
 	ROOT, INSTANCES_DIR, ROMS_DIR, CACHE_DIR, ELECTRON_DIR, GAME_TYPES, ENGINES, THEMES,
-	ensureDirs, readJson, writeJson, getSettings, setSettings, windowIcon,
+	ensureDirs, readJson, writeJson, getSettings, setSettings, windowIcon, themeFor,
 	instanceDir, listInstances, getInstance, saveInstance, updateInstance, createInstance, deleteInstance,
 };

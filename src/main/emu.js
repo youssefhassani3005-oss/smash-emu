@@ -234,7 +234,7 @@ const HANDLERS = {
 			ejs: s.plan.ejs || 'n64',
 			core: s.plan.core || 'mupen64plus_next',
 			threads: !!s.plan.threads,
-			theme: settings.theme,
+			theme: store.themeFor(inst, s.plan.system || 'n64'),
 			logo: settings.logo || 'classic',
 			volume: typeof inst.options.emuVolume === 'number' ? inst.options.emuVolume : settings.emuVolume,
 			slots: listStates(s.id),
