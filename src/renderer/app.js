@@ -885,7 +885,8 @@ PAGES.instance = async ({ id, tab = 'content' }) => {
 	const inst = instById(id);
 	if (!inst) { go('library', {}, { push: false }); return; }
 	if (instState.id !== id) Object.assign(instState, { id, filter: 'all', query: '', logs: [] });
-	const tabs = [['content', 'Contenu', 'package'], ['logs', 'Journaux', 'scroll-text'], ['options', 'Options', 'sliders-horizontal']];
+	const builtin = inst.type === 'rom' && instEngine(inst) === 'smash';
+	const tabs = [['content', 'Contenu', 'package'], ...(builtin ? [['saves', 'Sauvegardes', 'save']] : []), ['logs', 'Journaux', 'scroll-text'], ['options', 'Options', 'sliders-horizontal']];
 	setMain(`
 		<div class="inst-header">
 			${instIcon(inst, 'lg')}
@@ -912,9 +913,52 @@ PAGES.instance = async ({ id, tab = 'content' }) => {
 	} else if (tab === 'logs') {
 		instState.logs = await api('run:logs', id);
 		renderLogs(inst);
+	} else if (tab === 'saves' && builtin) {
+		await renderSaves(inst);
 	} else {
 		renderOptions(inst);
 	}
+};
+
+// ---------- Sauvegardes en jeu d'une instance ----------
+
+const SAVE_SOURCE = { game: 'écrite par le jeu', import: 'importée', restore: 'restaurée', cloud: 'venue du dossier cloud' };
+const BACKUP_TAG = { jeu: 'version qui était dans le jeu', cloud: 'ancienne version du cloud' };
+
+const renderSaves = async (inst) => {
+	let info;
+	try { info = await api('saves:info', inst.id); } catch (error) { toastError(error); return; }
+	const box = $('#inst-body');
+	if (!box || state.route.params.id !== inst.id) return;
+	const cur = info.current;
+	const dt = ts => new Date(ts).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+	box.innerHTML = `<div class="col" style="gap:14px">
+		${info.running ? `<div class="card flat small">${icon('info')} Le jeu est lancé : sa sauvegarde est recopiée ici toutes les 30 s. Import et restauration sont possibles une fois le jeu fermé.</div>` : ''}
+		<div class="card col">
+			<div class="row"><h3 class="grow">Sauvegarde du jeu</h3>
+				<button class="btn sm" data-action="saves-folder" data-id="${esc(inst.id)}">${icon('folder-open')}Dossier</button>
+				<button class="btn sm" data-action="saves-import" data-id="${esc(inst.id)}" ${info.running ? 'disabled' : ''}>${icon('upload')}Importer</button>
+				<button class="btn sm primary" data-action="saves-export" data-id="${esc(inst.id)}" ${cur ? '' : 'disabled'}>${icon('download')}Exporter</button></div>
+			<div class="small muted">La sauvegarde faite <b>dans le jeu</b> (carte mémoire, pile de la cartouche). Smash Emu en garde une copie sur ton disque et ${info.keep} copies de secours. Les états (F5) sont à part.</div>
+			${cur ? `<div class="sug-row"><div class="avatar">${icon('save')}</div><div class="grow"><div class="bold">game.srm · ${bytes(cur.size)}</div><div class="small muted">${dt(cur.savedAt)} · ${esc(SAVE_SOURCE[cur.source] || cur.source)}</div></div></div>`
+		: `<div class="empty small">${icon('save')}<h3>Pas encore de sauvegarde</h3><div>Elle apparaîtra dès que tu sauvegarderas dans le jeu.</div></div>`}
+		</div>
+		<div class="card col">
+			<div class="row"><h3 class="grow">Dossier cloud</h3>
+				${info.cloudDir ? `<button class="btn sm" data-action="saves-sync" data-id="${esc(inst.id)}" ${info.running || info.cloudMissing ? 'disabled' : ''}>${icon('refresh-cw')}Synchroniser</button>` : ''}
+				<button class="btn sm" data-action="saves-cloud">${icon('folder-open')}${info.cloudDir ? 'Changer' : 'Choisir un dossier'}</button></div>
+			<div class="small muted">${info.cloudDir
+		? `${info.cloudMissing ? `${icon('triangle-alert')} Dossier introuvable : ` : 'Miroir dans '}<b>${esc(info.cloudDir)}</b>. La version la plus récente gagne au lancement du jeu ; l’autre est gardée en copie de secours.`
+		: 'Choisis un dossier synchronisé (Dropbox, Google Drive, OneDrive, Syncthing…) pour retrouver tes sauvegardes sur un autre PC.'}</div>
+		</div>
+		<div class="card col">
+			<h3>Copies de secours <span class="small muted">· ${info.backups.length}/${info.keep}</span></h3>
+			${info.backups.length ? info.backups.map(b => `<div class="sug-row">
+				<div class="avatar">${icon('history')}</div>
+				<div class="grow"><div class="bold">${dt(b.savedAt)}</div><div class="small muted">${bytes(b.size)}${b.tag ? ` · ${esc(BACKUP_TAG[b.tag] || b.tag)}` : ''}</div></div>
+				<button class="btn sm" data-action="saves-restore" data-id="${esc(inst.id)}" data-name="${esc(b.name)}" ${info.running ? 'disabled' : ''}>${icon('rotate-ccw')}Restaurer</button>
+			</div>`).join('') : '<div class="small muted">Aucune pour l’instant : une copie est faite au plus toutes les 10 minutes de jeu, et avant chaque import ou restauration.</div>'}
+		</div></div>`;
 };
 
 const contentRow = (m, inst) => {
@@ -1303,9 +1347,19 @@ PAGES.settings = () => {
 			<div class="card col"><h3>Émulateur</h3>
 				<div class="field"><span class="label">Moteur par défaut (Nintendo 64)</span>
 					<div class="chips">${Object.entries(state.info.engines).map(([id, label]) => `<button class="chip ${s.defaultEngine === id ? 'active' : ''}" data-action="set-engine" data-v="${id}">${icon(id === 'smash' ? 'flame' : 'cpu')}${esc(label)}</button>`).join('')}</div>
-					<span class="hint">Smash Emu : fenêtre intégrée avec pause, vitesse ×0,5 à ×4, turbo (Espace), 4 sauvegardes d’état et captures. Chaque instance peut choisir son moteur.</span>
+					<span class="hint">Smash Emu : fenêtre intégrée avec pause, vitesse ×0,25 à ×8, turbo (Espace), 8 sauvegardes d’état et captures. Chaque instance peut choisir son moteur.</span>
 				</div>
 				<div class="field"><label>Volume par défaut</label><div class="row"><input type="range" min="0" max="100" value="${Math.round((s.emuVolume ?? 0.8) * 100)}" data-setting-range="emuVolume" style="flex:1;accent-color:var(--brand)"><b id="vol-label" style="width:46px;text-align:right">${Math.round((s.emuVolume ?? 0.8) * 100)} %</b></div></div>
+			</div>
+			<div class="card col"><h3>Sauvegardes de jeu</h3>
+				<div class="small muted">Sauvegardes faites dans le jeu (carte mémoire, pile de cartouche) des consoles intégrées. Chaque jeu a son onglet « Sauvegardes » pour exporter, importer ou restaurer.</div>
+				<div class="field"><span class="label">Copies de secours gardées par jeu</span>
+					<div class="chips">${[0, 5, 10, 20, 50].map(n => `<button class="chip ${(s.saveBackups ?? 10) === n ? 'active' : ''}" data-action="saves-keep" data-v="${n}">${n || 'Aucune'}</button>`).join('')}</div></div>
+				<div class="field"><span class="label">Dossier cloud (facultatif)</span>
+					<div class="row"><input class="input grow" readonly value="${esc(s.savesSyncDir || '')}" placeholder="Désactivé : choisis un dossier Dropbox, Google Drive, OneDrive ou Syncthing">
+						<button class="btn" data-action="saves-cloud">${icon('folder-open')}Parcourir</button>
+						${s.savesSyncDir ? `<button class="btn" data-action="saves-cloud-off">${icon('x')}Désactiver</button>` : ''}</div>
+					<span class="hint">Smash Emu y range un miroir de chaque sauvegarde ; au lancement d’un jeu, la version la plus récente gagne et l’autre est gardée en copie de secours.</span></div>
 			</div>
 			<div class="card col"><div class="row"><h3 class="grow">Émulateurs externes</h3><button class="btn sm" data-action="emu-refresh">${icon('refresh-cw')}Rechercher à nouveau</button></div>
 				<div class="small muted">Pour les consoles sans cœur intégré (GameCube, Wii, PS2, PS3, 3DS, Wii U, Switch, Xbox), Smash Emu lance l’émulateur installé sur ton PC. Ils sont gratuits ; les BIOS, clés et firmwares viennent de tes propres consoles.</div>
@@ -1661,6 +1715,34 @@ const ACTIONS = {
 		state.switchKeys = await api('switch:status').catch(() => state.switchKeys);
 		if (box) box.innerHTML = renderEmuList();
 	},
+	'saves-folder': el => api('saves:folder', el.dataset.id),
+	'saves-export': async (el) => { try { const f = await api('saves:export', el.dataset.id); if (f) toast('Sauvegarde exportée'); } catch (error) { toastError(error); } },
+	'saves-import': async (el) => {
+		try {
+			const meta = await api('saves:import', el.dataset.id);
+			if (!meta) return;
+			toast('Sauvegarde importée : elle sera chargée au prochain lancement du jeu');
+			renderSaves(instById(el.dataset.id));
+		} catch (error) { toastError(error); }
+	},
+	'saves-restore': async (el) => {
+		const ok = await confirmModal('Restaurer cette copie ?', 'La sauvegarde actuelle sera gardée en copie de secours, puis remplacée. Elle sera chargée au prochain lancement du jeu.', { confirm: 'Restaurer' });
+		if (!ok) return;
+		try { await api('saves:restore', el.dataset.id, el.dataset.name); toast('Copie restaurée'); renderSaves(instById(el.dataset.id)); } catch (error) { toastError(error); }
+	},
+	'saves-sync': async (el) => {
+		try {
+			const r = await api('saves:sync', el.dataset.id);
+			toast({ pulled: 'Version plus récente récupérée depuis le cloud', pushed: 'Sauvegarde envoyée dans le dossier cloud', same: 'Déjà à jour', none: 'Rien à synchroniser' }[r.action] || esc(r.error || r.action), { type: r.action === 'error' || r.action === 'skipped' ? 'error' : 'success' });
+			renderSaves(instById(el.dataset.id));
+		} catch (error) { toastError(error); }
+	},
+	'saves-cloud': async () => {
+		state.settings = await api('saves:pickCloud');
+		if (state.route.name === 'instance') renderSaves(instById(state.route.params.id)); else render();
+	},
+	'saves-cloud-off': async () => { state.settings = await api('settings:set', { savesSyncDir: '' }); render(); },
+	'saves-keep': async (el) => { state.settings = await api('settings:set', { saveBackups: +el.dataset.v }); render(); },
 	'switch-import': async () => {
 		const files = await api('dialog:open', { multi: true, filters: [{ name: 'Clés Switch', extensions: ['keys'] }] });
 		if (!files) return;

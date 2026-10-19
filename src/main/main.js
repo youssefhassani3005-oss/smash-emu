@@ -23,6 +23,7 @@ const controls = require('./controls');
 const switchkeys = require('./switchkeys');
 const updater = require('./updater');
 const emuinstall = require('./emuinstall');
+const saves = require('./saves');
 emu.registerScheme();
 Menu.setApplicationMenu(null);
 const games = require('./games');
@@ -263,6 +264,46 @@ const handlers = {
 
 	'suggest:list': (romId, opts) => suggest.list(romId, opts),
 	'suggest:install': opts => installSuggestion(opts),
+	// Sauvegardes en jeu du lecteur intégré (copies de secours, import/export, dossier cloud).
+	'saves:info': (id) => {
+		const ctx = emu.saveCtx(id);
+		const meta = saves.readMeta(ctx.local);
+		return { current: meta, backups: saves.listBackups(ctx.local), dir: ctx.local.dir, cloudDir: store.getSettings().savesSyncDir || '', cloudMissing: ctx.cloudMissing, keep: ctx.opts.keep, running: runner.isRunning(id) };
+	},
+	'saves:export': async (id) => {
+		const ctx = emu.saveCtx(id);
+		const inst = store.getInstance(id);
+		const r = await dialog.showSaveDialog(win, { defaultPath: `${inst.name.replace(/[<>:"/\\|?*]/g, '_')}.srm`, filters: [{ name: 'Sauvegarde de jeu', extensions: ['srm', 'sav', 'eep', 'mpk', 'fla'] }] });
+		return r.canceled ? null : saves.exportTo(ctx.local, r.filePath);
+	},
+	'saves:import': async (id) => {
+		if (runner.isRunning(id)) throw new Error('Ferme le jeu avant d’importer une sauvegarde : il l’écraserait.');
+		const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Sauvegarde de jeu', extensions: ['srm', 'sav', 'eep', 'mpk', 'fla', 'sra', 'dsv', 'mcr', 'mcd'] }, { name: 'Tous les fichiers', extensions: ['*'] }] });
+		if (r.canceled) return null;
+		const ctx = emu.saveCtx(id);
+		const w = saves.importFile(ctx.local, r.filePaths[0], ctx.opts);
+		if (ctx.cloud) saves.sync(ctx.local, ctx.cloud, ctx.opts);
+		return w.meta;
+	},
+	'saves:restore': (id, name) => {
+		if (runner.isRunning(id)) throw new Error('Ferme le jeu avant de restaurer une sauvegarde : il l’écraserait.');
+		const ctx = emu.saveCtx(id);
+		const w = saves.restore(ctx.local, name, ctx.opts);
+		if (ctx.cloud) saves.sync(ctx.local, ctx.cloud, ctx.opts);
+		return w.meta;
+	},
+	'saves:sync': (id) => {
+		const ctx = emu.saveCtx(id);
+		if (!ctx.cloud) throw new Error(ctx.cloudMissing ? 'Le dossier cloud est introuvable.' : 'Aucun dossier cloud choisi (Paramètres → Sauvegardes de jeu).');
+		if (runner.isRunning(id)) throw new Error('Ferme le jeu avant de synchroniser.');
+		return saves.sync(ctx.local, ctx.cloud, ctx.opts);
+	},
+	'saves:folder': (id) => { const d = emu.saveCtx(id).local.dir; fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+	'saves:pickCloud': async () => {
+		const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'], title: 'Dossier synchronisé (Dropbox, Google Drive, OneDrive, Syncthing…)' });
+		if (r.canceled) return store.getSettings();
+		return store.setSettings({ savesSyncDir: r.filePaths[0] });
+	},
 	'update:get': () => updater.get(),
 	'update:check': () => updater.check(),
 	'update:download': () => updater.download(),

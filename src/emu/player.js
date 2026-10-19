@@ -291,11 +291,12 @@ smashEmu.onBeforeClose(async () => {
 	st.closing = true;
 	try {
 		const g = gm();
-		if (g && st.started) {
+		if (g && st.started && st.saveReady) {
 			g.saveSaveFiles();
 			const data = g.getSaveFile(false);
-			if (data) await smashEmu.exportSave(data);
-			await withTimeout(new Promise(r => g.FS.syncfs(false, r)), 1500);
+			if (data && data.length) await withTimeout(smashEmu.writeSave(data), 1500);
+			const synced = await withTimeout(new Promise(r => g.FS.syncfs(false, err => r(!err))), 1500);
+			st.flushed = synced === true;
 		}
 	} catch (e) { log('sauvegarde à la fermeture', e.message); }
 	smashEmu.readyToClose();
@@ -362,6 +363,79 @@ const renderPadHelp = (system) => {
 
 const rewindWanted = () => { try { return !!(JSON.parse(localStorage.getItem('smash-emu-features')) || {}).rewind; } catch { return false; } };
 
+// ---------- Sauvegardes en jeu (carte mémoire, EEPROM, SRAM) ----------
+// La copie sur disque fait foi (voir src/main/saves.js) : au démarrage, si elle diffère de celle que le jeu a
+// chargée, elle la remplace (l'ancienne est gardée en copie de secours) ; ensuite chaque écriture du jeu
+// (toutes les 30 s et à la fermeture) est recopiée sur disque.
+
+const sha1Hex = async u8 => [...new Uint8Array(await crypto.subtle.digest('SHA-1', u8))].map(b => b.toString(16).padStart(2, '0')).join('');
+
+// Écrit la sauvegarde dans le stockage d'EmulatorJS (IndexedDB), sans toucher au jeu en cours.
+const writeSaveFile = async (data) => {
+	const g = gm();
+	const file = g.getSaveFilePath();
+	let dir = '';
+	for (const part of file.split('/').slice(0, -1)) {
+		if (!part) continue;
+		dir += `/${part}`;
+		if (!g.FS.analyzePath(dir).exists) g.FS.mkdir(dir);
+	}
+	if (g.FS.analyzePath(file).exists) g.FS.unlink(file);
+	g.FS.writeFile(file, data);
+	await new Promise((resolve, reject) => g.FS.syncfs(false, err => (err ? reject(err) : resolve())));
+};
+
+const RELOAD_KEY = 'smash-save-reload';
+
+const syncSaveAtStart = async () => {
+	let reloading = false;
+	try {
+		const g = gm();
+		if (!g || !g.getSaveFilePath()) return;
+		const disk = await smashEmu.startSave();
+		if (disk.cloudError) log('dossier cloud :', disk.cloudError);
+		const inGame = g.getSaveFile(false);
+		const hasInGame = !!(inGame && inGame.length);
+		const notice = sessionStorage.getItem(RELOAD_KEY);
+		sessionStorage.removeItem(RELOAD_KEY);
+		if (!disk.data) { if (hasInGame) await smashEmu.writeSave(inGame); return; }
+		if (hasInGame && await sha1Hex(inGame) === disk.hash) {
+			if (notice) toast(notice === 'cloud' ? 'Sauvegarde du jeu récupérée depuis le dossier cloud' : 'Sauvegarde du jeu remise en place', { ms: 3500 });
+			return;
+		}
+		if (notice) { toast('La sauvegarde du jeu n’a pas pu être remise en place : la version du jeu est conservée.', { error: true, ms: 6000 }); return; }
+		if (hasInGame) await smashEmu.backupSave(inGame);
+		// Les cœurs ne relisent leur sauvegarde qu'au chargement du jeu : elle est écrite dans le stockage
+		// d'EmulatorJS puis la fenêtre est rechargée (une seule fois), et le jeu démarre avec la bonne version.
+		st.saveReady = false;
+		try { clearInterval(emu().saveSaveInterval); g.toggleMainLoop(0); } catch { /* déjà arrêté */ }
+		await writeSaveFile(new Uint8Array(disk.data));
+		log('sauvegarde en jeu remise en place :', disk.data.byteLength || disk.data.length, 'octets', hasInGame ? '(l’ancienne version du jeu est gardée en copie de secours)' : '(le jeu n’en avait pas)');
+		sessionStorage.setItem(RELOAD_KEY, disk.pulled ? 'cloud' : 'disk');
+		st.flushed = true;
+		reloading = true;
+		await smashEmu.window('reload');
+	} catch (error) {
+		log('sauvegarde en jeu au démarrage :', error.message);
+	} finally {
+		if (!reloading) st.saveReady = true;
+	}
+};
+
+const watchSaves = () => {
+	try {
+		// À la fermeture de la page, EmulatorJS réinitialise le jeu puis démonte le dossier des sauvegardes, ce
+		// qui efface sa copie interne (IndexedDB). Quand Smash Emu a déjà tout enregistré (fermeture normale),
+		// cette étape est sautée : la sauvegarde reste dans le jeu et le prochain lancement n'a rien à remettre.
+		const E = emu();
+		const callEvent = E.callEvent.bind(E);
+		E.callEvent = (event, data) => (event === 'exit' && st.flushed ? 0 : callEvent(event, data));
+		emu().on('saveSaveFiles', (data) => {
+			if (st.saveReady && data && data.length) smashEmu.writeSave(data).catch(e => log('copie de la sauvegarde :', e.message));
+		});
+	} catch (error) { log('suivi des sauvegardes indisponible :', error.message); }
+};
+
 // Touches et boutons choisis dans la page « Manettes » : clavier pour le joueur 1, manettes pour tous les joueurs.
 const applyControls = async () => {
 	try {
@@ -380,6 +454,8 @@ const applyControls = async () => {
 
 const onStarted = () => {
 	applyControls();
+	watchSaves();
+	syncSaveAtStart();
 	clearInterval(loadingTimer);
 	st.started = true;
 	$('#loading-progress').style.width = '100%';

@@ -22,7 +22,8 @@ npm start
 |---|---|
 | **Consoles** | Built in (Smash Emu window): NES, Super Nintendo, Nintendo 64, Game Boy / Color / Advance, Virtual Boy, DS, PlayStation, PSP, Master System, Mega Drive, Game Gear, Mega-CD, 32X, Saturn, PC Engine, Atari 2600 / 7800 / Lynx / Jaguar, 3DO. Through an external emulator detected on the PC: GameCube and Wii (Dolphin), 3DS (Azahar), Wii U (Cemu), Switch (Ryujinx), PS1 (DuckStation, optional), PS2 (PCSX2), PSP (PPSSPP, optional), PS3 (RPCS3), Xbox (xemu), Xbox 360 (Xenia) |
 | **ROMs** | Library of games: import of `.z64/.v64/.n64` files and zips (auto-extracted), drag-and-drop, detection in Downloads and Opera downloads, identification (title, region, MD5), conversion to `.z64`, duplicate detection, generated cover, one-click "Jouer" |
-| **Built-in emulator** | Game window based on EmulatorJS + mupen64plus: pause menu, speed ×0.5 to ×4, turbo (hold Space), 4 save-state slots with thumbnails, screenshots, reset, volume, fullscreen, keyboard/gamepad remapping, in-game saves kept between sessions |
+| **Built-in emulator** | Game window based on EmulatorJS cores: pause menu, speed ×0.25 to ×8, turbo (hold Space), 8 save-state slots with thumbnails, screenshots, video recording, reset, volume, fullscreen, keyboard/gamepad remapping per console (Manettes page) |
+| **In-game saves** | The copy on disk (`instances\<id>\saves\game.srm`) is the reference: written every 30 s and on close, put back into the game when it differs, rotating backups (10 by default), import/export, restore, optional mirror in a cloud folder (Dropbox, Drive, OneDrive, Syncthing) where the most recent version wins |
 | **Instances** | Modrinth-style creation (icon, name, game, ROM from the library, group); ROM engine **Smash Emu** or **Project64**; play time, logs |
 | **SM64 Coop DX** | One save folder per instance (`--savepath`), Lua mods, DynOS packs, player name, host/join |
 | **ROM hacks** | IPS/BPS patches you can toggle and reorder, applied to the ROM at launch |
@@ -49,8 +50,9 @@ npm start
 - `smash-emu.json`: settings
 - `roms\`: ROM library (`index.json` + `.z64` files)
 - `bios\<console>\`: optional BIOS files from your own consoles (Mega-CD, 3DO…), used by the built-in emulator
-- `instances\<id>\`: mods, patches, ROM, `states\` (save states), `saves\` (backup of in-game saves), `screenshots\`
-- `app-data\`: the emulator's internal data (in-game saves, key mappings)
+- `instances\<id>\`: mods, patches, ROM, `states\` (save states), `saves\` (in-game save `game.srm`, `save.json`, `backups\`), `screenshots\`, `videos\`
+- `<cloud folder>\Smash Emu\saves\<id>\`: mirror of the in-game saves when a cloud folder is chosen
+- `app-data\`: the emulator's internal data (working copy of in-game saves, key mappings)
 
 Smash Emu ships no games: use ROMs dumped from your own cartridges.
 

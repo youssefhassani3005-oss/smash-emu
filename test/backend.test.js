@@ -270,3 +270,57 @@ test('manettes : boutons par console lus dans EmulatorJS', () => {
 	assert.ok(controls.get('psx').buttons.some(b => b.label === 'L2'));
 	assert.ok(controls.list().some(s => s.id === 'wii' && s.dolphin));
 });
+
+test('sauvegardes en jeu : copie, copies de secours en rotation, restauration', () => {
+	const saves = require('../src/main/saves');
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'saves-'));
+	const l = saves.local(dir);
+	const t0 = new Date(2026, 9, 19, 20, 0, 0).getTime();
+	const v = n => Buffer.alloc(512, n);
+
+	assert.equal(saves.write(l, v(1), { now: t0, sessionStart: t0 }).changed, true);
+	assert.equal(saves.write(l, v(1), { now: t0 + 1000, sessionStart: t0 }).changed, false, 'même contenu : rien à faire');
+	// Première écriture d'une session : l'ancienne version est gardée ; ensuite au plus une copie par 10 min.
+	saves.write(l, v(2), { now: t0 + 2000, sessionStart: t0 });
+	assert.equal(saves.listBackups(l).length, 1);
+	saves.write(l, v(3), { now: t0 + 60000, sessionStart: t0 });
+	assert.equal(saves.listBackups(l).length, 1, 'pas de nouvelle copie avant 10 minutes');
+	saves.write(l, v(4), { now: t0 + 11 * 60000, sessionStart: t0 });
+	assert.equal(saves.listBackups(l).length, 2);
+	// Rotation.
+	for (let i = 0; i < 6; i++) saves.write(l, v(10 + i), { now: t0 + (20 + i) * 60000, source: 'import', keep: 3 });
+	assert.equal(saves.listBackups(l).length, 3);
+	// Restauration : la version courante devient une copie de secours.
+	const oldest = saves.listBackups(l).at(-1);
+	const before = saves.current(l).meta.hash;
+	saves.restore(l, oldest.name, { keep: 5, now: t0 + 40 * 60000 });
+	assert.notEqual(saves.current(l).meta.hash, before);
+	assert.equal(saves.current(l).meta.source, 'restore');
+	assert.throws(() => saves.restore(l, '../../evil.srm'), /invalide/);
+	assert.throws(() => saves.write(l, Buffer.alloc(0)), /vide/);
+});
+
+test('sauvegardes en jeu : synchronisation avec un dossier cloud', () => {
+	const saves = require('../src/main/saves');
+	const a = saves.local(fs.mkdtempSync(path.join(os.tmpdir(), 'pc-a-')));
+	const b = saves.local(fs.mkdtempSync(path.join(os.tmpdir(), 'pc-b-')));
+	const c = saves.cloud(fs.mkdtempSync(path.join(os.tmpdir(), 'cloud-')), 'zelda');
+	const t0 = Date.now();
+
+	assert.equal(saves.sync(a, c).action, 'none');
+	saves.write(a, Buffer.from('partie du PC A'), { now: t0 });
+	assert.equal(saves.sync(a, c).action, 'pushed');
+	assert.equal(saves.sync(b, c).action, 'pulled', 'le PC B récupère la sauvegarde');
+	assert.equal(saves.current(b).data.toString(), 'partie du PC A');
+	assert.equal(saves.sync(b, c).action, 'same');
+	// Le PC B joue plus tard : sa version gagne, et A la récupère en gardant la sienne en copie de secours.
+	saves.write(b, Buffer.from('partie du PC B'), { now: t0 + 5000 });
+	assert.equal(saves.sync(b, c).action, 'pushed');
+	saves.write(a, Buffer.from('vieille partie A'), { now: t0 + 1000 });
+	assert.equal(saves.sync(a, c).action, 'pulled');
+	assert.equal(saves.current(a).data.toString(), 'partie du PC B');
+	assert.ok(saves.listBackups(a).length >= 1);
+	// Copie du cloud abîmée (synchronisation en cours) : ignorée.
+	fs.writeFileSync(c.meta, JSON.stringify({ hash: 'x'.repeat(40), size: 3, savedAt: t0 + 99999, source: 'game' }));
+	assert.equal(saves.sync(a, c).action, 'skipped');
+});

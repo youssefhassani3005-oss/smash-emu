@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { pathToFileURL } = require('url');
 const store = require('./store');
 const runner = require('./runner');
+const saves = require('./saves');
 
 const APP_ROOT = path.join(__dirname, '..', '..');
 const SRC = path.join(APP_ROOT, 'src');
@@ -90,6 +91,21 @@ const listStates = (id) => {
 	return out;
 };
 
+// ---------- Sauvegardes en jeu (voir saves.js) ----------
+
+// Contexte d'une sauvegarde : dossier local, miroir cloud éventuel, nombre de copies de secours.
+const saveCtx = (id, sessionStart = 0) => {
+	const s = store.getSettings();
+	const dir = (s.savesSyncDir || '').trim();
+	const keep = Number.isInteger(s.saveBackups) ? Math.max(0, Math.min(100, s.saveBackups)) : saves.DEFAULT_KEEP;
+	return {
+		local: saves.local(store.instanceDir(id)),
+		cloud: dir && fs.existsSync(dir) ? saves.cloud(dir, id) : null,
+		cloudMissing: !!dir && !fs.existsSync(dir),
+		opts: { keep, sessionStart },
+	};
+};
+
 const checkSlot = (slot) => {
 	slot = +slot;
 	if (!Number.isInteger(slot) || slot < 1 || slot > SLOTS) throw new Error('Emplacement invalide.');
@@ -121,7 +137,7 @@ const openEmu = (id, plan) => {
 			backgroundThrottling: false,
 		},
 	});
-	const session = { id, token, biosToken, win, ready: false, name: plan.name, plan };
+	const session = { id, token, biosToken, win, ready: false, name: plan.name, plan, startedAt: Date.now() };
 	const wcId = win.webContents.id;
 	sessions.set(wcId, session);
 
@@ -159,7 +175,9 @@ const HANDLERS = {
 			instanceId: s.id,
 			name: inst.name,
 			rom: inst.rom ? { title: inst.rom.info.known || inst.rom.info.title, region: inst.rom.info.region, md5: inst.rom.info.md5 } : null,
-			romUrl: `smash://rom/${s.token}/game${path.extname(s.plan.rom).toLowerCase() || '.z64'}`,
+			// Le nom du fichier sert de nom à la sauvegarde en jeu dans EmulatorJS : un nom par instance, sinon
+			// tous les jeux d'une même console partageraient la même sauvegarde.
+			romUrl: `smash://rom/${s.token}/${s.id.replace(/[^a-z0-9-]/gi, '-') || 'game'}${path.extname(s.plan.rom).toLowerCase() || '.z64'}`,
 			biosUrl: s.biosToken ? `smash://rom/${s.biosToken}/${path.basename(s.plan.bios)}` : null,
 			system: s.plan.system || 'n64',
 			systemLabel: (systems.SYSTEMS[s.plan.system || 'n64'] || {}).label || 'N64',
@@ -198,13 +216,35 @@ const HANDLERS = {
 		fs.writeFileSync(file, Buffer.from(png));
 		return file;
 	},
-	// Copie de secours des sauvegardes en jeu (carte mémoire / EEPROM) dans le dossier de l'instance.
-	'emu:exportSave': (s, data) => {
+	// Sauvegarde en jeu (carte mémoire / EEPROM / SRAM) écrite par le jeu : copie sur disque + miroir cloud.
+	'emu:writeSave': (s, data) => {
+		if (!data || !data.length) return { changed: false };
+		const ctx = saveCtx(s.id, s.startedAt);
+		const r = saves.write(ctx.local, data, ctx.opts);
+		if (r.changed && ctx.cloud) {
+			const sy = saves.sync(ctx.local, ctx.cloud, ctx.opts);
+			if (sy.action === 'error') runner.pushLog(s.id, 'stderr', `Synchronisation cloud : ${sy.error}`);
+		}
+		return { changed: r.changed };
+	},
+	// Au démarrage : synchronise avec le cloud puis renvoie la sauvegarde qui fait foi.
+	'emu:startSave': (s) => {
+		const ctx = saveCtx(s.id, s.startedAt);
+		const sy = ctx.cloud ? saves.sync(ctx.local, ctx.cloud, ctx.opts) : { action: 'none' };
+		const cur = saves.current(ctx.local);
+		return {
+			data: cur ? cur.data : null,
+			hash: cur ? cur.meta.hash : null,
+			savedAt: cur ? cur.meta.savedAt : null,
+			pulled: sy.action === 'pulled',
+			cloudError: sy.action === 'error' || sy.action === 'skipped' ? sy.error : (ctx.cloudMissing ? 'Dossier cloud introuvable' : null),
+		};
+	},
+	// La version présente dans le jeu va être remplacée : elle est gardée en copie de secours.
+	'emu:backupSave': (s, data) => {
 		if (!data || !data.length) return null;
-		const dir = path.join(store.instanceDir(s.id), 'saves');
-		fs.mkdirSync(dir, { recursive: true });
-		fs.writeFileSync(path.join(dir, 'game.srm'), Buffer.from(data));
-		return true;
+		const ctx = saveCtx(s.id, s.startedAt);
+		return saves.addBackup(ctx.local, Buffer.from(data), Date.now(), 'jeu', Math.max(1, ctx.opts.keep));
 	},
 	'emu:prefs': (s, patch) => {
 		const inst = store.getInstance(s.id);
@@ -237,6 +277,8 @@ const HANDLERS = {
 			}
 		}
 		if (action === 'open-folder') shell.openPath(store.instanceDir(s.id));
+		// Rechargement de la page de jeu (sauvegarde en jeu remise en place avant le démarrage du cœur).
+		if (action === 'reload') { w.webContents.reload(); return null; }
 		return { top: w.isAlwaysOnTop(), mini: !!s.miniBounds, fullscreen: w.isFullScreen() };
 	},
 	// État mis de côté le temps d'un rechargement de la fenêtre (changement d'options HD).
@@ -277,4 +319,4 @@ const registerIpc = () => {
 	}
 };
 
-module.exports = { registerScheme, handleProtocol, registerIpc, openEmu, listStates };
+module.exports = { registerScheme, handleProtocol, registerIpc, openEmu, listStates, saveCtx };
