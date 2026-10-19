@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('smashEmu', {
 	loadState: slot => call('emu:loadState', slot),
 	deleteState: slot => call('emu:deleteState', slot),
 	screenshot: png => call('emu:screenshot', png),
+	captureScreen: rect => call('emu:captureScreen', rect),
 	writeSave: data => call('emu:writeSave', data),
 	startSave: () => call('emu:startSave'),
 	metrics: () => call('emu:metrics'),

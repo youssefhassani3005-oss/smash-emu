@@ -364,6 +364,7 @@ kbd {
 .cheat-add input { min-width: 0; height: 30px; border-radius: 8px; border: 1px solid #2a2a2f; background: #111; color: #fff; padding: 0 8px; font: inherit; font-size: 12px; }
 
 /* HUD */
+body.shooting .bar, body.shooting .hud, body.shooting .stats, body.shooting .toasts, body.shooting .tooltip, body.shooting .turbo, body.shooting .panel { visibility: hidden !important; }
 .stats { position: fixed; right: 14px; top: 62px; width: 268px; z-index: 14; pointer-events: none; background: rgba(8, 8, 10, 0.82); border: 1px solid rgba(255, 255, 255, 0.1); border-left: 3px solid var(--brand); border-radius: 10px; padding: 10px 12px; color: #e8e8ec; font-size: 12px; backdrop-filter: blur(6px); }
 body.immersive .stats { top: 14px; }
 body.photo .stats { display: none; }

@@ -109,6 +109,22 @@ const resumeInfo = (id) => {
 	return { ...stateInfo(file, resumeFile(id, 'json')), thumb: thumbOf(resumeFile(id, 'png')) };
 };
 
+// ---------- Captures et vidéos : « <Jeu> 2026-10-19 21-03-05.png » dans le dossier de l'instance ----------
+
+const mediaFile = (s, kind, ext) => {
+	const inst = store.getInstance(s.id);
+	const info = inst.rom && inst.rom.info;
+	const game = ((info && (info.known || info.title)) || inst.name || 'Jeu').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Jeu';
+	const d = new Date();
+	const p2 = n => String(n).padStart(2, '0');
+	const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}-${p2(d.getMinutes())}-${p2(d.getSeconds())}`;
+	const dir = path.join(store.instanceDir(s.id), kind);
+	fs.mkdirSync(dir, { recursive: true });
+	let file = path.join(dir, `${game} ${stamp}.${ext}`);
+	for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `${game} ${stamp} (${i}).${ext}`);
+	return file;
+};
+
 // ---------- Sauvegardes en jeu (voir saves.js) ----------
 
 // Contexte d'une sauvegarde : dossier local, miroir cloud éventuel, nombre de copies de secours.
@@ -269,10 +285,18 @@ const HANDLERS = {
 		return listStates(s.id);
 	},
 	'emu:screenshot': (s, png) => {
-		const dir = path.join(store.instanceDir(s.id), 'screenshots');
-		fs.mkdirSync(dir, { recursive: true });
-		const file = path.join(dir, `capture-${new Date().toISOString().replace(/[:.]/g, '-')}.png`);
+		const file = mediaFile(s, 'screenshots', 'png');
 		fs.writeFileSync(file, Buffer.from(png));
+		return file;
+	},
+	// Capture « telle qu'affichée » : la zone du jeu à l'écran, avec filtres, shaders et effets.
+	'emu:captureScreen': async (s, rect) => {
+		const r = rect && ['x', 'y', 'width', 'height'].every(k => Number.isFinite(rect[k])) ? rect : null;
+		if (!r || r.width < 8 || r.height < 8) throw new Error('Zone de capture invalide.');
+		const img = await s.win.webContents.capturePage({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) });
+		if (img.isEmpty()) throw new Error('Capture vide.');
+		const file = mediaFile(s, 'screenshots', 'png');
+		fs.writeFileSync(file, img.toPNG());
 		return file;
 	},
 	// Sauvegarde en jeu (carte mémoire / EEPROM / SRAM) écrite par le jeu : copie sur disque + miroir cloud.
@@ -355,9 +379,8 @@ const handleDownloads = () => {
 	electronSession.defaultSession.on('will-download', (_e, item, wc) => {
 		const s = wc && sessions.get(wc.id);
 		if (!s) return;
-		const dir = path.join(store.instanceDir(s.id), 'videos');
-		fs.mkdirSync(dir, { recursive: true });
-		const file = path.join(dir, item.getFilename().replace(/[<>:"/\\|?*]/g, '_'));
+		const ext = (path.extname(item.getFilename()).slice(1) || 'webm').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'webm';
+		const file = mediaFile(s, 'videos', ext);
 		item.setSavePath(file);
 		item.once('done', (_ev, state) => { if (!wc.isDestroyed()) wc.send('emu:video-saved', { state, file }); });
 	});

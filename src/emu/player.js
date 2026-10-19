@@ -181,11 +181,31 @@ const loadState = async (slot = st.slot) => {
 	focusGame();
 };
 
+// Capture « telle qu'affichée » : l'interface est masquée le temps de deux images, puis la zone du jeu est
+// photographiée par Electron (filtres, shaders et effets compris).
+const screenCapture = async () => {
+	const c = document.querySelector('#game canvas');
+	if (!c) throw new Error('Jeu pas encore affiché.');
+	const r = c.getBoundingClientRect();
+	const stage = $('#stage').getBoundingClientRect();
+	const x = Math.max(r.left, stage.left);
+	const y = Math.max(r.top, stage.top);
+	const rect = { x, y, width: Math.min(r.right, stage.right) - x, height: Math.min(r.bottom, stage.bottom) - y };
+	document.body.classList.add('shooting');
+	await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+	try { return await smashEmu.captureScreen(rect); } finally { document.body.classList.remove('shooting'); }
+};
+
 const screenshot = async () => {
 	if (!st.started) return;
-	const png = await withTimeout(gm().screenshot(), 1500);
-	if (!png) { toast('Capture impossible pendant la pause.', { error: true }); return; }
-	const file = await smashEmu.screenshot(png);
+	let file;
+	if (window.smashShotMode && window.smashShotMode() === 'screen' && !st.paused) {
+		try { file = await screenCapture(); } catch (e) { toast(`Capture impossible : ${esc(e.message)}`, { error: true }); return; }
+	} else {
+		const png = await withTimeout(gm().screenshot(), 1500);
+		if (!png) { toast('Capture impossible pendant la pause.', { error: true }); return; }
+		file = await smashEmu.screenshot(png);
+	}
 	toast('Capture enregistrée · <a>afficher</a>', { onClick: () => smashEmu.showPath(file), ms: 4000 });
 	focusGame();
 };

@@ -69,6 +69,8 @@ const frameAdvance = () => {
 
 // ---------- Capture ----------
 
+window.smashShotMode = () => fx.shotMode || 'raw';
+
 const shotBlob = async () => {
 	const png = await Promise.race([gm().screenshot(), new Promise(r => setTimeout(() => r(null), 1500))]);
 	return png ? new Blob([png], { type: 'image/png' }) : null;
@@ -377,7 +379,8 @@ const FEATURES = [
 	A('Dossier des sauvegardes', 'États, captures, vidéos et sauvegardes en jeu', () => smashEmu.window('open-folder'), { cat: 'Sauvegardes', icon: 'folder-open' }),
 
 	// Capture
-	A('Capture d’écran', 'Enregistrée dans le dossier de l’instance', () => screenshot(), { cat: 'Capture', icon: 'camera', keyHint: 'F12' }),
+	A('Capture d’écran', 'Enregistrée dans le dossier de l’instance, nommée avec le jeu et la date', () => screenshot(), { cat: 'Capture', icon: 'camera', keyHint: 'F12' }),
+	{ type: 'choice', key: 'shotMode', label: 'Type de capture', desc: 'Image du jeu seule, ou telle qu’affichée', cat: 'Capture', icon: 'image', options: [['raw', 'Image du jeu'], ['screen', 'Telle qu’affichée']] },
 	A('Copier l’image', 'Capture directement dans le presse-papiers', copyShot, { cat: 'Capture', icon: 'copy', keyHint: 'Ctrl+C' }),
 	A('Rafale ×5', 'Cinq captures à la suite', burst, { cat: 'Capture', icon: 'image' }),
 	A('Enregistrer une vidéo', 'Image et son, jusqu’à ce que tu arrêtes', toggleRecord, { cat: 'Capture', icon: 'film', keyHint: 'F9', active: () => !!live.recorder }),
