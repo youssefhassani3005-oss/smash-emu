@@ -32,11 +32,25 @@ const THEME_INFO = {
 // Thèmes inspirés des jeux (game-themes.js), ajoutés après les thèmes de base.
 for (const t of SmashThemes.THEMES) {
 	const v = SmashThemes.vars(t);
-	THEME_INFO[t.id] = { label: t.label, desc: t.game, colors: [v['--bg'], v['--raised'], t.accent], game: true };
+	THEME_INFO[t.id] = { label: t.label, desc: t.tagline, console: t.console, colors: [v['--bg'], v['--raised'], t.accent], game: true };
 }
 for (const id of Object.keys(THEME_INFO)) THEME_INFO[id].font = SmashThemes.fontOf(id);
 
-const applyTheme = (theme) => { document.documentElement.dataset.theme = THEME_INFO[theme] ? theme : 'smash'; };
+// Thème appliqué : couleurs, police, style d'icônes (Wii, ornements, pixel…) et décor animé des thèmes de jeux.
+let decorKey = '';
+const applyTheme = (theme) => {
+	const id = THEME_INFO[theme] ? theme : (THEME_INFO[SmashThemes.resolve(theme)] ? SmashThemes.resolve(theme) : 'smash');
+	const root = document.documentElement;
+	root.dataset.theme = id;
+	root.dataset.icons = SmashThemes.iconsOf(id);
+	const mode = (state.settings && state.settings.decor) || 'full';
+	const key = `${id}|${mode}`;
+	if (key !== decorKey) {
+		decorKey = key;
+		const el = document.getElementById('decor');
+		if (el) el.innerHTML = SmashThemes.decor(id, mode);
+	}
+};
 // Thème affiché : celui du jeu sur sa page (thème automatique), sinon celui choisi.
 const currentTheme = () => {
 	const s = state.settings || {};
@@ -910,8 +924,10 @@ PAGES.instance = async ({ id, tab = 'content' }) => {
 	if (instState.id !== id) Object.assign(instState, { id, filter: 'all', query: '', logs: [] });
 	const builtin = inst.type === 'rom' && instEngine(inst) === 'smash';
 	const tabs = [['content', 'Contenu', 'package'], ...(builtin ? [['saves', 'Sauvegardes', 'save']] : []), ['logs', 'Journaux', 'scroll-text'], ['options', 'Options', 'sliders-horizontal']];
+	const gameTheme = SmashThemes.get(SmashThemes.match(instGameName(inst), sysOf(inst)) || '');
 	setMain(`
-		<div class="inst-header">
+		${gameTheme && state.settings.decor !== 'off' ? `<div class="game-banner">${SmashThemes.scene(gameTheme.id)}<span class="game-banner-tag">${esc(gameTheme.label)}${gameTheme.console ? ` · ${esc(gameTheme.console)}` : ''}</span></div>` : ''}
+		<div class="inst-header ${gameTheme && state.settings.decor !== 'off' ? 'on-banner' : ''}">
 			${instIcon(inst, 'lg')}
 			<div class="info">
 				<h1 class="ellipsis">${esc(inst.name)}</h1>
@@ -1372,11 +1388,24 @@ PAGES.settings = () => {
 				<div class="row wrap" style="gap:8px;align-items:center"><span class="label" style="margin:0">Police du thème</span>
 					${[['titles', 'Titres'], ['all', 'Partout'], ['off', 'Désactivée']].map(([v, l]) => `<button class="chip ${(s.fontMode || 'titles') === v ? 'active' : ''}" data-action="set-fontmode" data-v="${v}">${l}</button>`).join('')}</div>
 				<span class="hint">${s.autoTheme !== false ? 'La fenêtre de jeu et la page d’un jeu prennent les couleurs de ce jeu quand il est reconnu ; sinon ton thème ci-dessous.' : 'Le thème ci-dessous est utilisé partout.'}</span>
-				<div class="theme-grid" id="theme-grid">${Object.entries(THEME_INFO).map(([id, t]) => `
-					<button class="theme-card ${(s.theme || 'smash') === id ? 'active' : ''}" data-action="set-theme" data-v="${id}">
-						<div class="theme-preview" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><span style="background:${t.colors[2]}"></span><i style="background:${t.colors[2]}"></i></div>
-						<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div><div class="small muted">${esc(t.desc)} · ${esc(t.font)}</div>
-					</button>`).join('')}</div>
+				<div class="row wrap" style="gap:8px;align-items:center"><span class="label" style="margin:0">Décor des thèmes de jeux</span>
+					${[['full', 'Illustration et animations'], ['calm', 'Illustration seule'], ['off', 'Aucun']].map(([v, l]) => `<button class="chip ${(s.decor || 'full') === v ? 'active' : ''}" data-action="set-decor" data-v="${v}">${l}</button>`).join('')}</div>
+				<div id="theme-grid">
+					<div class="theme-group">Thèmes Smash Emu</div>
+					<div class="theme-grid">${Object.entries(THEME_INFO).filter(([, t]) => !t.game).map(([id, t]) => `
+						<button class="theme-card ${SmashThemes.resolve(s.theme || 'smash') === id ? 'active' : ''}" data-action="set-theme" data-v="${id}">
+							<div class="theme-preview" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><span style="background:${t.colors[2]}"></span><i style="background:${t.colors[2]}"></i></div>
+							<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div><div class="small muted">${esc(t.desc)} · ${esc(t.font)}</div>
+						</button>`).join('')}</div>
+					<div class="theme-group">Thèmes des jeux · ${SmashThemes.THEMES.length}</div>
+					<div class="theme-grid games">${SmashThemes.THEMES.map(t => `
+						<button class="theme-card game ${SmashThemes.resolve(s.theme || 'smash') === t.id ? 'active' : ''}" data-action="set-theme" data-v="${t.id}" style="--card-bg:${t.bg};--card-accent:${t.accent}">
+							<div class="theme-art">${SmashThemes.scene(t.id)}<span class="theme-console">${esc(t.console)}</span></div>
+							<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div>
+							<div class="theme-meta">${esc(t.tagline)}</div>
+							<div class="theme-tags"><span>${esc(t.font)}</span><span>${{ wii: 'Icônes Wii', ornate: 'Ornements', pixel: 'Pixel', neon: 'Néon', paper: 'Papier', bubble: 'Bulles', tech: 'Futuriste' }[t.icons] || 'Classique'}</span><span>${{ fairies: 'Fées', stars: 'Étoiles', coins: 'Pièces', leaves: 'Feuilles', bubbles: 'Bulles', sparks: 'Étincelles', ghosts: 'Fantômes', petals: 'Pétales', embers: 'Braises', hearts: 'Cœurs', notes: 'Notes', rain: 'Pluie', warp: 'Vitesse lumière', confetti: 'Confettis', moons: 'Lunes' }[t.particles] || ''}</span></div>
+						</button>`).join('')}</div>
+				</div>
 			</div>
 			<div class="card col"><h3>Émulateur</h3>
 				<div class="field"><span class="label">Moteur par défaut (Nintendo 64)</span>
@@ -1804,6 +1833,7 @@ const ACTIONS = {
 		applyTheme(state.settings.theme);
 		render();
 	},
+	'set-decor': async (el) => { state.settings = await api('settings:set', { decor: el.dataset.v }); render(); },
 	'set-fontmode': async (el) => { state.settings = await api('settings:set', { fontMode: el.dataset.v }); render(); },
 	'set-autotheme': async () => { state.settings = await api('settings:set', { autoTheme: state.settings.autoTheme === false }); render(); },
 	'set-logo': async (el) => {

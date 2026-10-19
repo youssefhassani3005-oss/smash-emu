@@ -45,7 +45,8 @@ const DEFAULT_SETTINGS = {
 	resumeMode: 'ask',
 	logo: 'classic',
 	autoTheme: true,
-	fontMode: 'titles',   // police du thème : 'titles' (titres), 'all' (partout), 'off' (Inter partout)      // thème choisi d'après le jeu lancé (fenêtre de jeu et page du jeu)      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
+	fontMode: 'titles',
+	decor: 'full',        // décor des thèmes de jeux : 'full' (illustration + animations), 'calm' (illustration), 'off'   // police du thème : 'titles' (titres), 'all' (partout), 'off' (Inter partout)      // thème choisi d'après le jeu lancé (fenêtre de jeu et page du jeu)      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
 };
 
 // Reprend les données de l'ancien nom (Launcher 64) au premier démarrage de Smash Emu.
@@ -75,10 +76,11 @@ const writeJson = (file, data) => {
 // Thème d'une fenêtre de jeu : celui du jeu si le thème automatique est actif, sinon celui de l'utilisateur.
 const themeFor = (inst, system) => {
 	const s = getSettings();
-	if (!s.autoTheme || !inst) return s.theme;
+	const themes = require('../renderer/game-themes.js');
+	if (!s.autoTheme || !inst) return themes.resolve(s.theme);
 	const info = inst.rom && inst.rom.info;
 	const name = inst.type === 'coopdx' ? 'Super Mario 64' : (info && (info.known || info.title)) || inst.name;
-	return require('../renderer/game-themes.js').match(name, system) || s.theme;
+	return themes.match(name, system) || themes.resolve(s.theme);
 };
 
 // Icône des fenêtres selon le logo choisi (l'exécutable installé garde l'icône classique).
