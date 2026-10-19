@@ -42,6 +42,7 @@ const DEFAULT_SETTINGS = {
 	emuShowFps: false,
 	saveBackups: 10,      // copies de secours gardées par jeu pour les sauvegardes en jeu
 	savesSyncDir: '',     // dossier cloud (Dropbox, Drive, Syncthing…) servant de miroir, vide = désactivé
+	resumeMode: 'ask',    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
 };
 
 // Reprend les données de l'ancien nom (Launcher 64) au premier démarrage de Smash Emu.

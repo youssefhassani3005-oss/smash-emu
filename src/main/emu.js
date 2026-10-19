@@ -79,16 +79,34 @@ const handleProtocol = () => {
 const statesDir = id => path.join(store.instanceDir(id), 'states');
 const slotFile = (id, slot, ext) => path.join(statesDir(id), `slot-${slot}.${ext}`);
 
+// Informations d'un état : date et temps de jeu total au moment de la sauvegarde (fichier .json voisin).
+const stateInfo = (file, json) => {
+	let info = {};
+	try { info = JSON.parse(fs.readFileSync(json, 'utf8')) || {}; } catch { /* anciens états sans informations */ }
+	return { savedAt: info.savedAt || fs.statSync(file).mtimeMs, playTimeMs: typeof info.playTimeMs === 'number' ? info.playTimeMs : null };
+};
+
+const thumbOf = (png) => { try { return 'data:image/png;base64,' + fs.readFileSync(png).toString('base64'); } catch { return null; } };
+
 const listStates = (id) => {
 	const out = [];
 	for (let slot = 1; slot <= SLOTS; slot++) {
 		const state = slotFile(id, slot, 'state');
 		if (!fs.existsSync(state)) { out.push({ slot, empty: true }); continue; }
-		let thumb = null;
-		try { thumb = 'data:image/png;base64,' + fs.readFileSync(slotFile(id, slot, 'png')).toString('base64'); } catch { /* pas de miniature */ }
-		out.push({ slot, empty: false, savedAt: fs.statSync(state).mtimeMs, thumb });
+		out.push({ slot, empty: false, ...stateInfo(state, slotFile(id, slot, 'json')), thumb: thumbOf(slotFile(id, slot, 'png')) });
 	}
 	return out;
+};
+
+// Temps de jeu total de l'instance, partie en cours comprise.
+const playedMs = s => (store.getInstance(s.id).playTimeMs || 0) + (Date.now() - s.startedAt);
+
+// Reprise : état enregistré automatiquement à la fermeture, proposé au lancement suivant.
+const resumeFile = (id, ext) => path.join(statesDir(id), `resume.${ext}`);
+const resumeInfo = (id) => {
+	const file = resumeFile(id, 'state');
+	if (!fs.existsSync(file)) return null;
+	return { ...stateInfo(file, resumeFile(id, 'json')), thumb: thumbOf(resumeFile(id, 'png')) };
 };
 
 // ---------- Sauvegardes en jeu (voir saves.js) ----------
@@ -146,7 +164,7 @@ const openEmu = (id, plan) => {
 		if (session.ready) return;
 		e.preventDefault();
 		if (session.closing) return;
-		session.closing = setTimeout(() => { session.ready = true; if (!win.isDestroyed()) win.close(); }, 2500);
+		session.closing = setTimeout(() => { session.ready = true; if (!win.isDestroyed()) win.close(); }, 5000);
 		win.webContents.send('emu:before-close');
 	});
 	win.on('closed', () => { romTokens.delete(token); if (biosToken) romTokens.delete(biosToken); sessions.delete(wcId); });
@@ -188,6 +206,7 @@ const HANDLERS = {
 			volume: typeof inst.options.emuVolume === 'number' ? inst.options.emuVolume : settings.emuVolume,
 			slots: listStates(s.id),
 			activeSlot: inst.options.emuSlot || 1,
+			resume: { mode: ['ask', 'auto', 'off'].includes(settings.resumeMode) ? settings.resumeMode : 'ask', info: resumeInfo(s.id) },
 		};
 	},
 	'emu:listStates': s => listStates(s.id),
@@ -197,6 +216,7 @@ const HANDLERS = {
 		fs.mkdirSync(statesDir(s.id), { recursive: true });
 		fs.writeFileSync(slotFile(s.id, slot, 'state'), Buffer.from(state));
 		if (png && png.length) fs.writeFileSync(slotFile(s.id, slot, 'png'), Buffer.from(png));
+		fs.writeFileSync(slotFile(s.id, slot, 'json'), JSON.stringify({ savedAt: Date.now(), playTimeMs: playedMs(s) }));
 		return listStates(s.id);
 	},
 	'emu:loadState': (s, slot) => {
@@ -204,9 +224,28 @@ const HANDLERS = {
 		if (!fs.existsSync(file)) throw new Error('Cet emplacement est vide.');
 		return fs.readFileSync(file);
 	},
+	'emu:saveResume': (s, state, png) => {
+		if (!state || !state.length) return null;
+		fs.mkdirSync(statesDir(s.id), { recursive: true });
+		fs.writeFileSync(resumeFile(s.id, 'state'), Buffer.from(state));
+		if (png && png.length) fs.writeFileSync(resumeFile(s.id, 'png'), Buffer.from(png));
+		else fs.rmSync(resumeFile(s.id, 'png'), { force: true });
+		fs.writeFileSync(resumeFile(s.id, 'json'), JSON.stringify({ savedAt: Date.now(), playTimeMs: playedMs(s) }));
+		return true;
+	},
+	'emu:loadResume': (s) => {
+		const file = resumeFile(s.id, 'state');
+		if (!fs.existsSync(file)) throw new Error('Aucune partie à reprendre.');
+		return fs.readFileSync(file);
+	},
+	'emu:resumeMode': (s, mode) => {
+		if (!['ask', 'auto', 'off'].includes(mode)) throw new Error('Mode inconnu.');
+		store.setSettings({ resumeMode: mode });
+		return mode;
+	},
 	'emu:deleteState': (s, slot) => {
 		slot = checkSlot(slot);
-		for (const ext of ['state', 'png']) fs.rmSync(slotFile(s.id, slot, ext), { force: true });
+		for (const ext of ['state', 'png', 'json']) fs.rmSync(slotFile(s.id, slot, ext), { force: true });
 		return listStates(s.id);
 	},
 	'emu:screenshot': (s, png) => {

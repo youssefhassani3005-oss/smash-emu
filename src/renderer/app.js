@@ -1349,6 +1349,10 @@ PAGES.settings = () => {
 					<div class="chips">${Object.entries(state.info.engines).map(([id, label]) => `<button class="chip ${s.defaultEngine === id ? 'active' : ''}" data-action="set-engine" data-v="${id}">${icon(id === 'smash' ? 'flame' : 'cpu')}${esc(label)}</button>`).join('')}</div>
 					<span class="hint">Smash Emu : fenêtre intégrée avec pause, vitesse ×0,25 à ×8, turbo (Espace), 8 sauvegardes d’état et captures. Chaque instance peut choisir son moteur.</span>
 				</div>
+				<div class="field"><span class="label">Reprendre la dernière partie au lancement</span>
+					<div class="chips">${[['ask', 'Demander'], ['auto', 'Toujours'], ['off', 'Jamais']].map(([v, l]) => `<button class="chip ${(s.resumeMode || 'ask') === v ? 'active' : ''}" data-action="set-resume" data-v="${v}">${l}</button>`).join('')}</div>
+					<span class="hint">À la fermeture d’un jeu, Smash Emu enregistre l’endroit exact où tu en es ; au lancement suivant, tu reprends pile là.</span>
+				</div>
 				<div class="field"><label>Volume par défaut</label><div class="row"><input type="range" min="0" max="100" value="${Math.round((s.emuVolume ?? 0.8) * 100)}" data-setting-range="emuVolume" style="flex:1;accent-color:var(--brand)"><b id="vol-label" style="width:46px;text-align:right">${Math.round((s.emuVolume ?? 0.8) * 100)} %</b></div></div>
 			</div>
 			<div class="card col"><h3>Sauvegardes de jeu</h3>
@@ -1766,6 +1770,7 @@ const ACTIONS = {
 		applyTheme(state.settings.theme);
 		render();
 	},
+	'set-resume': async (el) => { state.settings = await api('settings:set', { resumeMode: el.dataset.v }); render(); },
 	'set-extui': async (el) => { state.settings = await api('settings:set', { externalUi: el.dataset.v }); render(); },
 	'set-engine': async (el) => {
 		state.settings = await api('settings:set', { defaultEngine: el.dataset.v });

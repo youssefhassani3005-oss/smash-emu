@@ -29,6 +29,13 @@ const focusGame = () => { try { emu().elements.parent.focus(); } catch { /* pas 
 const log = (...a) => console.log('[smash]', ...a);
 const withTimeout = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
 const speedLabel = s => `${String(s).replace('.', ',')}×`;
+// Temps de jeu lisible : « 45 min », « 2 h 13 ».
+const playLabel = (ms) => {
+	if (typeof ms !== 'number') return '';
+	const m = Math.max(1, Math.round(ms / 60000));
+	return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+};
+const dateLabel = ts => new Date(ts).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 const paintIcons = (root = document) => { for (const el of root.querySelectorAll('[data-icon]')) el.innerHTML = icon(el.dataset.icon); };
 
@@ -104,7 +111,7 @@ const renderSlots = () => {
 	$('#slots').innerHTML = st.slots.map(s => `
 		<div class="slot ${s.slot === st.slot ? 'active' : ''}">
 			<div class="thumb" data-action="select-slot" data-slot="${s.slot}">${s.empty ? '<span class="empty">VIDE</span>' : s.thumb ? `<img src="${s.thumb}" alt="">` : '<span class="empty">ETAT</span>'}</div>
-			<div class="meta"><b>Emplacement ${s.slot}</b><span>${s.empty ? 'Aucune sauvegarde' : new Date(s.savedAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
+			<div class="meta"><b>Emplacement ${s.slot}</b><span>${s.empty ? 'Aucune sauvegarde' : `${dateLabel(s.savedAt)}${s.playTimeMs != null ? ` · <span class="pt">${playLabel(s.playTimeMs)} de jeu</span>` : ''}`}</span></div>
 			<div class="acts">
 				<button class="pbtn sm primary" data-action="save-slot" data-slot="${s.slot}">Sauver</button>
 				<button class="pbtn sm" data-action="load-slot" data-slot="${s.slot}" ${s.empty ? 'disabled style="opacity:.4"' : ''}>Charger</button>
@@ -216,6 +223,8 @@ document.addEventListener('mousemove', wakeBar);
 
 const ACTIONS = {
 	'toggle-pause': () => setPaused(!st.paused),
+	'resume-yes': () => closeResume(true),
+	'resume-no': () => closeResume(false),
 	'quick-save': () => saveState(),
 	'quick-load': () => loadState(),
 	slots: () => setPaused(true),
@@ -251,6 +260,10 @@ $('#volume').addEventListener('change', () => { smashEmu.prefs({ volume: st.volu
 // Raccourcis : touches F et Échap/P/Espace, libres dans la configuration N64 par défaut.
 window.addEventListener('keydown', (e) => {
 	if (!st.started) return;
+	if (st.resumeOpen) {
+		if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeResume(e.key === 'Enter'); }
+		return;
+	}
 	// Raccourcis du panneau Smash (features.js) en priorité.
 	if (window.smashKey && window.smashKey(e)) return;
 	const key = e.key;
@@ -292,6 +305,13 @@ smashEmu.onBeforeClose(async () => {
 	try {
 		const g = gm();
 		if (g && st.started && st.saveReady) {
+			if (st.cfg.resume && st.cfg.resume.mode !== 'off' && !st.resumeOpen) {
+				try {
+					const state = g.getState();
+					const png = st.paused ? st.pauseShot : await withTimeout(g.screenshot(), 600);
+					await withTimeout(smashEmu.saveResume(state, png), 2500);
+				} catch (e) { log('état de reprise', e.message); }
+			}
 			g.saveSaveFiles();
 			const data = g.getSaveFile(false);
 			if (data && data.length) await withTimeout(smashEmu.writeSave(data), 1500);
@@ -420,6 +440,51 @@ const syncSaveAtStart = async () => {
 	} finally {
 		if (!reloading) st.saveReady = true;
 	}
+	return reloading;
+};
+
+// ---------- Reprise de la dernière partie (état enregistré à la fermeture) ----------
+
+const resumeLast = async () => {
+	const data = await smashEmu.loadResume();
+	try { st.undoState = gm().getState().slice(); } catch { st.undoState = null; }
+	gm().loadState(new Uint8Array(data));
+};
+
+const offerResume = async () => {
+	const r = st.cfg.resume;
+	if (!r || r.mode === 'off' || !r.info) return;
+	const when = `${dateLabel(r.info.savedAt)}${r.info.playTimeMs != null ? ` · ${playLabel(r.info.playTimeMs)} de jeu` : ''}`;
+	if (r.mode === 'auto') {
+		try {
+			await resumeLast();
+			toast(`Partie reprise (${esc(when)}) · <a>nouvelle partie</a>`, { ms: 6000, onClick: () => reset() });
+		} catch (e) { toast(`Reprise impossible : ${esc(e.message)}`, { error: true }); }
+		return;
+	}
+	// Mode « demander » : le jeu attend la réponse.
+	try { emu().pause(); } catch { /* pas encore prêt */ }
+	st.resumeOpen = true;
+	$('#resume-thumb').innerHTML = r.info.thumb ? `<img src="${r.info.thumb}" alt="">` : 'PAS D’APERÇU';
+	$('#resume-meta').innerHTML = `Ta dernière partie : <b>${esc(when)}</b>`;
+	$('#resume-auto').checked = false;
+	$('#resume').classList.remove('hidden');
+};
+
+const closeResume = async (resume) => {
+	if (!st.resumeOpen) return;
+	st.resumeOpen = false;
+	$('#resume').classList.add('hidden');
+	if ($('#resume-auto').checked) {
+		await smashEmu.resumeMode('auto').catch(() => {});
+		st.cfg.resume.mode = 'auto';
+	}
+	try { emu().play(); } catch { /* fenêtre en fermeture */ }
+	applySpeed(st.speed);
+	if (resume) {
+		try { await resumeLast(); toast('Partie reprise'); } catch (e) { toast(`Reprise impossible : ${esc(e.message)}`, { error: true }); }
+	}
+	focusGame();
 };
 
 const watchSaves = () => {
@@ -455,7 +520,7 @@ const applyControls = async () => {
 const onStarted = () => {
 	applyControls();
 	watchSaves();
-	syncSaveAtStart();
+	syncSaveAtStart().then((reloading) => { if (!reloading) offerResume(); });
 	clearInterval(loadingTimer);
 	st.started = true;
 	$('#loading-progress').style.width = '100%';
