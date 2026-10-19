@@ -42,6 +42,9 @@ npm start
 | `Space` held | Turbo ×3 |
 | `F11` / `F12` | Fullscreen / screenshot |
 | `F1` | Shortcuts and N64 controller layout |
+| `Shift+F2` | Statistics overlay (FPS, frame time graph, CPU, memory, audio latency) |
+| `Ctrl+M` / `Ctrl+1`…`4` | Record a macro / replay macro 1–4 |
+| `Ctrl+B` | Learning bot (explores the game on its own) |
 
 ## Where the data lives
 
