@@ -532,6 +532,7 @@ const onStarted = () => {
 	log('partie démarrée :', st.cfg.name);
 	toast('<b>F2</b> : 66 fonctions · <b>F1</b> : raccourcis · <b>Échap</b> : pause', { ms: 4500 });
 	if (window.smashFeaturesStart) window.smashFeaturesStart();
+	if (window.smashStats) window.smashStats.start();
 };
 
 (async () => {

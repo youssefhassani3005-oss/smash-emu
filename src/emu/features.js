@@ -385,6 +385,7 @@ const FEATURES = [
 
 	// Outils
 	T('fps', 'Compteur FPS', 'Images par seconde réelles de l’émulation', { cat: 'Outils', icon: 'gauge' }),
+	A('Statistiques détaillées', 'FPS, temps par image (graphe), processeur, mémoire, latence audio', () => window.smashStats && window.smashStats.toggle(), { cat: 'Outils', icon: 'gauge', keyHint: 'Maj+F2', active: () => !!(window.smashStats && window.smashStats.on) }),
 	T('speedHud', 'Vitesse à l’écran', 'Affiche la vitesse actuelle', { cat: 'Outils', icon: 'fast-forward' }),
 	T('timer', 'Chrono speedrun', 'F10 démarre / arrête, Maj+F10 remet à zéro', { cat: 'Outils', icon: 'clock', keyHint: 'F10' }),
 	T('clock', 'Horloge', 'L’heure, pour ne pas jouer jusqu’à 4 h', { cat: 'Outils', icon: 'clock' }),

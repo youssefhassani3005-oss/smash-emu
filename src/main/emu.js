@@ -224,6 +224,26 @@ const HANDLERS = {
 		if (!fs.existsSync(file)) throw new Error('Cet emplacement est vide.');
 		return fs.readFileSync(file);
 	},
+	// Charge de la fenêtre de jeu (processus de rendu) et du processus graphique, pour l'overlay de statistiques.
+	'emu:metrics': (s) => {
+		const { app } = require('electron');
+		const pid = s.win.webContents.getOSProcessId();
+		const all = app.getAppMetrics();
+		const me = all.find(m => m.pid === pid);
+		const gpu = all.find(m => m.type === 'GPU');
+		// Temps processeur cumulé (secondes) → pourcentage d'un cœur depuis la mesure précédente.
+		const now = Date.now();
+		const prev = s.cpuSample || {};
+		const pct = (m, key) => {
+			const cum = m && m.cpu && m.cpu.cumulativeCPUUsage;
+			if (typeof cum !== 'number') return m ? m.cpu.percentCPUUsage : null;
+			const last = prev[key];
+			return last && now > last.t ? ((cum - last.cum) / ((now - last.t) / 1000)) * 100 : null;
+		};
+		const out = { cpu: pct(me, 'me'), mem: me ? me.memory.workingSetSize : null, gpuCpu: pct(gpu, 'gpu') };
+		s.cpuSample = { me: me && { cum: me.cpu.cumulativeCPUUsage, t: now }, gpu: gpu && { cum: gpu.cpu.cumulativeCPUUsage, t: now } };
+		return out;
+	},
 	'emu:saveResume': (s, state, png) => {
 		if (!state || !state.length) return null;
 		fs.mkdirSync(statesDir(s.id), { recursive: true });
