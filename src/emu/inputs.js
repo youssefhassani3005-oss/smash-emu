@@ -16,6 +16,7 @@
 		installed: false, raw: null, injecting: false,
 		hooks: new Set(),        // fonctions appelées à chaque image : fn(frame)
 		observers: new Set(),    // fonctions appelées pour chaque entrée du joueur : fn(p, i, v, frame)
+		post: new Set(),         // après le calcul d'une image (image encore lisible dans le canvas) : fn(frame)
 		taps: new Set(),         // toutes les entrées, y compris celles de Smash Emu (enregistrements) : fn(p, i, v, frame)
 		turbo: {}, turboHz: 12, held: new Map(), turboOut: new Map(),
 		macros: [], macroRec: null, macroSlot: 0, playing: [],
@@ -49,7 +50,13 @@
 					for (const h of [...I.hooks]) { try { h(f); } catch (e) { log('entrées :', e.message); I.hooks.delete(h); } }
 				}
 			}
+			// Le rappel qui fait avancer le compteur d'images est celui de l'émulateur : juste après, l'image
+			// vient d'être dessinée et peut être lue (le bot s'en sert pour « voir » l'écran).
+			if (!I.post.size) { cb(t); return; }
+			const before = frame();
 			cb(t);
+			const after = frame();
+			if (after !== before) for (const h of [...I.post]) { try { h(after); } catch (e) { log('image :', e.message); I.post.delete(h); } }
 		});
 		const raw = g.simulateInput.bind(g);
 		I.raw = raw;
@@ -300,6 +307,7 @@
 		install, configure, send, frame,
 		onFrame: (fn) => { install(); I.hooks.add(fn); return () => I.hooks.delete(fn); },
 		observe: (fn) => { install(); I.observers.add(fn); return () => I.observers.delete(fn); },
+		onRendered: (fn) => { install(); I.post.add(fn); return () => I.post.delete(fn); },
 		tap: (fn) => { install(); I.taps.add(fn); return () => I.taps.delete(fn); },
 		playEvents, releaseAll,
 		toggleMacroRecording, playMacro, clearMacros,

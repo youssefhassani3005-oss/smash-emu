@@ -323,6 +323,7 @@ smashEmu.onBeforeClose(async () => {
 	if (st.closing) return;
 	st.closing = true;
 	try {
+		if (window.smashBot) await window.smashBot.stopForClose();
 		const g = gm();
 		if (g && st.started && st.saveReady) {
 			if (st.cfg.resume && st.cfg.resume.mode !== 'off' && !st.resumeOpen) {
@@ -516,7 +517,7 @@ const watchSaves = () => {
 		const callEvent = E.callEvent.bind(E);
 		E.callEvent = (event, data) => (event === 'exit' && st.flushed ? 0 : callEvent(event, data));
 		emu().on('saveSaveFiles', (data) => {
-			if (st.saveReady && data && data.length) smashEmu.writeSave(data).catch(e => log('copie de la sauvegarde :', e.message));
+			if (st.saveReady && !st.botActive && data && data.length) smashEmu.writeSave(data).catch(e => log('copie de la sauvegarde :', e.message));
 		});
 	} catch (error) { log('suivi des sauvegardes indisponible :', error.message); }
 };

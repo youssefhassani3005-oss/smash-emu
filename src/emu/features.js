@@ -388,6 +388,7 @@ const FEATURES = [
 
 	// Outils
 	T('fps', 'Compteur FPS', 'Images par seconde réelles de l’émulation', { cat: 'Outils', icon: 'gauge' }),
+	A('Bot apprenti', 'Joue tout seul et apprend quelles actions font découvrir de nouveaux écrans', () => window.smashBot && window.smashBot.toggle(), { cat: 'Fun', icon: 'sparkles', keyHint: 'Ctrl+B', active: () => !!(window.smashBot && window.smashBot.on) }),
 	A('Enregistrer une macro', 'Enregistre tes touches, rejoue-les avec Ctrl+1 à 4', () => window.smashInputs.toggleMacroRecording(), { cat: 'Outils', icon: 'keyboard', keyHint: 'Ctrl+M', active: () => !!(window.smashInputs && window.smashInputs.recordingMacro) }),
 	A('Effacer les macros', 'Libère Ctrl+1 à Ctrl+4', () => window.smashInputs.clearMacros(), { cat: 'Outils', icon: 'x' }),
 	A('Film d’entrées : enregistrer', 'Démarre ou arrête l’enregistrement image par image (état de départ inclus)', () => window.smashInputs.toggleMovieRecording(), { cat: 'Outils', icon: 'film', active: () => !!(window.smashInputs && window.smashInputs.movieMode === 'rec') }),

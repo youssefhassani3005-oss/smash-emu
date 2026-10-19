@@ -244,6 +244,17 @@ const HANDLERS = {
 	},
 	'emu:listStates': s => listStates(s.id),
 	'emu:controls': s => require('./controls').forPlayer(s.plan.system || 'n64', s.id),
+	// Boutons de la console (pour le bot) et mémoire du bot entre deux sessions.
+	'emu:buttons': s => require('./controls').get(s.plan.system || 'n64').buttons.filter(b => b.id < 24),
+	'emu:botMemory': (s) => { try { return JSON.parse(fs.readFileSync(path.join(store.instanceDir(s.id), 'bot.json'), 'utf8')); } catch { return null; } },
+	'emu:setBotMemory': (s, mem) => {
+		const q = mem && typeof mem.q === 'object' ? mem.q : {};
+		const clean = {};
+		for (const [k, v] of Object.entries(q).slice(0, 2000)) if (/^[0-9,-]{1,20}$/.test(k) && Number.isFinite(v)) clean[k] = Math.max(-10, Math.min(10, v));
+		const out = { q: clean, cells: Math.max(0, Math.trunc(+mem.cells || 0)), frames: Math.max(0, Math.trunc(+mem.frames || 0)), sessions: Math.max(0, Math.trunc(+mem.sessions || 0)) };
+		fs.writeFileSync(path.join(store.instanceDir(s.id), 'bot.json'), JSON.stringify(out));
+		return true;
+	},
 	'emu:saveState': (s, slot, state, png) => {
 		slot = checkSlot(slot);
 		fs.mkdirSync(statesDir(s.id), { recursive: true });
