@@ -120,12 +120,38 @@
 		['bois', 'Façade en bois', 'Atari 2600', '#140d07', '#d67b2a', ''],
 	];
 
+	// Police de chaque thème (titres, ou toute l'interface selon le réglage) : familles déclarées dans fonts.css.
+	const FONT_GROUPS = {
+		'Luckiest Guy': 'plombier bowser etoile crash wumpa banane banjo rayman jungle kart spyro',
+		'Lilita One': 'champignon party splat-orange splat-violet pokeball pikachu salameche carapuce bulbizarre destination ratchet jak',
+		'Fredoka': 'peach yoshi kirby dreamland feuille nook pikmin montagne luigi',
+		'Permanent Marker': 'paper ankh wario',
+		'Creepster': 'boo ectoplasma fantome',
+		'Cinzel': 'hyrule triforce ocarina crepuscule gerudo emblem cristal chocobo metaknight chevalier',
+		'Pirata One': 'dracula gothique majora',
+		'Orbitron': 'galaxie sheikah samus zebes arwing spartan covenant monado mako cyber materia mewtwo',
+		'Audiowide': 'falcon vague arcade emeraude',
+		'Bangers': 'sonic tails shoryuken hadoken stadium',
+		'Bebas Neue': 'shadow persona5 persona4 persona3 goldeneye carton dragon',
+		'Metal Mania': 'enfer quake nether',
+		'Russo One': 'megaman protoman',
+		'VT323': 'codec pong determination',
+		'Press Start 2P': 'pacman envahisseurs tetris nes',
+		'Silkscreen': 'creeper ender snes gbcouleur gba bois megadrive n64 gamecube playstation ps2 switch',
+		'Nunito': 'wii dreamcast',
+	};
+	const FONT = {};
+	for (const [family, list] of Object.entries(FONT_GROUPS)) for (const id of list.split(' ')) FONT[id] = family;
+	// Polices des thèmes de base (themes.css).
+	const BASE_FONTS = { smash: 'Russo One', modrinth: 'Nunito', neon: 'Audiowide', ocean: 'Fredoka', gameboy: 'Silkscreen', gold: 'Cinzel', light: 'Nunito' };
+	const fontStack = f => `'${f}', 'Inter', 'Segoe UI', sans-serif`;
+
 	const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 	const toHex = c => `#${c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
 	const mix = (a, b, t) => toHex(hex(a).map((v, i) => v + (hex(b)[i] - v) * t));
 	const lum = (h) => { const [r, g, b] = hex(h).map(v => v / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 
-	const THEMES = RAW.map(([id, label, game, bg, accent, keywords, light]) => ({ id, label, game, bg, accent, keywords, light: !!light }));
+	const THEMES = RAW.map(([id, label, game, bg, accent, keywords, light]) => ({ id, label, game, bg, accent, keywords, light: !!light, font: FONT[id] || 'Inter' }));
 
 	// Variables CSS déduites du fond et de l'accent (mêmes noms que themes.css).
 	const vars = (t) => {
@@ -142,10 +168,12 @@
 			'--danger': '#ff8a3d',
 			'--danger-rgb': '255, 138, 61',
 			'--glow': `0 0 22px rgba(${rgb}, ${t.light ? 0.25 : 0.35})`,
+			'--font-display': fontStack(t.font),
 		};
 	};
 
-	const css = () => THEMES.map(t => `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([k, v]) => `${k}:${v};`).join('')}}`).join('\n');
+	const baseCss = () => Object.entries(BASE_FONTS).map(([id, f]) => `${id === 'smash' ? ':root, ' : ''}:root[data-theme="${id}"] {--font-display:${fontStack(f)};}`).join('\n');
+	const css = () => baseCss() + '\n' + THEMES.map(t => `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([k, v]) => `${k}:${v};`).join('')}}`).join('\n');
 
 	// Thème d'un jeu d'après son titre (et sa console en dernier recours), ou null.
 	const SYSTEM_THEME = { nes: 'nes', snes: 'snes', n64: 'n64', gc: 'gamecube', wii: 'wii', switch: 'switch', gbc: 'gbcouleur', gba: 'gba', gb: 'gameboy', psx: 'playstation', ps2: 'ps2', md: 'megadrive', a2600: 'bois', psp: 'ps2' };
@@ -162,7 +190,7 @@
 		return best ? best.id : (SYSTEM_THEME[system] || null);
 	};
 
-	const api = { THEMES, css, match, vars };
+	const api = { THEMES, css, match, vars, BASE_FONTS, fontOf: id => FONT[id] || BASE_FONTS[id] || 'Inter' };
 	root.SmashThemes = api;
 	if (typeof module !== 'undefined' && module.exports) module.exports = api;
 	// Dans une page : feuille de style des 100 thèmes ajoutée une fois.

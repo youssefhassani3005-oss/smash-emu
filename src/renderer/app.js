@@ -34,6 +34,7 @@ for (const t of SmashThemes.THEMES) {
 	const v = SmashThemes.vars(t);
 	THEME_INFO[t.id] = { label: t.label, desc: t.game, colors: [v['--bg'], v['--raised'], t.accent], game: true };
 }
+for (const id of Object.keys(THEME_INFO)) THEME_INFO[id].font = SmashThemes.fontOf(id);
 
 const applyTheme = (theme) => { document.documentElement.dataset.theme = THEME_INFO[theme] ? theme : 'smash'; };
 // Thème affiché : celui du jeu sur sa page (thème automatique), sinon celui choisi.
@@ -180,7 +181,7 @@ const renderNav = () => {
 };
 
 const render = () => {
-	if (state.settings) applyTheme(currentTheme());
+	if (state.settings) { applyTheme(currentTheme()); document.documentElement.dataset.font = state.settings.fontMode || 'titles'; }
 	renderTopbar();
 	renderNav();
 	const page = PAGES[state.route.name] || PAGES.home;
@@ -1368,11 +1369,13 @@ PAGES.settings = () => {
 					<button class="chip ${s.autoTheme !== false ? 'active' : ''}" data-action="set-autotheme">${icon('sparkles')}Thème automatique selon le jeu</button>
 					<input class="input grow" id="theme-search" placeholder="Chercher parmi ${Object.keys(THEME_INFO).length} thèmes (Zelda, Pokémon, Sonic, néon…)" value="" style="min-width:220px">
 				</div>
+				<div class="row wrap" style="gap:8px;align-items:center"><span class="label" style="margin:0">Police du thème</span>
+					${[['titles', 'Titres'], ['all', 'Partout'], ['off', 'Désactivée']].map(([v, l]) => `<button class="chip ${(s.fontMode || 'titles') === v ? 'active' : ''}" data-action="set-fontmode" data-v="${v}">${l}</button>`).join('')}</div>
 				<span class="hint">${s.autoTheme !== false ? 'La fenêtre de jeu et la page d’un jeu prennent les couleurs de ce jeu quand il est reconnu ; sinon ton thème ci-dessous.' : 'Le thème ci-dessous est utilisé partout.'}</span>
 				<div class="theme-grid" id="theme-grid">${Object.entries(THEME_INFO).map(([id, t]) => `
 					<button class="theme-card ${(s.theme || 'smash') === id ? 'active' : ''}" data-action="set-theme" data-v="${id}">
 						<div class="theme-preview" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><span style="background:${t.colors[2]}"></span><i style="background:${t.colors[2]}"></i></div>
-						<div class="bold">${esc(t.label)}</div><div class="small muted">${esc(t.desc)}</div>
+						<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div><div class="small muted">${esc(t.desc)} · ${esc(t.font)}</div>
 					</button>`).join('')}</div>
 			</div>
 			<div class="card col"><h3>Émulateur</h3>
@@ -1801,6 +1804,7 @@ const ACTIONS = {
 		applyTheme(state.settings.theme);
 		render();
 	},
+	'set-fontmode': async (el) => { state.settings = await api('settings:set', { fontMode: el.dataset.v }); render(); },
 	'set-autotheme': async () => { state.settings = await api('settings:set', { autoTheme: state.settings.autoTheme === false }); render(); },
 	'set-logo': async (el) => {
 		state.settings = await api('settings:set', { logo: el.dataset.v });

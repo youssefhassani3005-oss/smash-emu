@@ -571,6 +571,7 @@ const onStarted = () => {
 		showError(e.message);
 		return;
 	}
+	document.documentElement.dataset.font = st.cfg.fontMode || 'titles';
 	if (st.cfg.logo && st.cfg.logo !== SmashLogo.variant()) {
 		SmashLogo.setVariant(st.cfg.logo);
 		$('#logo').innerHTML = SmashLogo.svg(26);

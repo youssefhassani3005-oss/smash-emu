@@ -236,6 +236,7 @@ const HANDLERS = {
 			threads: !!s.plan.threads,
 			theme: store.themeFor(inst, s.plan.system || 'n64'),
 			logo: settings.logo || 'classic',
+			fontMode: settings.fontMode || 'titles',
 			volume: typeof inst.options.emuVolume === 'number' ? inst.options.emuVolume : settings.emuVolume,
 			slots: listStates(s.id),
 			activeSlot: inst.options.emuSlot || 1,

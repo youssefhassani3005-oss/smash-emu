@@ -44,7 +44,8 @@ const DEFAULT_SETTINGS = {
 	savesSyncDir: '',     // dossier cloud (Dropbox, Drive, Syncthing…) servant de miroir, vide = désactivé
 	resumeMode: 'ask',
 	logo: 'classic',
-	autoTheme: true,      // thème choisi d'après le jeu lancé (fenêtre de jeu et page du jeu)      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
+	autoTheme: true,
+	fontMode: 'titles',   // police du thème : 'titles' (titres), 'all' (partout), 'off' (Inter partout)      // thème choisi d'après le jeu lancé (fenêtre de jeu et page du jeu)      // logo de l'application : 'classic' (S) ou 'manette'    // reprise de la dernière partie au lancement : 'ask' | 'auto' | 'off'
 };
 
 // Reprend les données de l'ancien nom (Launcher 64) au premier démarrage de Smash Emu.

@@ -1130,6 +1130,11 @@ h3 { font-size: 16px; font-weight: 700; }
 .logo-card:hover { border-color: var(--button-hover); }
 .logo-card.active { border-color: var(--brand); box-shadow: var(--glow); color: var(--contrast); }
 
+/* ---------- Polices des thèmes ---------- */
+
+html:not([data-font="off"]) :is(h1, h2, h3, .section-title h1, .inst-header h1, .card h3, .nav-group, .ctl-side-title, .theme-card .bold, .logo-card span, .modal-title) { font-family: var(--font-display, 'Inter', sans-serif); letter-spacing: 0.2px; }
+html[data-font="all"] body, html[data-font="all"] :is(button, input, select, textarea) { font-family: var(--font-display, 'Inter', sans-serif); }
+
 /* ---------- Page Manettes ---------- */
 
 .ctl-layout { display: grid; grid-template-columns: 190px 1fr; gap: 18px; align-items: start; }

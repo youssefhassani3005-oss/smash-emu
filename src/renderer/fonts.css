@@ -11,6 +11,134 @@
 	font-display: block;
 }
 
+/* Polices des thèmes (titres, ou toute l'interface selon le réglage). */
+@font-face {
+	font-family: 'Luckiest Guy';
+	src: url('assets/fonts/luckiest-guy-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Bangers';
+	src: url('assets/fonts/bangers-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fredoka';
+	src: url('assets/fonts/fredoka-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fredoka';
+	src: url('assets/fonts/fredoka-latin-600-normal.woff2') format('woff2');
+	font-weight: 600;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Cinzel';
+	src: url('assets/fonts/cinzel-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Cinzel';
+	src: url('assets/fonts/cinzel-latin-600-normal.woff2') format('woff2');
+	font-weight: 600;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Pirata One';
+	src: url('assets/fonts/pirata-one-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Orbitron';
+	src: url('assets/fonts/orbitron-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Orbitron';
+	src: url('assets/fonts/orbitron-latin-600-normal.woff2') format('woff2');
+	font-weight: 600;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Audiowide';
+	src: url('assets/fonts/audiowide-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Creepster';
+	src: url('assets/fonts/creepster-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'VT323';
+	src: url('assets/fonts/vt323-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Bebas Neue';
+	src: url('assets/fonts/bebas-neue-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Lilita One';
+	src: url('assets/fonts/lilita-one-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Silkscreen';
+	src: url('assets/fonts/silkscreen-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Silkscreen';
+	src: url('assets/fonts/silkscreen-latin-700-normal.woff2') format('woff2');
+	font-weight: 700;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Russo One';
+	src: url('assets/fonts/russo-one-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Permanent Marker';
+	src: url('assets/fonts/permanent-marker-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Nunito';
+	src: url('assets/fonts/nunito-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Nunito';
+	src: url('assets/fonts/nunito-latin-600-normal.woff2') format('woff2');
+	font-weight: 600;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Metal Mania';
+	src: url('assets/fonts/metal-mania-latin-400-normal.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+
 /* Logo texte pixel art : « SMASH » + « EMU » avec ombre décalée façon sprite. */
 .wordmark {
 	font-family: 'Press Start 2P', monospace;

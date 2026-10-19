@@ -38,4 +38,29 @@ fs.copyFileSync(
 	path.join(ROOT, 'node_modules', '@fontsource', 'press-start-2p', 'files', 'press-start-2p-latin-400-normal.woff2'),
 	path.join(fontDir, 'press-start-2p-latin-400-normal.woff2'),
 );
-console.log(`${Object.keys(icons).length} icônes générées, polices Inter et Press Start 2P copiées.`);
+// Polices des thèmes (une par style de jeu), toutes sous licence SIL OFL.
+const THEME_FONTS = [
+	['luckiest-guy', [400]],
+	['bangers', [400]],
+	['fredoka', [400, 600]],
+	['cinzel', [400, 600]],
+	['pirata-one', [400]],
+	['orbitron', [400, 600]],
+	['audiowide', [400]],
+	['creepster', [400]],
+	['vt323', [400]],
+	['bebas-neue', [400]],
+	['lilita-one', [400]],
+	['silkscreen', [400, 700]],
+	['russo-one', [400]],
+	['permanent-marker', [400]],
+	['nunito', [400, 600]],
+	['metal-mania', [400]],
+];
+for (const [pkg, weights] of THEME_FONTS) {
+	for (const w of weights) {
+		const file = `${pkg}-latin-${w}-normal.woff2`;
+		fs.copyFileSync(path.join(ROOT, 'node_modules', '@fontsource', pkg, 'files', file), path.join(fontDir, file));
+	}
+}
+console.log(`${Object.keys(icons).length} icônes générées, polices Inter, Press Start 2P et ${THEME_FONTS.length} polices de thèmes copiées.`);

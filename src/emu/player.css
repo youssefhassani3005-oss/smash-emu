@@ -387,6 +387,8 @@ body.photo .bot { display: none; }
 .bot-actions .pbtn { flex: 1; justify-content: center; white-space: nowrap; padding: 0 8px; }
 #game [class*="virtualGamepad"] { display: none !important; }
 .bot-muted { color: #6f6f78; font-size: 10.5px; line-height: 1.4; }
+html:not([data-font="off"]) #game-name { font-family: var(--font-display, 'Inter', sans-serif); }
+html[data-font="all"] body, html[data-font="all"] :is(button, input) { font-family: var(--font-display, 'Inter', sans-serif); }
 .stats { position: fixed; right: 14px; top: 62px; width: 268px; z-index: 14; pointer-events: none; background: rgba(8, 8, 10, 0.82); border: 1px solid rgba(255, 255, 255, 0.1); border-left: 3px solid var(--brand); border-radius: 10px; padding: 10px 12px; color: #e8e8ec; font-size: 12px; backdrop-filter: blur(6px); }
 body.immersive .stats { top: 14px; }
 body.photo .stats { display: none; }
