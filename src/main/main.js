@@ -18,6 +18,7 @@ const suggest = require('./suggest');
 const systems = require('./systems');
 const emulators = require('./emulators');
 const external = require('./external');
+const remote = require('./remote');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -243,6 +244,18 @@ const handlers = {
 		return r;
 	},
 	'run:stop': (id) => runner.stop(id),
+	// Jeu à distance : héberger (le panneau d'invitation s'ouvre au démarrage du jeu) ou rejoindre.
+	'remote:host': (id) => {
+		const inst = store.getInstance(id);
+		if (!inst) throw new Error('Jeu introuvable.');
+		emu.markRemoteHost(id);
+		remote.noteHosted(inst.name);
+		const r = runner.launch(id);
+		if (store.getSettings().closeOnLaunch && win) win.minimize();
+		return r;
+	},
+	'remote:join': (code) => { remote.openGuest(typeof code === 'string' ? code.trim() : ''); return true; },
+	'remote:recent': () => remote.recent(),
 	'run:status': () => runner.status(),
 	'run:logs': (id) => runner.getLogs(id),
 
@@ -404,6 +417,7 @@ app.whenReady().then(() => {
 	emu.handleProtocol();
 	emu.registerIpc();
 	external.registerIpc();
+	remote.registerIpc();
 	session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['https://www.youtube-nocookie.com/*', 'https://www.youtube.com/*'] }, (details, cb) => {
 		const headers = { ...details.requestHeaders };
 		if (!headers.Referer) headers.Referer = 'https://smash-emu.app/';

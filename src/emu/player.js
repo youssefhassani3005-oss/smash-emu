@@ -324,6 +324,7 @@ smashEmu.onBeforeClose(async () => {
 	st.closing = true;
 	try {
 		if (window.smashBot) await window.smashBot.stopForClose();
+		if (window.smashRemoteHost) window.smashRemoteHost.stopAll();
 		const g = gm();
 		if (g && st.started && st.saveReady) {
 			if (st.cfg.resume && st.cfg.resume.mode !== 'off' && !st.resumeOpen) {
@@ -557,6 +558,7 @@ const onStarted = () => {
 	if (window.smashFeaturesStart) window.smashFeaturesStart();
 	if (window.smashStats) window.smashStats.start();
 	if (window.smashInputs) window.smashInputs.start();
+	if (st.cfg.remoteHost && window.smashRemoteHost) setTimeout(() => window.smashRemoteHost.toggle(true), 1200);
 };
 
 (async () => {

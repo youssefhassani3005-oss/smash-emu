@@ -183,6 +183,7 @@ const renderNav = () => {
 		${navBtn('roms', 'disc-3', 'Jeux')}
 		${navBtn('library', 'library', 'Bibliothèque')}
 		${navBtn('controls', 'gamepad-2', 'Manettes')}
+		${navBtn('remote', 'wifi', 'À distance')}
 		<div class="nav-group">Mods</div>
 		${navBtn('discover', 'compass', 'Découvrir')}
 		${navBtn('opera', 'globe', 'Recherche Opera')}
@@ -631,6 +632,52 @@ const homeStats = () => {
 	</div>`;
 };
 
+// ---------- Jeu à distance ----------
+
+TITLES.remote = () => [{ label: 'Jeu à distance' }];
+
+PAGES.remote = async () => {
+	const games = state.instances.filter(i => i.type === 'rom' && instEngine(i) === 'smash');
+	const recent = await api('remote:recent').catch(() => []);
+	if (state.route.name !== 'remote') return;
+	setMain(`
+		<div class="section-title"><h1>Jeu à distance</h1><span class="muted">jouer ensemble depuis deux maisons différentes</span></div>
+		<div class="remote-grid">
+			<div class="card col">
+				<h3>${icon('wifi')}Rejoindre un ami</h3>
+				<div class="small muted">Colle le code d’invitation qu’il t’a envoyé (ou glisse son fichier .smashinvite dans la fenêtre qui s’ouvre).</div>
+				<textarea class="input" id="remote-code" rows="3" placeholder="SMASH-INV-…" style="font-family:Consolas,monospace;font-size:12px"></textarea>
+				<div class="row"><button class="btn primary" data-action="remote-join">${icon('play')}Rejoindre</button></div>
+			</div>
+			<div class="card col">
+				<h3>${icon('users')}Héberger une partie</h3>
+				<div class="small muted">Le jeu tourne chez toi ; tes amis voient l’image et jouent avec leur manette (joueurs 2 à 4).</div>
+				<div class="col" style="gap:6px;max-height:260px;overflow-y:auto">${games.map(i => `<div class="sug-row"><div class="avatar">${instIcon(i, 'sm')}</div><div class="grow bold ellipsis">${esc(i.name)}</div><button class="btn sm primary" data-action="remote-host" data-id="${esc(i.id)}">${icon('wifi')}Inviter</button></div>`).join('') || '<div class="small muted">Aucun jeu de l’émulateur intégré pour l’instant.</div>'}</div>
+			</div>
+		</div>
+		<div class="card col" style="margin-top:14px">
+			<h3>Comment ça marche</h3>
+			<div class="remote-steps">
+				<div><b>1</b><span>L’hôte lance le jeu avec « Inviter » et envoie son <b>code d’invitation</b> (Discord, SMS…).</span></div>
+				<div><b>2</b><span>L’ami colle le code ici et renvoie son <b>code de réponse</b>.</span></div>
+				<div><b>3</b><span>L’hôte colle la réponse : la partie démarre, l’ami joue avec sa manette.</span></div>
+			</div>
+			<table class="remote-status">
+				<tr><td>Image et son du jeu, 30 à 60 i/s, qualité ajustée au réseau</td><td><span class="tag green">Disponible</span></td></tr>
+				<tr><td>Manettes et clavier des amis (joueurs 2 à 4), blocage par l’hôte</td><td><span class="tag green">Disponible</span></td></tr>
+				<tr><td>Chat écrit, chat vocal (micro, appuyer pour parler), statistiques réseau</td><td><span class="tag green">Disponible</span></td></tr>
+				<tr><td>Connexion directe chiffrée sans serveur (STUN public)</td><td><span class="tag green">Disponible</span></td></tr>
+				<tr><td>Serveur relais quand la connexion directe échoue (NAT strict)</td><td><span class="tag">Indisponible</span></td></tr>
+				<tr><td>Invitations sans échange de codes (serveur de signalisation, liste d’amis)</td><td><span class="tag">Indisponible</span></td></tr>
+				<tr><td>Reconnexion automatique après une coupure</td><td><span class="tag">Indisponible : nouveau code</span></td></tr>
+				<tr><td>Jeux des émulateurs externes (Dolphin…) et jeux PC</td><td><span class="tag">Prévu</span></td></tr>
+				<tr><td>Netplay synchronisé (chaque PC fait tourner le jeu)</td><td><span class="tag">Indisponible</span></td></tr>
+				<tr><td>Vibrations des manettes à distance</td><td><span class="tag">Indisponible (émulateur)</span></td></tr>
+			</table>
+		</div>
+		${recent.length ? `<div class="card col" style="margin-top:14px"><h3>Sessions récentes</h3>${recent.map(r => `<div class="sug-row"><div class="avatar">${icon(r.role === 'hôte' ? 'users' : 'wifi')}</div><div class="grow"><div class="bold">${esc(r.game || 'Jeu')}</div><div class="small muted">${r.role === 'hôte' ? 'Hébergé par toi' : `Chez ${esc(r.host)}`} · ${ago(r.at)}</div></div></div>`).join('')}</div>` : ''}`);
+};
+
 PAGES.home = () => {
 	const sorted = sortInstances(state.instances, 'played');
 	const [first, ...others] = sorted;
@@ -940,6 +987,7 @@ PAGES.instance = async ({ id, tab = 'content' }) => {
 				</div>
 			</div>
 			<button class="btn lg" data-action="ost-inst" data-id="${esc(inst.id)}" data-tip="Écouter la bande-son" data-tip-pos="bottom">${icon('music')}Bande-son</button>
+			${inst.type === 'rom' && instEngine(inst) === 'smash' ? `<button class="btn lg" data-action="remote-host" data-id="${esc(inst.id)}" data-tip="Inviter des amis à jouer à distance" data-tip-pos="bottom">${icon('wifi')}À distance</button>` : ''}
 			${playButton(inst, 'lg')}
 			<button class="btn icon-only lg" data-action="inst-menu" data-id="${esc(inst.id)}">${icon('ellipsis-vertical')}</button>
 		</div>
@@ -1832,6 +1880,13 @@ const ACTIONS = {
 		state.settings = await api('settings:set', { theme: el.dataset.v });
 		applyTheme(state.settings.theme);
 		render();
+	},
+	'remote-host': async (el) => {
+		try { await api('remote:host', el.dataset.id); toast('Le jeu démarre : le panneau d’invitation s’ouvre dans sa fenêtre (Ctrl+J)'); } catch (error) { toastError(error); }
+	},
+	'remote-join': async () => {
+		const code = ($('#remote-code') || {}).value || '';
+		await api('remote:join', code);
 	},
 	'set-decor': async (el) => { state.settings = await api('settings:set', { decor: el.dataset.v }); render(); },
 	'set-fontmode': async (el) => { state.settings = await api('settings:set', { fontMode: el.dataset.v }); render(); },

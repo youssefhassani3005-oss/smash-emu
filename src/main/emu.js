@@ -16,6 +16,10 @@ const CORES_DIR = path.join(MODULES, '@emulatorjs');
 const systems = require('./systems');
 const SLOTS = 8;
 
+// Instances à lancer en mode « jeu à distance » (le panneau d'invitation s'ouvre au démarrage).
+const remoteHosts = new Set();
+const markRemoteHost = id => remoteHosts.add(id);
+
 const romTokens = new Map();   // jeton -> chemin de la ROM servie à une fenêtre de jeu
 const sessions = new Map();    // id webContents -> { id, token, win, ready }
 
@@ -187,7 +191,7 @@ const openEmu = (id, plan) => {
 			backgroundThrottling: false,
 		},
 	});
-	const session = { id, token, biosToken, win, ready: false, name: plan.name, plan, startedAt: Date.now() };
+	const session = { id, token, biosToken, win, ready: false, name: plan.name, plan, startedAt: Date.now(), remoteHost: remoteHosts.delete(id) };
 	const wcId = win.webContents.id;
 	sessions.set(wcId, session);
 
@@ -237,6 +241,8 @@ const HANDLERS = {
 			theme: store.themeFor(inst, s.plan.system || 'n64'),
 			logo: settings.logo || 'classic',
 			fontMode: settings.fontMode || 'titles',
+			playerName: settings.playerName || 'Hôte',
+			remoteHost: !!s.remoteHost,
 			volume: typeof inst.options.emuVolume === 'number' ? inst.options.emuVolume : settings.emuVolume,
 			slots: listStates(s.id),
 			activeSlot: inst.options.emuSlot || 1,
@@ -435,7 +441,8 @@ const HANDLERS = {
 const handleDownloads = () => {
 	electronSession.defaultSession.on('will-download', (_e, item, wc) => {
 		const s = wc && sessions.get(wc.id);
-		if (!s) return;
+		// Fichiers d'invitation : boîte de dialogue « Enregistrer sous » habituelle.
+		if (!s || /\.smashinvite$/i.test(item.getFilename())) return;
 		const ext = (path.extname(item.getFilename()).slice(1) || 'webm').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'webm';
 		const file = mediaFile(s, 'videos', ext);
 		item.setSavePath(file);
@@ -458,4 +465,4 @@ const registerIpc = () => {
 	}
 };
 
-module.exports = { registerScheme, handleProtocol, registerIpc, openEmu, listStates, saveCtx };
+module.exports = { registerScheme, handleProtocol, registerIpc, openEmu, listStates, saveCtx, markRemoteHost };

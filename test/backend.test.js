@@ -347,3 +347,26 @@ test('manettes : profil par jeu fusionné avec celui de la console', () => {
 	assert.equal(controls.cleanProfile({ turboHz: 999, pad: { 1: '<script>' } }).turboHz, 30);
 	assert.equal(controls.cleanProfile({ pad: { 1: '<script>' } }).pad[1], undefined);
 });
+
+test('jeu à distance : codes d’invitation et commandes de manette', async () => {
+	const R = require('../src/emu/remote-common');
+	const sdp = 'v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\n'.repeat(40);
+	const code = await R.encode('offer', { sdp, game: 'Super Mario 64', host: 'Youssef', slot: 2, expires: Date.now() + 60000 });
+	assert.match(code, /^SMASH-INV-[A-Za-z0-9_-]+$/);
+	assert.ok(code.length < sdp.length, 'le code est compressé');
+	const back = await R.decode(`  ${code}\n`, 'offer');
+	assert.equal(back.sdp, sdp);
+	assert.equal(back.game, 'Super Mario 64');
+	await assert.rejects(R.decode(code, 'answer'), /invitation/);
+	await assert.rejects(R.decode('bonjour', 'offer'), /invalide/);
+	await assert.rejects(R.decode(code.slice(0, 40), 'offer'), /incomplet|invalide/);
+	const old = await R.encode('offer', { sdp, expires: Date.now() - 1 });
+	await assert.rejects(R.decode(old, 'offer'), /expirée/);
+	// Manette : A (bouton 0) pressé, stick gauche à droite.
+	const st = { b: 1, a: [0.8, 0, 0, 0] };
+	assert.equal(R.valueFor(8, 'BUTTON_1', st), 1);
+	assert.equal(R.valueFor(0, 'BUTTON_2', st), 0);
+	assert.equal(R.valueFor(16, 'LEFT_STICK_X:+1', st), Math.round(0x7fff * 0.8));
+	assert.equal(R.valueFor(17, 'LEFT_STICK_X:-1', st), 0);
+	assert.equal(R.valueFor(7, 'LEFT_STICK_X:+1', st), 1, 'un stick peut piloter un bouton de direction');
+});

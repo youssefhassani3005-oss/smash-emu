@@ -30,6 +30,7 @@
 			<div class="volume"><button class="tb" data-action="mute" id="btn-mute" data-tip="Couper le son"></button><input type="range" min="0" max="100" id="volume"></div>
 		</div>
 		<div class="bar-right">
+			<button class="tb rp-btn" data-action="remote" data-tip="Jouer à distance avec des amis (Ctrl+J)"><span data-icon="wifi"></span><span class="rp-badge hidden" id="remote-badge"></span></button>
 			<button class="tb smash-btn" data-action="features" data-tip="66 fonctions (F2)"><span data-icon="sparkles"></span>66</button>
 			<button class="tb" data-action="help" data-tip="Raccourcis (F1)"><span data-icon="info"></span></button>
 			<button class="wc" data-action="minimize"><span data-icon="minus"></span></button>
@@ -95,6 +96,7 @@
 					<p><kbd>Ctrl</kbd>+<kbd>M</kbd> Enregistrer une macro</p>
 					<p><kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>4</kbd> Rejouer une macro</p>
 					<p><kbd>Ctrl</kbd>+<kbd>B</kbd> Bot apprenti</p>
+					<p><kbd>Ctrl</kbd>+<kbd>J</kbd> Jouer à distance</p>
 				</div>
 				<div id="pad-help"></div>
 			</div>
@@ -116,5 +118,7 @@
 	<script src="stats.js"></script>
 	<script src="inputs.js"></script>
 	<script src="bot.js"></script>
+	<script src="remote-common.js"></script>
+	<script src="remote-host.js"></script>
 </body>
 </html>

@@ -1226,6 +1226,17 @@ html[data-icons="tech"] .card { border-radius: 0; clip-path: polygon(0 0, calc(1
 html[data-icons="tech"] .btn { border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
 html[data-icons="tech"] .nav-btn.active { box-shadow: inset 3px 0 0 var(--brand-2), inset 0 0 0 1px rgba(var(--brand-rgb), 0.4); }
 
+/* ---------- Jeu à distance ---------- */
+
+.remote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.remote-grid h3, .remote-steps + .remote-status { display: flex; align-items: center; gap: 8px; }
+.remote-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.remote-steps div { display: flex; gap: 10px; align-items: flex-start; background: var(--raised-2); border-radius: 12px; padding: 12px; }
+.remote-steps b { width: 28px; height: 28px; border-radius: 50%; background: var(--brand); color: var(--on-brand); display: grid; place-items: center; flex-shrink: 0; }
+.remote-status { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+.remote-status td { padding: 6px 4px; border-top: 1px solid var(--divider); }
+.remote-status td:last-child { text-align: right; white-space: nowrap; }
+
 /* ---------- Page Manettes ---------- */
 
 .ctl-layout { display: grid; grid-template-columns: 190px 1fr; gap: 18px; align-items: start; }

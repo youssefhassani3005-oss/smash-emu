@@ -388,6 +388,7 @@ const FEATURES = [
 
 	// Outils
 	T('fps', 'Compteur FPS', 'Images par seconde réelles de l’émulation', { cat: 'Outils', icon: 'gauge' }),
+	A('Jouer à distance', 'Invite jusqu’à 3 amis : ils voient le jeu et jouent avec leur manette', () => window.smashRemoteHost && window.smashRemoteHost.toggle(true), { cat: 'Fun', icon: 'wifi', keyHint: 'Ctrl+J' }),
 	A('Bot apprenti', 'Joue tout seul et apprend quelles actions font découvrir de nouveaux écrans', () => window.smashBot && window.smashBot.toggle(), { cat: 'Fun', icon: 'sparkles', keyHint: 'Ctrl+B', active: () => !!(window.smashBot && window.smashBot.on) }),
 	A('Enregistrer une macro', 'Enregistre tes touches, rejoue-les avec Ctrl+1 à 4', () => window.smashInputs.toggleMacroRecording(), { cat: 'Outils', icon: 'keyboard', keyHint: 'Ctrl+M', active: () => !!(window.smashInputs && window.smashInputs.recordingMacro) }),
 	A('Effacer les macros', 'Libère Ctrl+1 à Ctrl+4', () => window.smashInputs.clearMacros(), { cat: 'Outils', icon: 'x' }),
