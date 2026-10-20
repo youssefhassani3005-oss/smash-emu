@@ -221,9 +221,10 @@ const handlers = {
 	}),
 	'emulators:status': (refresh) => {
 		const st = emulators.status(!!refresh);
-		for (const id of emuinstall.available()) if (st[id]) st[id].installable = true;
+		for (const id of emuinstall.available()) if (st[id]) { st[id].installable = true; st[id].managed = emuinstall.installed(id); }
 		return st;
 	},
+	'emulators:checkUpdates': force => emuinstall.checkUpdates(!!force),
 	'emulators:install': async (id) => {
 		await emuinstall.install(id, p => send('emuinstall', { id, ...p }));
 		return emulators.status(true);

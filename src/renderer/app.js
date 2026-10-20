@@ -1734,8 +1734,8 @@ PAGES.settings = () => {
 						${s.savesSyncDir ? `<button class="btn" data-action="saves-cloud-off">${icon('x')}Désactiver</button>` : ''}</div>
 					<span class="hint">Smash Emu y range un miroir de chaque sauvegarde ; au lancement d’un jeu, la version la plus récente gagne et l’autre est gardée en copie de secours.</span></div>
 			</div>
-			<div class="card col"><div class="row"><h3 class="grow">Émulateurs externes</h3><button class="btn sm" data-action="emu-refresh">${icon('refresh-cw')}Rechercher à nouveau</button></div>
-				<div class="small muted">Pour les consoles sans cœur intégré (GameCube, Wii, PS2, PS3, 3DS, Wii U, Switch, Xbox), Smash Emu lance l’émulateur installé sur ton PC. Ils sont gratuits ; les BIOS, clés et firmwares viennent de tes propres consoles.</div>
+			<div class="card col"><div class="row"><h3 class="grow">Émulateurs externes</h3><button class="btn sm" data-action="emu-check-updates">${icon('cloud-download')}Vérifier les mises à jour</button><button class="btn sm" data-action="emu-refresh">${icon('refresh-cw')}Rechercher à nouveau</button></div>
+				<div class="small muted">Pour les consoles sans cœur intégré (GameCube, Wii, PS2, PS3, PS4, 3DS, Wii U, Switch, Xbox, Xbox 360), Smash Emu lance l’émulateur installé sur ton PC. « Installer » et « Mettre à jour » téléchargent la dernière version officielle (site ou GitHub du projet) dans le dossier de Smash Emu, en gardant tes réglages. Les BIOS, clés et firmwares viennent de tes propres consoles : Smash Emu n’en fournit jamais.</div>
 				<div class="field"><span class="label">Interface pendant le jeu</span>
 					<div class="chips">
 						<button class="chip ${(s.externalUi || 'smash') === 'smash' ? 'active' : ''}" data-action="set-extui" data-v="smash">${icon('flame')}Smash Emu</button>
@@ -1814,11 +1814,20 @@ const renderUpdate = () => {
 
 const installBtn = (id) => {
 	const p = (state.emuInstall || {})[id];
-	if (p && p.state && p.state !== 'done' && p.state !== 'error') {
+	if (p && ['resolving', 'downloading', 'extracting'].includes(p.state)) {
 		const label = { resolving: 'Recherche…', downloading: p.percent != null ? `Téléchargement ${p.percent} %` : 'Téléchargement…', extracting: 'Installation…' }[p.state] || '…';
 		return `<button class="btn sm primary" disabled>${icon('download')}${label}</button>`;
 	}
 	return `<button class="btn sm primary" data-action="emu-install" data-id="${id}">${icon('download')}Installer</button>`;
+};
+// Émulateur installé : « Mettre à jour » si une version plus récente existe, sinon « À jour » / « Vérifier ».
+const updateBtn = (id) => {
+	const p = (state.emuInstall || {})[id];
+	if (p && ['resolving', 'downloading', 'extracting'].includes(p.state)) return installBtn(id);
+	const u = (state.emuUpdates || {})[id];
+	if (u && u.update) return `<button class="btn sm primary" data-action="emu-install" data-id="${id}" data-update="1" data-tip="Version installée : ${esc(u.installed || '?')}">${icon('download')}Mettre à jour (${esc(u.latest)})</button>`;
+	if (u && !u.error) return `<span class="tag green" data-tip="Dernière version officielle">${icon('check')}À jour</span><button class="btn sm" data-action="emu-install" data-id="${id}" data-update="1" data-tip="Réinstaller la dernière version">${icon('refresh-cw')}</button>`;
+	return `<button class="btn sm" data-action="emu-install" data-id="${id}" data-update="1" data-tip="Télécharger la dernière version officielle (réglages gardés)">${icon('refresh-cw')}Mettre à jour</button>`;
 };
 
 const renderSwitchKeys = () => {
@@ -1845,11 +1854,11 @@ const renderEmuList = () => {
 			<div class="avatar">${icon('cpu')}</div>
 			<div class="grow">
 				<div class="row wrap" style="gap:8px"><span class="bold">${esc(e.label)}</span><span class="small muted">${e.systems.map(x => esc(sysInfo(x).label)).join(', ')}</span>
-					${cur.path ? `<span class="tag green">${icon('check')}Installé</span>` : '<span class="tag">Non trouvé</span>'}</div>
+					${cur.path ? `<span class="tag green">${icon('check')}Installé${cur.managed && cur.managed.version ? ` · ${esc(cur.managed.version)}` : ''}</span>` : '<span class="tag">Non trouvé</span>'}</div>
 				<div class="small muted ellipsis">${cur.path ? esc(cur.path) : esc(e.note || 'Installe-le puis clique sur « Rechercher à nouveau », ou indique son emplacement.')}</div>
 			</div>
 			<button class="btn sm" data-action="emu-browse" data-id="${id}">${icon('folder-open')}Parcourir</button>
-			${cur.path ? '' : (cur.installable ? installBtn(id) : '')}
+			${cur.installable ? (cur.path ? updateBtn(id) : installBtn(id)) : ''}
 			${cur.path ? '' : `<button class="btn sm ${cur.installable ? '' : 'primary'}" data-action="external" data-url="${esc(e.site)}">${icon(cur.installable ? 'globe' : 'download')}${cur.installable ? 'Site' : 'Télécharger'}</button>`}
 		</div>${id === 'ryujinx' ? renderSwitchKeys() : ''}`;
 	}).join('');
@@ -2095,12 +2104,26 @@ const ACTIONS = {
 		$('#emu-list').innerHTML = renderEmuList();
 		try {
 			state.emulators = await api('emulators:install', id);
-			toast(`${esc(state.info.externals[id].label)} installé : tu peux importer tes clés ci-dessous`);
+			const v = state.emulators[id] && state.emulators[id].managed && state.emulators[id].managed.version;
+			if (state.emuUpdates && state.emuUpdates[id]) state.emuUpdates[id] = { installed: v, latest: v, update: false };
+			toast(`${esc(state.info.externals[id].label)} ${el.dataset.update ? 'mis à jour' : 'installé'}${v ? ` (${esc(v)})` : ''}${id === 'ryujinx' && !el.dataset.update ? ' : tu peux importer tes clés ci-dessous' : ''}`);
 		} catch (error) { toastError(error); }
 		state.emuInstall[id] = { state: 'idle' };
 		const box = $('#emu-list');
 		if (box) box.innerHTML = renderEmuList();
 		state.switchKeys = await api('switch:status').catch(() => state.switchKeys);
+		if (box) box.innerHTML = renderEmuList();
+	},
+	'emu-check-updates': async (el) => {
+		el.disabled = true;
+		try {
+			state.emuUpdates = await api('emulators:checkUpdates', true);
+			const n = Object.values(state.emuUpdates).filter(u => u.update).length;
+			const checked = Object.keys(state.emuUpdates).length;
+			toast(!checked ? 'Aucun émulateur installé par Smash Emu à vérifier.' : n ? `${n} mise${n > 1 ? 's' : ''} à jour disponible${n > 1 ? 's' : ''}` : 'Tous tes émulateurs sont à jour');
+		} catch (error) { toastError(error); }
+		el.disabled = false;
+		const box = $('#emu-list');
 		if (box) box.innerHTML = renderEmuList();
 	},
 	'saves-folder': el => api('saves:folder', el.dataset.id),

@@ -59,6 +59,7 @@ const EXTERNAL = {
 	ppsspp: { label: 'PPSSPP', systems: ['psp'], exe: ['PPSSPPWindows64.exe', 'PPSSPPWindows.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://www.ppsspp.org/download/' },
 	rpcs3: { label: 'RPCS3', systems: ['ps3'], exe: ['rpcs3.exe'], args: f => ['--no-gui', f], site: 'https://rpcs3.net/download', note: 'Nécessite le firmware PS3 officiel (téléchargeable chez Sony).' },
 	xemu: { label: 'xemu', systems: ['xbox'], exe: ['xemu.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-full-screen']), '-dvd_path', f], site: 'https://xemu.app/', note: 'Nécessite le BIOS et le disque dur de ta Xbox.' },
+	shadps4: { label: 'shadPS4', systems: ['ps4'], exe: ['shadPS4.exe', 'shadps4.exe'], args: f => ['-g', f], site: 'https://shadps4.net/', note: 'Choisis le eboot.bin d’un jeu PS4 copié depuis ta console (dossier CUSA…). Compatibilité encore limitée.' },
 	xenia: { label: 'Xenia', systems: ['x360'], exe: ['xenia_canary.exe', 'xenia.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen=true']), f], site: 'https://xenia.jp/download/' },
 };
 

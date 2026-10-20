@@ -23,6 +23,7 @@ const SYSTEMS = {
 	ps2: { label: 'PlayStation 2', maker: 'Sony', year: 2000, ext: [], external: ['pcsx2'] },
 	psp: { label: 'PSP', maker: 'Sony', year: 2004, ext: ['cso'], ejs: 'psp', core: 'ppsspp', threads: true, external: ['ppsspp'] },
 	ps3: { label: 'PlayStation 3', maker: 'Sony', year: 2006, ext: ['pkg'], external: ['rpcs3'] },
+	ps4: { label: 'PlayStation 4', maker: 'Sony', year: 2013, ext: [], external: ['shadps4'] },
 
 	sms: { label: 'Master System', maker: 'Sega', year: 1986, ext: ['sms'], ejs: 'segaMS', core: 'genesis_plus_gx' },
 	md: { label: 'Mega Drive', maker: 'Sega', year: 1988, ext: ['md', 'gen', 'smd', 'sg'], ejs: 'segaMD', core: 'genesis_plus_gx' },
@@ -107,6 +108,12 @@ const cueTracks = (cueFile) => {
  */
 const detect = (file) => {
 	const ext = path.extname(file).slice(1).toLowerCase();
+	// Jeux PS3 et PS4 en dossier : on choisit leur eboot.bin (PS3 : …/PS3_GAME/USRDIR/EBOOT.BIN ; PS4 : CUSA…/eboot.bin + sce_sys).
+	if (path.basename(file).toLowerCase() === 'eboot.bin') {
+		if (/[\\/]USRDIR[\\/]/i.test(file)) return { system: 'ps3', sure: true, candidates: ['ps3'] };
+		if (fs.existsSync(path.join(path.dirname(file), 'sce_sys'))) return { system: 'ps4', sure: true, candidates: ['ps4'] };
+		return { system: 'ps4', sure: false, candidates: ['ps4', 'ps3'] };
+	}
 	if (ext === 'cue') {
 		const first = cueTracks(file)[0];
 		const s = first && sniffDisc(first);

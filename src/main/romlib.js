@@ -140,7 +140,8 @@ const addFile = (file, { source = null, displayName = null, forceSystem = null }
 	const entry = {
 		id,
 		system,
-		name: prettyName(fileName),
+		// Jeu en dossier (eboot.bin) : nom du dossier du jeu.
+		name: /^eboot\.bin$/i.test(fileName) ? prettyName(path.basename(/[\\/]USRDIR[\\/]/i.test(file) ? path.resolve(file, '..', '..', '..') : path.dirname(file))) : prettyName(fileName),
 		originalName: fileName,
 		info: { ...info, size: st.size, region: (fileName.match(/\((USA|U|Europe|E|Japan|J|France|F|World)\)/i) || [])[1] || '', md5: id },
 		needsSystem: !det.sure && det.candidates.length > 1 ? det.candidates : null,

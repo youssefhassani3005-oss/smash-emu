@@ -439,3 +439,19 @@ test('présence Discord : trames RPC et identifiant d’application vérifié', 
 	assert.strictEqual(discord.status().activity.details, 'x ');
 	assert.strictEqual(discord.status().activity.buttons[0].label.length, 32);
 });
+
+test('émulateurs : comparaison des versions et jeux PS3/PS4 en dossier', () => {
+	const { newer } = require('../src/main/emuinstall');
+	assert.strictEqual(newer('v0.8.137', 'v0.8.100'), true);
+	assert.strictEqual(newer('v2.8.2', 'v2.8.2'), false);
+	assert.strictEqual(newer('v2.8.1', 'v2.8.2'), false);
+	assert.strictEqual(newer('0.0.43-20400', '0.0.43-20344'), true);
+	assert.strictEqual(newer('a1b2c3d', '02d2cb5'), true);
+	assert.strictEqual(newer('v.0.21.0', 'v.0.20.0'), true);
+	const systems = require('../src/main/systems');
+	const ps4 = path.join(HOME, 'CUSA00001', 'eboot.bin');
+	fs.mkdirSync(path.join(HOME, 'CUSA00001', 'sce_sys'), { recursive: true });
+	fs.writeFileSync(ps4, Buffer.alloc(16));
+	assert.strictEqual(systems.detect(ps4).system, 'ps4');
+	assert.strictEqual(systems.detect(path.join(HOME, 'Jeu', 'PS3_GAME', 'USRDIR', 'EBOOT.BIN')).system, 'ps3');
+});
