@@ -66,6 +66,20 @@ npm start
 
 Smash Emu ships no games: use ROMs dumped from your own cartridges.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) (once the application is approved).
+
+- Committers and reviewers: [youssefhassani3005-oss](https://github.com/youssefhassani3005-oss)
+- Approvers: [youssefhassani3005-oss](https://github.com/youssefhassani3005-oss)
+- Only installers built by GitHub Actions from this public repository (`.github/workflows/release.yml`) are signed.
+
+**Privacy policy:** at startup Smash Emu only reads public files from this GitHub repository (update check, `community.json`). It sends no personal data. Other network features (cover art, emulator downloads, remote play, Archipelago, Discord presence) only run when the user turns them on or uses them.
+
+## License
+
+GPL-3.0-or-later (see `LICENSE`).
+
 ## Known limits
 
 - The built-in emulator runs in the browser engine (WebAssembly): very demanding games may be smoother with Project64 (selectable per instance).
