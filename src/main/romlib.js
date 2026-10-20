@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { spawn, spawnSync } = require('child_process');
 const crypto = require('crypto');
 const AdmZip = require('adm-zip');
 const store = require('./store');
@@ -22,7 +23,7 @@ const extOf = n => path.extname(n).slice(1).toLowerCase();
 
 // « Legend of Zelda, The - Ocarina of Time (U) (V1.2) [!] » → « The Legend of Zelda - Ocarina of Time (V1.2) »
 const prettyName = (fileName) => {
-	let n = fileName.replace(/\.[^.]+$/, '').replace(/\[[^\]]*\]/g, '').replace(/\((?:U|USA|E|Europe|J|Japan|UE|JU|EU|En,Fr,De|Fr)\)/gi, '');
+	let n = fileName.replace(/\.[^.]+$/, '').replace(/\.nkit$/i, '').replace(/\[[^\]]*\]/g, '').replace(/\((?:U|USA|E|Europe|J|Japan|UE|JU|EU|En,Fr,De|Fr)\)/gi, '');
 	n = n.replace(/^(.+?), The\b/i, 'The $1').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
 	return n || fileName;
 };
@@ -206,8 +207,69 @@ const importZip = (zipFile, source) => {
 	return out;
 };
 
-// Importe un fichier (jeu, image disque ou zip). Renvoie les jeux ajoutés ou déjà présents.
+// ---------- Archives .7z et .rar (ouvertes par tar.exe, fourni avec Windows 10 et 11) ----------
+
+const ARCHIVE = /\.(7z|rar)$/i;
+const TAR = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+
+// Contenu : [{ entryName, size }] (lecture de l'en-tête seulement, rapide même pour un gros disque).
+const listArchive = (file) => {
+	if (!fs.existsSync(TAR)) return [];
+	const r = spawnSync(TAR, ['-tvf', file], { encoding: 'utf8', timeout: 20000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+	if (r.status !== 0) return [];
+	return r.stdout.split(/\r?\n/).filter(l => /^-/.test(l)).map((l) => {
+		const m = l.match(/^\S+\s+\d+\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\S+\s+\S+\s+(.+)$/);
+		return m ? { entryName: m[2], size: Number(m[1]), isDirectory: false, header: { size: Number(m[1]) } } : null;
+	}).filter(Boolean);
+};
+
+const archiveCache = new Map();
+const romsInArchiveStat = (file, st) => {
+	const cached = archiveCache.get(file);
+	if (cached && cached.mtime === st.mtimeMs) return cached.roms;
+	let roms = [];
+	try { roms = gameEntries(listArchive(file)).map(e => path.basename(e.entryName)); } catch { /* archive illisible */ }
+	archiveCache.set(file, { mtime: st.mtimeMs, roms });
+	return roms;
+};
+
+// Extraction dans roms\discs\<nom> (sans bloquer l'application), puis import des jeux trouvés.
+const importArchive = async (file, source) => {
+	if (!fs.existsSync(TAR)) throw new Error('Windows ne sait pas ouvrir les .7z et .rar sur ce PC : décompresse l’archive, puis importe le jeu.');
+	const entries = listArchive(file);
+	const games = gameEntries(entries);
+	if (!games.length) throw new Error(`« ${path.basename(file)} » ne contient aucun jeu reconnu.`);
+	const dir = path.join(store.ROMS_DIR, 'discs', path.basename(file).replace(ARCHIVE, '').replace(/[<>:"/\\|?*]/g, '_'));
+	for (const e of entries) {
+		const dest = path.resolve(dir, e.entryName);
+		if (!dest.startsWith(path.resolve(dir) + path.sep)) throw new Error('Archive invalide (chemin suspect).');
+	}
+	fs.mkdirSync(dir, { recursive: true });
+	await new Promise((resolve, reject) => {
+		const p = spawn(TAR, ['-xf', file, '-C', dir], { windowsHide: true });
+		let err = '';
+		p.stderr.on('data', (d) => { err += d; });
+		p.on('error', reject);
+		p.on('close', code => (code === 0 ? resolve() : reject(new Error(`Extraction impossible : ${err.trim().slice(0, 200) || `code ${code}`}`))));
+	});
+	const out = [];
+	const discs = games.filter(e => !/\.(z64|v64|n64|nes|sfc|smc|gb|gbc|gba|nds|sms|md|gen|gg|pce|a26|a78|lnx|vb|32x|j64)$/i.test(e.entryName));
+	for (const e of games.filter(g => !discs.includes(g))) {
+		const r = addFile(path.join(dir, e.entryName), { source, displayName: path.basename(e.entryName) });
+		if (r) out.push(r);
+	}
+	if (discs.length) {
+		const main = MAIN_DISC.map(x => discs.find(e => extOf(e.entryName) === x)).find(Boolean) || discs[0];
+		const r = addFile(path.join(dir, main.entryName), { source });
+		if (r) out.push(r);
+	} else fs.rmSync(dir, { recursive: true, force: true }); // cartouches copiées dans la bibliothèque
+	if (!out.length) throw new Error(`« ${path.basename(file)} » ne contient aucun jeu reconnu.`);
+	return out;
+};
+
+// Importe un fichier (jeu, image disque, zip, 7z ou rar). Renvoie les jeux ajoutés ou déjà présents.
 const importFile = (file) => {
+	if (ARCHIVE.test(file)) return importArchive(file, file);
 	if (/\.zip$/i.test(file)) {
 		if (fs.statSync(file).size > MAX_ZIP) throw new Error('Archive trop volumineuse : décompresse-la d’abord, puis importe le jeu.');
 		return importZip(file, file);
@@ -310,12 +372,13 @@ const scan = (dirs) => {
 			if (seen.has(file.toLowerCase()) || known.has(file)) continue;
 			seen.add(file.toLowerCase());
 			const isZip = /\.zip$/i.test(name);
+			const isArchive = ARCHIVE.test(name);
 			let st;
 			try { st = fs.statSync(file); } catch { continue; }
 			if (!st.isFile()) continue;
-			const roms = isZip ? romsInZipStat(file, st) : (looksLikeGame(file) ? [name] : []);
+			const roms = isZip ? romsInZipStat(file, st) : isArchive ? romsInArchiveStat(file, st) : (looksLikeGame(file) ? [name] : []);
 			if (roms.length && !roms.every(r => knownNames.has(r.toLowerCase()))) {
-				found.push({ path: file, name, size: st.size, mtime: st.mtimeMs, roms, system: isZip ? null : systems.detect(file).system });
+				found.push({ path: file, name, size: st.size, mtime: st.mtimeMs, roms, system: isZip || isArchive ? null : systems.detect(file).system });
 			}
 		}
 	}
@@ -327,11 +390,15 @@ const alreadyImported = (file) => {
 	const index = readIndex();
 	if (index.some(r => (r.sources || []).includes(file) || r.linked === file)) return true;
 	const names = new Set(index.map(r => (r.originalName || '').toLowerCase()));
-	const roms = /\.zip$/i.test(file) ? romsInZip(file) : [path.basename(file)];
+	const roms = /\.zip$/i.test(file) ? romsInZip(file) : ARCHIVE.test(file) ? (() => { try { return romsInArchiveStat(file, fs.statSync(file)); } catch { return []; } })() : [path.basename(file)];
 	return roms.length > 0 && roms.every(r => names.has(r.toLowerCase()));
 };
 
-const isGameFile = file => (/\.zip$/i.test(file) ? romsInZip(file).length > 0 : looksLikeGame(file));
+const isGameFile = (file) => {
+	if (/\.zip$/i.test(file)) return romsInZip(file).length > 0;
+	if (ARCHIVE.test(file)) { try { return romsInArchiveStat(file, fs.statSync(file)).length > 0; } catch { return false; } }
+	return looksLikeGame(file);
+};
 
 const defaultScanDirs = () => [path.join(os.homedir(), 'Downloads'), path.join(os.homedir(), 'Downloads', 'ROMs N64'), path.join(os.homedir(), 'Desktop')];
 

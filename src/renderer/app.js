@@ -292,7 +292,7 @@ const romChoices = type => state.roms.filter(r => type !== 'coopdx' || r.info.is
 
 // Importe des ROM (fichiers ou zips) dans la bibliothèque ; renvoie les ROM ajoutées.
 const importRomsDialog = async () => {
-	const files = await api('dialog:open', { multi: true, filters: [{ name: 'Jeux (toutes consoles) ou archive', extensions: [...state.info.extensions, 'zip'] }] });
+	const files = await api('dialog:open', { multi: true, filters: [{ name: 'Jeux (toutes consoles) ou archive', extensions: [...state.info.extensions, 'zip', '7z', 'rar'] }] });
 	if (!files) return [];
 	return importRomFiles(files);
 };
@@ -2032,7 +2032,7 @@ const ACTIONS = {
 	},
 	'pick-rom': async () => {
 		const id = state.route.params.id;
-		const p = await api('dialog:open', { filters: [{ name: 'Jeu ou archive', extensions: [...state.info.extensions, 'zip'] }] });
+		const p = await api('dialog:open', { filters: [{ name: 'Jeu ou archive', extensions: [...state.info.extensions, 'zip', '7z', 'rar'] }] });
 		if (!p) return;
 		try {
 			const updated = await api('instance:setRom', id, p);

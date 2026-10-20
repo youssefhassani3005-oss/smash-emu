@@ -134,9 +134,9 @@ const attachLibraryRom = (instId, romId) => {
 	return games.setGame(instId, romlib.get(romId));
 };
 
-const setRomFromFile = (instId, file) => {
+const setRomFromFile = async (instId, file) => {
 	const inst = store.getInstance(instId);
-	const entry = pickRomFor(inst.type, romlib.importFile(file));
+	const entry = pickRomFor(inst.type, await romlib.importFile(file));
 	return attachLibraryRom(instId, entry.id);
 };
 
@@ -268,13 +268,13 @@ const handlers = {
 		const inst = store.createInstance({ name, type, group });
 		if (iconPath) setIcon(inst.id, iconPath);
 		if (romId) attachLibraryRom(inst.id, romId);
-		else if (romPath) setRomFromFile(inst.id, romPath);
+		else if (romPath) await setRomFromFile(inst.id, romPath);
 		else if (type === 'coopdx') games.adoptExistingBaserom(inst.id);
 		return summarize(store.getInstance(inst.id));
 	},
 	'instance:update': (id, patch) => summarize(store.updateInstance(id, patch)),
 	'instance:setIcon': (id, source) => { setIcon(id, source); return summarize(store.getInstance(id)); },
-	'instance:setRom': (id, file) => summarize(setRomFromFile(id, file)),
+	'instance:setRom': async (id, file) => summarize(await setRomFromFile(id, file)),
 	'instance:setLibraryRom': (id, romId) => summarize(attachLibraryRom(id, romId)),
 	'instance:romInfo': (file) => rom.romInfo(fs.readFileSync(file)),
 	'instance:delete': (id) => { if (runner.isRunning(id)) throw new Error('Arrête le jeu avant de supprimer l\'instance.'); store.deleteInstance(id); },
@@ -434,11 +434,11 @@ const handlers = {
 	'controls:extension': (value) => { controls.setExtension(value); return controls.currentExtension(); },
 	'soundtrack:search': (name, consoleLabel) => soundtrack.search(name, consoleLabel),
 	'roms:list': () => romsWithUsage(),
-	'roms:import': (files) => {
+	'roms:import': async (files) => {
 		const added = [];
 		const errors = [];
 		for (const f of files) {
-			try { added.push(...romlib.importFile(f)); } catch (error) { errors.push(error.message); }
+			try { added.push(...(await romlib.importFile(f))); } catch (error) { errors.push(error.message); }
 		}
 		return { added, errors };
 	},

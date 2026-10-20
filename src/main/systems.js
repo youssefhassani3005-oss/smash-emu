@@ -68,7 +68,12 @@ const sniffDisc = (file) => {
 			if (head.readUInt32BE(0x1c) === 0xc2339f3d) return { system: 'gc', sure: true };
 			if (head.readUInt32BE(0x18) === 0x5d1c9ea3) return { system: 'wii', sure: true };
 			if (ascii(head.subarray(0, 4)) === 'WBFS') return { system: 'wii', sure: true };
-			if (/^RVZ|^WIA/.test(ascii(head.subarray(0, 3)))) return { system: 'gc', sure: false };
+			// RVZ / WIA : le type de disque suit l'en-tête (1 = GameCube, 2 = Wii).
+			if (/^RVZ|^WIA/.test(ascii(head.subarray(0, 3)))) {
+				const type = readAt(fd, 0x48, 4);
+				const t = type.length === 4 ? type.readUInt32BE(0) : 0;
+				return t === 2 ? { system: 'wii', sure: true } : t === 1 ? { system: 'gc', sure: true } : { system: 'gc', sure: false };
+			}
 			const h = ascii(head);
 			if (h.includes('SEGA SEGASATURN')) return { system: 'saturn', sure: true };
 			if (h.includes('SEGADISCSYSTEM')) return { system: 'segacd', sure: true };
@@ -123,6 +128,11 @@ const detect = (file) => {
 		const s = sniffDisc(file);
 		if (s) return { ...s, candidates: [s.system] };
 		return { system: ext === 'chd' ? 'psx' : null, sure: false, candidates: ['psx', 'ps2', 'psp', 'gc', 'wii', 'saturn', 'segacd', '3do', 'xbox', 'x360'] };
+	}
+	// Images GameCube / Wii compressées : l'en-tête dit laquelle des deux consoles.
+	if (['rvz', 'wia', 'gcm', 'wbfs'].includes(ext)) {
+		const s = sniffDisc(file);
+		if (s && s.sure) return { ...s, candidates: [s.system] };
 	}
 	const list = byExt(ext);
 	if (list.length) return { system: list[0], sure: list.length === 1, candidates: list };
