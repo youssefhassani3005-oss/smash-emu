@@ -455,3 +455,22 @@ test('émulateurs : comparaison des versions et jeux PS3/PS4 en dossier', () => 
 	assert.strictEqual(systems.detect(ps4).system, 'ps4');
 	assert.strictEqual(systems.detect(path.join(HOME, 'Jeu', 'PS3_GAME', 'USRDIR', 'EBOOT.BIN')).system, 'ps3');
 });
+test('tableau de bord : historique des parties réparti par jour et par heure', () => {
+	const stats = require('../src/main/stats');
+	const days = {};
+	const hours = Array(24).fill(0);
+	const s = new Date(2026, 0, 1, 23, 30).getTime();
+	stats.spread(s, s + 3600000, (k, ms) => { days[k] = (days[k] || 0) + ms; }, (h, wd, ms) => { hours[h] += ms; });
+	assert.deepStrictEqual(Object.keys(days), ['2026-01-01', '2026-01-02']);
+	assert.strictEqual(days['2026-01-01'], 1800000);
+	assert.strictEqual(hours[23], 1800000);
+	assert.strictEqual(hours[0], 1800000);
+});
+
+test('mode supporter : code signé vérifié, code modifié refusé', () => {
+	const supporter = require('../src/main/supporter');
+	assert.throws(() => supporter.verify('SMASH-SUP-abc.def'), /signé|abîmé|invalide/);
+	assert.throws(() => supporter.verify('pas un code'), /invalide/);
+	assert.strictEqual(supporter.isAdmin(), false);
+	assert.throws(() => supporter.generate('x'), /administrateur/);
+});

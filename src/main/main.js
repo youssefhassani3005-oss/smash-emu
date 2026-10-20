@@ -23,6 +23,8 @@ const covers = require('./covers');
 const trophies = require('./trophies');
 const themefiles = require('./themefiles');
 const discord = require('./discord');
+const stats = require('./stats');
+const supporter = require('./supporter');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -80,7 +82,7 @@ const announceTrophies = (fresh) => {
 		if (w) w.webContents.send('emu:trophy', t);
 	}
 };
-runner.setFinishHook((id, startedAt) => { trophies.noteSession(startedAt); announceTrophies(trophies.evaluate(runner.status())); });
+runner.setFinishHook((id, startedAt) => { try { stats.record(id, startedAt); } catch { /* historique */ } trophies.noteSession(startedAt); announceTrophies(trophies.evaluate(runner.status())); });
 setInterval(() => { const st = runner.status(); if (st.length) announceTrophies(trophies.evaluate(st)); }, 60000);
 runner.setExternalOpener(external.openExternalHost);
 
@@ -318,6 +320,13 @@ const handlers = {
 	},
 	'themes:cleanup': () => themefiles.cleanup(store.getSettings().customThemes || []),
 	'discord:status': () => discord.status(),
+	// Tableau de bord et mode supporter.
+	'dashboard:get': () => stats.dashboard({ running: runner.status(), emulators: emulators.status(), roms: romlib.list() }),
+	'supporter:status': () => supporter.status(),
+	'supporter:activate': code => supporter.activate(code),
+	'supporter:deactivate': () => supporter.deactivate(),
+	'supporter:generate': (name, tier) => supporter.generate(name, tier),
+	'supporter:issued': () => (supporter.isAdmin() ? supporter.issued() : []),
 	'trophies:list': () => { trophies.evaluate(runner.status()); return trophies.list(runner.status()); },
 	// Jaquettes et images (libretro-thumbnails ou fichiers de l'utilisateur).
 	'covers:search': async (id) => {

@@ -181,7 +181,18 @@
 		const parts = desc.split(' · ');
 		return { id, label, game: label, console: parts.length > 1 ? parts[0] : '', tagline: parts.length > 1 ? parts.slice(1).join(' · ') : desc, bg, accent, accent2, font, icons, particles, scene, keywords, light: !!light };
 	});
-	const byId = Object.fromEntries(THEMES.map(t => [t.id, t]));
+	// Thèmes exclusifs du mode supporter : créations originales (aucun personnage ni logo de jeu).
+	const SUPPORTER = [
+		['sup-aurora', 'Aurore boréale', 'Supporter · Voiles de lumière sur la toundra.', '#06121d', '#4dffc3', '#b48cff', 'Orbitron', 'neon', 'stars',
+			[['mountain', 60, 92, 1.1], ['mountain', 150, 96, 0.8], ['moon', 165, 24, 0.35], ['star', 40, 22, 0.18], ['star', 110, 16, 0.14]]],
+		['sup-royal', 'Velours royal', 'Supporter · Or, gemmes et couronne.', '#170a1c', '#ffcc4d', '#c94dff', 'Cinzel', 'ornate', 'sparks',
+			[['crown', 100, 50, 0.7], ['gem', 40, 70, 0.35, -10], ['gem', 160, 70, 0.35, 10], ['star', 30, 22, 0.16], ['star', 172, 20, 0.16]]],
+		['sup-sakura', 'Sakura de nuit', 'Supporter · Pétales sous la lune.', '#1a0e16', '#ff8fc7', '#ffe1f0', 'Fredoka', 'bubble', 'petals',
+			[['moon', 150, 30, 0.45], ['flower', 50, 70, 0.5, -12], ['flower', 95, 82, 0.32, 18], ['heart', 175, 80, 0.25]]],
+		['sup-synth', 'Synthwave', 'Supporter · Soleil rétro et grille néon.', '#10041d', '#ff3df2', '#3dd9ff', 'Audiowide', 'neon', 'warp',
+			[['sun', 100, 58, 0.8], ['wave', 100, 92, 1.4], ['note', 34, 30, 0.3, -10], ['bolt', 170, 32, 0.3, 12]]],
+	].map(([id, label, desc, bg, accent, accent2, font, icons, particles, scene]) => ({ id, label, game: label, console: 'Supporter', tagline: desc.split(' · ')[1], bg, accent, accent2, font, icons, particles, scene, keywords: '', light: false, supporter: true }));
+	const byId = Object.fromEntries([...THEMES, ...SUPPORTER].map(t => [t.id, t]));
 
 	// Anciens identifiants (première version à 105 thèmes) → thème le plus proche.
 	const ALIASES = {
@@ -220,7 +231,7 @@
 	};
 
 	const baseCss = () => Object.entries(BASE_FONTS).map(([id, f]) => `${id === 'smash' ? ':root, ' : ''}:root[data-theme="${id}"] {--font-display:${fontStack(f)};}`).join('\n');
-	const css = () => `${baseCss()}\n${THEMES.map(t => `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([k, v]) => `${k}:${v};`).join('')}}`).join('\n')}`;
+	const css = () => `${baseCss()}\n${[...THEMES, ...SUPPORTER].map(t => `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([k, v]) => `${k}:${v};`).join('')}}`).join('\n')}`;
 
 	// ---------- Illustration ----------
 
@@ -354,7 +365,7 @@
 	};
 
 	const api = {
-		THEMES, CUSTOM, FONTS, ICON_STYLES, setImageUrl, PARTICLE_TYPES: Object.keys(PARTICLES), register, unregister, normalize, exportCode, importCode,
+		THEMES, SUPPORTER, CUSTOM, FONTS, ICON_STYLES, setImageUrl, PARTICLE_TYPES: Object.keys(PARTICLES), register, unregister, normalize, exportCode, importCode,
 		css, match, vars, scene, emblem, decor, resolve, BASE_FONTS, MOTIFS: Object.keys(M),
 		get: id => byId[resolve(id)] || null,
 		fontOf: id => (byId[resolve(id)] ? byId[resolve(id)].font : BASE_FONTS[id] || 'Inter'),

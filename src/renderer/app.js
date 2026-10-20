@@ -126,6 +126,7 @@ const instIcon = (inst, cls = '') => {
 const refreshInstances = async () => { state.instances = await api('instances:list'); };
 const refreshAll = async () => {
 	[state.info, state.settings, state.meta, state.running] = await Promise.all([api('app:info'), api('settings:get'), api('catalog:meta'), api('run:status')]);
+	state.supporter = await api('supporter:status').catch(() => null);
 	syncCustomThemes();
 	applyTheme(state.settings.theme);
 	applyLogo(state.settings.logo);
@@ -200,6 +201,7 @@ const renderNav = () => {
 		${navBtn('controls', 'gamepad-2', 'Manettes')}
 		${navBtn('remote', 'wifi', 'À distance')}
 		${navBtn('trophies', 'trophy', 'Trophées')}
+		${navBtn('dashboard', 'gauge', 'Tableau de bord')}
 		<div class="nav-group">Mods</div>
 		${navBtn('discover', 'compass', 'Découvrir')}
 		${navBtn('opera', 'globe', 'Recherche Opera')}
@@ -927,7 +929,7 @@ PAGES.home = () => {
 	const sorted = sortInstances(state.instances, 'played');
 	const [first, ...others] = sorted;
 	setMain(`
-		${first ? `${heroCard(first)}${homeStats()}
+		${first ? `${heroCard(first)}${homeStats()}<div id="for-you"></div>
 		${others.length ? `<div class="section-title mt"><h2>Reprendre</h2><button class="toggle" data-action="toggle-jump">${icon(state.ui.jumpOpen ? 'chevron-up' : 'chevron-down')}</button></div>
 		<div class="${state.ui.jumpOpen ? '' : 'hidden'}">${others.slice(0, 4).map(jumpRow).join('')}</div>` : ''}` : `
 		<div class="welcome">
@@ -944,6 +946,7 @@ PAGES.home = () => {
 			if (state.route.name === 'home' && $('#popular')) $('.side').innerHTML = homeSide();
 		}).catch(() => { if ($('#popular')) $('#popular').innerHTML = '<div class="small muted">Catalogue hors ligne.</div>'; });
 	}
+	if (typeof fillForYou === 'function') fillForYou();
 };
 
 PAGES.library = () => {
@@ -1703,6 +1706,13 @@ PAGES.settings = () => {
 							<div class="row" style="gap:4px;margin-top:6px;flex-wrap:wrap"><button class="btn sm" data-action="set-theme" data-v="${t.id}">Utiliser</button><button class="btn sm" data-action="theme-edit" data-id="${t.id}">Modifier</button><button class="btn sm" data-action="theme-share" data-id="${t.id}" data-tip="${t.image || t.sticker ? 'Code à partager (sans les images)' : 'Copier le code à partager'}">${icon('copy')}</button><button class="btn sm" data-action="theme-export" data-id="${t.id}" data-tip="Exporter en fichier .smashtheme, images comprises">${icon('download')}</button><button class="icon-btn" data-action="theme-delete" data-id="${t.id}">${icon('trash-2')}</button></div>
 						</div>`).join('')}
 					</div>
+					<div class="theme-group">${icon('crown')}Thèmes supporters · ${SmashThemes.SUPPORTER.length}${state.supporter && state.supporter.active ? '' : ' · <a data-action="nav" data-to="dashboard">débloquer avec un code</a>'}</div>
+					<div class="theme-grid games">${SmashThemes.SUPPORTER.map(t => `
+						<div class="theme-card game ${(s.theme || 'smash') === t.id ? 'active' : ''} ${state.supporter && state.supporter.active ? '' : 'locked'}" style="--card-bg:${t.bg};--card-accent:${t.accent}" data-action="set-theme" data-v="${t.id}">
+							<div class="theme-art">${SmashThemes.scene(t.id)}<span class="theme-console">${state.supporter && state.supporter.active ? 'Supporter' : `${icon('lock')}Supporter`}</span></div>
+							<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div>
+							<div class="theme-meta">${esc(t.tagline)}</div>
+						</div>`).join('')}</div>
 					<div class="theme-group">Thèmes des jeux · ${SmashThemes.THEMES.length}</div>
 					<div class="theme-grid games">${SmashThemes.THEMES.map(t => `
 						<button class="theme-card game ${SmashThemes.resolve(s.theme || 'smash') === t.id ? 'active' : ''}" data-action="set-theme" data-v="${t.id}" style="--card-bg:${t.bg};--card-accent:${t.accent}">
@@ -2173,6 +2183,7 @@ const ACTIONS = {
 		$('#emu-list').innerHTML = renderEmuList();
 	},
 	'set-theme': async (el) => {
+		if (String(el.dataset.v).startsWith('sup-') && !(state.supporter && state.supporter.active)) { toast('Thème réservé aux supporters : active un code dans le Tableau de bord.', { type: 'error' }); return; }
 		state.settings = await api('settings:set', { theme: el.dataset.v });
 		applyTheme(state.settings.theme);
 		render();
