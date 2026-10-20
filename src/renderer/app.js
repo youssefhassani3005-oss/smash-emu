@@ -536,7 +536,7 @@ const jumpRow = (i) => `
 
 const instCard = i => `
 	<div class="inst-card" data-action="open-instance" data-id="${esc(i.id)}">
-		<div class="cover">${i.iconData ? `<img src="${i.iconData}" alt="">` : `<span class="letter" style="color:${colorForName(i.name)}">${esc(i.name[0].toUpperCase())}</span>`}</div>
+		<div class="cover ${i.coverFile ? 'boxart' : ''}">${i.coverFile ? `<img src="${fileUrl(i.coverFile)}?v=${i.coverAt || 0}" alt="">` : i.iconData ? `<img src="${i.iconData}" alt="">` : `<span class="letter" style="color:${colorForName(i.name)}">${esc(i.name[0].toUpperCase())}</span>`}</div>
 		<button class="play-fab ${isRunning(i.id) ? 'running' : ''}" data-action="${isRunning(i.id) ? 'stop' : 'play'}" data-id="${esc(i.id)}" data-tip="${isRunning(i.id) ? 'Arrêter' : 'Jouer'}">${icon(isRunning(i.id) ? 'square' : 'play')}</button>
 		<div class="name ellipsis">${esc(i.name)}</div>
 		<div class="sub">${esc(instKind(i))}${i.group ? ` · ${esc(i.group)}` : ''}</div>
@@ -607,7 +607,7 @@ const heroCard = (i) => {
 	const engine = i.type === 'rom' ? instEngine(i) : null;
 	return `
 	<div class="hero" data-action="open-instance" data-id="${esc(i.id)}">
-		<div class="hero-bg">${i.iconData ? `<img src="${i.iconData}" alt="">` : ''}</div>
+		<div class="hero-bg">${i.coverFile ? `<img src="${fileUrl(i.coverFile)}?v=${i.coverAt || 0}" alt="">` : i.iconData ? `<img src="${i.iconData}" alt="">` : ''}</div>
 		<div class="hero-body">
 			${instIcon(i, 'xl')}
 			<div class="grow">
