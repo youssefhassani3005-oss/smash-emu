@@ -249,6 +249,7 @@ const playButton = (inst, cls = '') => isRunning(inst.id)
 const instanceMenu = (anchor, inst) => menu(anchor, [
 	isRunning(inst.id) ? { icon: 'square', label: 'Arrêter', run: () => stopInstance(inst.id) } : { icon: 'play', label: 'Jouer', run: () => launchInstance(inst.id) },
 	{ icon: 'music', label: 'Bande-son', run: () => openSoundtrack(instGameName(inst), sysOf(inst)) },
+	...(['wii', 'gc'].includes(sysOf(inst)) ? [{ icon: 'users', label: 'Multijoueur en ligne (NetPlay)…', run: () => openNetplay(inst) }] : []),
 	...(inst.type === 'rom' ? [{ icon: 'image', label: 'Jaquette et images…', run: () => openCovers(inst) }] : []),
 	...(inst.type === 'rom' && instEngine(inst) === 'smash' ? [{ icon: 'gamepad-2', label: 'Manettes de ce jeu', run: () => go('controls', { system: sysOf(inst), instance: inst.id }) }] : []),
 	{ icon: 'puzzle', label: 'Ajouter du contenu', run: () => openDiscoverFor(inst) },
@@ -1164,6 +1165,45 @@ const installSuggestion = async (key, play) => {
 		if (play) await launchInstance(inst.id);
 		else render();
 	} catch (error) { toastError(error); }
+};
+
+// ---------- Multijoueur en ligne Wii / GameCube (NetPlay de Dolphin) ----------
+
+const openNetplay = async (inst) => {
+	await modal({
+		title: `Multijoueur en ligne · ${inst.name}`,
+		width: 760,
+		body: `<div class="np">
+			<p style="margin-top:0;line-height:1.55">Le <b>NetPlay de Dolphin</b> fait tourner le jeu sur chaque PC et synchronise les manettes : presque pas de lag, image parfaite. Il faut que <b>vous ayez tous le même jeu</b> (même fichier) et <b>la même version de Dolphin</b>.</p>
+			<div class="dash-grid">
+				<div class="card col"><h3>${icon('users')}Tu héberges</h3>
+					<div class="remote-steps">
+						<div><b>1</b><span>Clique sur « Préparer et ouvrir Dolphin » ci-dessous.</span></div>
+						<div><b>2</b><span>Dans Dolphin : <b>Outils → Démarrer NetPlay…</b> → onglet <b>Héberger</b>, choisis le jeu, puis <b>Héberger</b>.</span></div>
+						<div><b>3</b><span>Copie le <b>code d’hôte</b> (en haut de la fenêtre) et envoie-le à ton pote.</span></div>
+						<div><b>4</b><span>Quand il est là : vérifie que vous avez le même jeu, règle les manettes (Wiimote 2 pour lui), puis <b>Démarrer</b>.</span></div>
+					</div></div>
+				<div class="card col"><h3>${icon('wifi')}Tu rejoins</h3>
+					<div class="remote-steps">
+						<div><b>1</b><span>Ajoute le même jeu dans Smash Emu, puis clique sur « Préparer et ouvrir Dolphin ».</span></div>
+						<div><b>2</b><span>Dans Dolphin : <b>Outils → Démarrer NetPlay…</b> → onglet <b>Se connecter</b>, type <b>Code d’hôte</b>.</span></div>
+						<div><b>3</b><span>Colle le code reçu, puis <b>Se connecter</b>. L’hôte lance la partie.</span></div>
+					</div></div>
+			</div>
+			<div class="small muted" style="margin-top:10px">Conseils : Wii → réglez chacun sa Wiimote (Manettes dans Dolphin) ; images .nkit : préférez la même image ISO/RVZ chez tous ; si la connexion échoue, passez par Radmin VPN et choisissez « Connexion directe » avec l’IP Radmin de l’hôte.</div>
+			<div id="np-status" class="small" style="margin-top:10px"></div>
+		</div>`,
+		foot: '<button class="btn" data-no>Fermer</button><button class="btn primary" data-go>Préparer et ouvrir Dolphin</button>',
+		setup: (el, close) => {
+			el.querySelector('[data-no]').onclick = () => close();
+			el.querySelector('[data-go]').onclick = async () => {
+				try {
+					const r = await api('netplay:open', inst.id);
+					$('#np-status', el).innerHTML = `<span class="tag green">${icon('check')}Dolphin prêt</span> Jeu : <b>${esc(r.name)}</b> · pseudo NetPlay : <b>${esc(r.nick)}</b>${r.version ? ` · Dolphin <b>${esc(r.version)}</b> (ton pote doit avoir la même)` : ''}. Va dans Outils → Démarrer NetPlay.`;
+				} catch (error) { toastError(error); }
+			};
+		},
+	});
 };
 
 // ---------- Bande-son des jeux ----------

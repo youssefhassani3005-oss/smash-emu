@@ -27,6 +27,7 @@ const stats = require('./stats');
 const supporter = require('./supporter');
 const archipelago = require('./archipelago');
 const community = require('./community');
+const netplay = require('./netplay');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -329,6 +330,7 @@ const handlers = {
 	'dashboard:get': () => stats.dashboard({ running: runner.status(), emulators: emulators.status(), roms: romlib.list() }),
 	'supporter:status': () => supporter.status(),
 	// Multiworld Archipelago : lanceur officiel.
+	'netplay:open': id => netplay.open(id),
 	'community:get': () => community.get(),
 	'community:setLocal': invite => community.setLocal(invite),
 	'archipelago:status': () => archipelago.status(),
