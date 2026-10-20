@@ -10,7 +10,11 @@
 		#stage { display: grid; place-items: center; }
 		.waiting { display: flex; flex-direction: column; align-items: center; gap: 18px; color: #9a9aa2; }
 		.waiting .wordmark { font-size: 22px; }
-		.waiting .msg { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+		.waiting .msg { font-family: 'Press Start 2P', monospace; font-size: 9px; text-align: center; line-height: 1.8; max-width: 640px; }
+		.wait-help { max-width: 620px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 16px; color: #d5d5da; font-size: 13.5px; line-height: 1.55; text-align: left; }
+		.wait-help p { margin: 0 0 10px; }
+		.wait-help pre { margin: 0 0 12px; padding: 8px 10px; background: rgba(0, 0, 0, 0.4); border-radius: 8px; font-size: 11px; color: #ff9a7a; white-space: pre-wrap; word-break: break-word; max-height: 120px; overflow: auto; }
+		.wait-help .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 		.slotsel { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--brand); padding: 0 6px; }
 		.tb.on { background: rgba(var(--brand-rgb), 0.22); color: var(--brand); }
 		.clock { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #b9b9c0; padding: 0 10px; white-space: nowrap; }
@@ -88,7 +92,8 @@
 		<div class="waiting" id="waiting">
 			<div id="splash"></div>
 			<div class="msg" id="wait-msg">DEMARRAGE DE L'EMULATEUR…</div>
-			<div class="loading-bar"><div id="loading-progress" style="width:40%"></div></div>
+			<div class="loading-bar" id="loading-bar"><div id="loading-progress" style="width:40%"></div></div>
+			<div class="wait-help hidden" id="wait-help"></div>
 		</div>
 	</main>
 	<section id="panel" class="hidden"></section>

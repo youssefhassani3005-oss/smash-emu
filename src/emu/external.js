@@ -6,12 +6,12 @@ const icon = n => `<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox=
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const st = { cfg: null, slot: 1, turbo: false, paused: false, panel: false, tab: 'states', sw: null, opts: {}, ext: null, frame: null, slotInfo: {}, immersive: false, top: false };
 
-const toast = (html, error = false) => {
+const toast = (html, error = false, ms = 2600) => {
 	const el = document.createElement('div');
 	el.className = `toast ${error ? 'error' : ''}`;
 	el.innerHTML = `${icon(error ? 'circle-x' : 'check')}<span>${html}</span>`;
 	$('#toasts').appendChild(el);
-	setTimeout(() => el.remove(), 2600);
+	setTimeout(() => el.remove(), ms);
 	return el;
 };
 
@@ -101,7 +101,9 @@ const tabTools = () => `
 		<button class="btn" data-act="mini">${icon('minimize')}Mini-fenêtre</button>
 		<button class="btn" data-act="fs">${icon('maximize')}Plein écran (F11)</button>
 	</div>
-	<div class="note" style="margin-top:16px">Raccourcis : <b>Ctrl+P</b> panneau · <b>F11</b> plein écran · <b>Ctrl+M</b> immersif · <b>Ctrl+Maj+S</b> capture · Dolphin : <b>F10</b> pause, <b>Maj+F1…F8</b> sauver, <b>F1…F8</b> charger, <b>Tab</b> turbo.</div>`;
+	<div class="note" style="margin-top:16px">Raccourcis : <b>Ctrl+P</b> panneau · <b>F11</b> plein écran · <b>Ctrl+M</b> immersif · <b>Ctrl+Maj+S</b> capture${st.cfg.keysHint ? ` · ${esc(st.cfg.emulator)} : ${st.cfg.keysHint}` : ''}.</div>
+	${st.cfg.requirement ? `<div class="note" style="margin-top:8px">${esc(st.cfg.requirement)}</div>` : ''}
+	<div style="margin-top:12px"><button class="btn" data-act="native">${icon('settings')}Ouvrir ${esc(st.cfg.emulator)} seul (réglages, BIOS, manettes)</button></div>`;
 
 const dirty = () => JSON.stringify(st.opts) !== JSON.stringify(st.cfg.opts) || (st.ext && st.ext !== st.cfg.extension);
 
@@ -171,6 +173,7 @@ $('#panel').addEventListener('click', async (e) => {
 			case 'pload': await smashExt.loadSlot(n); st.slot = n; $('#slot').textContent = n; toast(`État chargé · emplacement ${n}`); await closePanel(); break;
 			case 'shot': { const file = await smashExt.screenshot().catch(() => null); toast(file ? 'Capture enregistrée' : 'Capture impossible pendant le menu', !file); break; }
 			case 'folder': await smashExt.openFolder(); break;
+			case 'native': await smashExt.openNative(); toast(`${st.cfg.emulator} ouvert dans sa propre fenêtre`); break;
 			case 'top': st.top = await smashExt.top(!st.top); renderPanel(); break;
 			case 'immersive': st.immersive = !st.immersive; await smashExt.immersive(st.immersive); document.body.classList.toggle('bar-hidden', st.immersive); renderPanel(); break;
 			case 'mini': await smashExt.window('mini'); break;
@@ -240,19 +243,64 @@ smashExt.onHotkey((name) => {
 		document.body.classList.toggle('bar-hidden', st.immersive);
 	}
 });
+// L'émulateur signale un BIOS, un firmware ou des clés manquants alors que sa fenêtre est affichée.
+smashExt.onNotice((n) => {
+	const t = toast(`<b>${esc(st.cfg.emulator)}</b> : ${esc(n.lines[n.lines.length - 1] || '')}<br>${esc(n.text || '')} <a style="color:var(--brand);cursor:pointer;text-decoration:underline">Ouvrir ${esc(st.cfg.emulator)}</a>`, true, 15000);
+	const a = t && t.querySelector('a');
+	if (a) a.onclick = () => smashExt.openNative();
+});
 smashExt.onBar(on => document.body.classList.toggle('bar-hidden', !on && st.immersive));
 smashExt.onFullscreen((on) => { $('#btn-fs').innerHTML = icon(on ? 'minimize' : 'maximize'); });
 
+// Aide affichée pendant l'attente : ce qu'il manque à l'émulateur, ses erreurs, et de quoi le régler.
+const showHelp = ({ hint, lines, failed, dialog } = {}) => {
+	const box = $('#wait-help');
+	if (!hint && !dialog && !(lines && lines.length)) { box.classList.add('hidden'); return; }
+	box.innerHTML = `${dialog ? `<p><b>${esc(st.cfg.emulator)}</b> affiche une fenêtre « ${esc(dialog)} » : réponds-y, elle est au premier plan.</p>` : ''}
+		${hint ? `<p>${esc(hint)}</p>` : ''}
+		${lines && lines.length ? `<pre>${esc(lines.join('\n'))}</pre>` : ''}
+		<div class="acts">
+			${dialog ? '' : `<button class="btn" data-help="native">${icon('settings')}Ouvrir ${esc(st.cfg.emulator)} pour le configurer</button>`}
+			${failed ? `<button class="btn primary" data-help="retry">${icon('refresh-cw')}Réessayer</button>` : ''}
+			<button class="btn" data-help="close">${icon('x')}Fermer</button>
+		</div>`;
+	box.classList.remove('hidden');
+};
+$('#wait-help').addEventListener('click', async (e) => {
+	const b = e.target.closest('[data-help]');
+	if (!b) return;
+	try {
+		if (b.dataset.help === 'native') { await smashExt.openNative(); toast(`${st.cfg.emulator} ouvert : règle-le, ferme-le, puis clique sur « Réessayer »`); showHelp({ hint: st.cfg.requirement, failed: true }); }
+		if (b.dataset.help === 'retry') { showHelp({}); $('#loading-bar').classList.remove('hidden'); await smashExt.retry(); }
+		if (b.dataset.help === 'close') await smashExt.window('close');
+	} catch (err) { toast(err.message, true); }
+});
+
 smashExt.onState((s) => {
-	if (s.waiting) { $('#waiting').classList.remove('hidden'); $('#wait-msg').textContent = `DEMARRAGE DE ${st.cfg.emulator.toUpperCase()}…`; $('#wait-msg').style.color = ''; st.turbo = false; st.paused = false; $('#btn-turbo').classList.remove('on'); $('#btn-pause').classList.remove('on'); return; }
+	if (s.waiting) {
+		$('#waiting').classList.remove('hidden');
+		$('#loading-bar').classList.remove('hidden');
+		$('#wait-msg').textContent = `DEMARRAGE DE ${st.cfg.emulator.toUpperCase()}…`;
+		$('#wait-msg').style.color = '';
+		st.turbo = false; st.paused = false; st.attached = false;
+		$('#btn-turbo').classList.remove('on'); $('#btn-pause').classList.remove('on');
+		showHelp(s.dialog ? { dialog: s.dialog } : {});
+		return;
+	}
+	if (s.slow) { showHelp({ hint: `Ça prend du temps… ${s.hint || ''}` }); return; }
 	if (s.attached) {
 		st.attached = true;
 		$('#waiting').classList.add('hidden');
+		showHelp({});
 		toast(`${st.cfg.emulator} est piloté par Smash Emu`);
 		backToGame();
 	} else {
+		st.attached = false;
+		$('#waiting').classList.remove('hidden');
 		$('#wait-msg').textContent = s.error || 'Erreur';
 		$('#wait-msg').style.color = 'var(--danger)';
+		$('#loading-bar').classList.add('hidden');
+		showHelp({ hint: s.hint, lines: s.lines, failed: true });
 	}
 });
 

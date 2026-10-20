@@ -41,9 +41,13 @@ const send = async (...args) => {
 };
 
 // Fenêtres visibles d'un processus, la plus grande d'abord.
+// Fenêtres d'assistant, d'erreur ou de réglage (premier lancement, BIOS manquant…) : à montrer, pas à incruster.
+const DIALOG_TITLE = /assistant|wizard|setup|configuration|erreur|error|warning|avertissement|bios|firmware|mise à jour|update available/i;
+
 const windowsOf = async pid => (await send('find', pid)).split(';;').filter(Boolean).map((s) => {
-	const [hwnd, w, h, ...title] = s.split('|');
-	return { hwnd: Number(hwnd), w: Number(w), h: Number(h), title: title.join('|') };
+	const [hwnd, w, h, owned, cls, ...rest] = s.split('|');
+	const title = rest.join('|');
+	return { hwnd: Number(hwnd), w: Number(w), h: Number(h), owned: owned === '1', cls, title, dialog: owned === '1' || cls === '#32770' || DIALOG_TITLE.test(title) };
 });
 
 module.exports = {

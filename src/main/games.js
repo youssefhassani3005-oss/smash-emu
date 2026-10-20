@@ -290,7 +290,8 @@ const prepareLaunch = (id) => {
 	const out = path.join(dir, 'rom', patches.length ? 'build.z64' : 'base.z64');
 	if (patches.length) fs.writeFileSync(out, data);
 	if (engine === 'smash') return { kind: 'emu', rom: out, name: inst.name };
-	return { kind: 'process', exe: paths.project64, args: [out, ...splitArgs(o.extraArgs || '')], cwd: path.dirname(paths.project64) };
+	// Project64 garde sa propre fenêtre : son rendu (plugins vidéo) devient noir une fois incrusté dans Smash Emu.
+	return { kind: 'process', exe: paths.project64, args: [out, ...splitArgs(o.extraArgs || '')], cwd: path.dirname(paths.project64), embed: false, emulator: 'project64', name: inst.name, system: 'n64' };
 };
 
 // Lancement d'un jeu non N64 : cœur intégré ou émulateur externe.

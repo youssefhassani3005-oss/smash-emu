@@ -31,7 +31,7 @@ const dolphinOpts = (p = {}) => {
 
 const EXTERNAL = {
 	project64: { label: 'Project64', systems: ['n64'], exe: ['Project64.exe'], args: f => [f], site: 'https://www.pj64-emu.com/download/project64-latest',
-		hotkeys: { pause: 'F2', save: () => 'F5', load: () => 'F7', turboDown: 'F4', turboUp: 'F4', reset: 'F1' } },
+		hotkeys: { pause: 'F2', save: () => 'F5', load: () => 'F7', turboDown: 'F4', turboUp: 'F4', reset: 'F1' }, keysHint: '<b>F2</b> pause, <b>F5</b> sauver, <b>F7</b> charger, <b>F4</b> turbo' },
 	dolphin: {
 		label: 'Dolphin', systems: ['gc', 'wii'], exe: ['Dolphin.exe'], site: 'https://dolphin-emu.org/download/',
 		// Réglages passés au lancement uniquement (la config de Dolphin n'est pas modifiée) : pas de shader
@@ -49,15 +49,16 @@ const EXTERNAL = {
 		render: w => w.title.includes('|'),
 		hotkeys: { pause: 'F10', save: n => `SHIFT+F${n}`, load: n => `F${n}`, turboDown: 'TAB:down', turboUp: 'TAB:up', undoLoad: 'F12', slots: 8 },
 		tunable: true,
+		keysHint: '<b>F10</b> pause, <b>Maj+F1…F8</b> sauver, <b>F1…F8</b> charger, <b>Tab</b> turbo',
 		shaders: DOLPHIN_SHADERS,
 	},
-	azahar: { label: 'Azahar', systems: ['3ds'], exe: ['azahar.exe', 'lime3ds.exe', 'citra-qt.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-f']), f], site: 'https://azahar-emu.org/pages/download/' },
+	azahar: { label: 'Azahar', systems: ['3ds'], exe: ['azahar.exe', 'lime3ds.exe', 'citra-qt.exe'], hotkeys: { pause: 'F4', save: () => 'CTRL+C', load: () => 'CTRL+V', slots: 1 }, keysHint: '<b>F4</b> pause, <b>Ctrl+C</b> sauver, <b>Ctrl+V</b> charger, <b>F9</b> échanger les écrans', args: (f, o = {}) => [...(o.embed ? [] : ['-f']), f], site: 'https://azahar-emu.org/pages/download/' },
 	cemu: { label: 'Cemu', systems: ['wiiu'], exe: ['Cemu.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-f']), '-g', f], site: 'https://cemu.info/' },
-	ryujinx: { label: 'Ryujinx', systems: ['switch'], exe: ['Ryujinx.exe', 'Ryujinx.Ava.exe', 'Ryubing.exe'], keys: true, hotkeys: { pause: 'F5' }, args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://ryujinx.app/download', note: 'Nécessite les clés (prod.keys) et le firmware de ta propre Switch : importe-les ci-dessous.' },
-	duckstation: { label: 'DuckStation', systems: ['psx'], exe: ['duckstation-qt-x64-ReleaseLTCG.exe', 'duckstation-qt.exe'], args: (f, o = {}) => ['-batch', ...(o.embed ? [] : ['-fullscreen']), '--', f], site: 'https://www.duckstation.org/', note: 'Nécessite le BIOS de ta PlayStation.' },
-	pcsx2: { label: 'PCSX2', systems: ['ps2'], exe: ['pcsx2-qt.exe', 'pcsx2.exe'], args: (f, o = {}) => ['-batch', ...(o.embed ? [] : ['-fullscreen']), '--', f], site: 'https://pcsx2.net/downloads/', note: 'Nécessite le BIOS de ta PlayStation 2.' },
+	ryujinx: { label: 'Ryujinx', systems: ['switch'], exe: ['Ryujinx.exe', 'Ryujinx.Ava.exe', 'Ryubing.exe'], keys: true, hotkeys: { pause: 'F5' }, keysHint: '<b>F5</b> pause', args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://ryujinx.app/download', note: 'Nécessite les clés (prod.keys) et le firmware de ta propre Switch : importe-les ci-dessous.' },
+	duckstation: { label: 'DuckStation', systems: ['psx'], exe: ['duckstation-qt-x64-ReleaseLTCG.exe', 'duckstation-qt.exe'], hotkeys: { pause: 'SPACE', save: () => 'F2', load: () => 'F1', turboDown: 'TAB:down', turboUp: 'TAB:up', slots: 1 }, keysHint: '<b>Espace</b> pause, <b>F2</b> sauver, <b>F1</b> charger, <b>Tab</b> avance rapide (maintenir), <b>Échap</b> menu', args: (f, o = {}) => ['-batch', ...(o.embed ? [] : ['-fullscreen']), '--', f], site: 'https://www.duckstation.org/', note: 'Nécessite le BIOS de ta PlayStation.' },
+	pcsx2: { label: 'PCSX2', systems: ['ps2'], exe: ['pcsx2-qt.exe', 'pcsx2.exe'], hotkeys: { pause: 'SPACE', save: () => 'F1', load: () => 'F3', turboDown: 'TAB', turboUp: 'TAB', slots: 1 }, keysHint: '<b>Espace</b> pause, <b>F1</b> sauver, <b>F3</b> charger, <b>F2</b> emplacement suivant, <b>Tab</b> turbo, <b>Échap</b> menu', args: (f, o = {}) => ['-batch', ...(o.embed ? [] : ['-fullscreen']), '--', f], site: 'https://pcsx2.net/downloads/', note: 'Nécessite le BIOS de ta PlayStation 2.' },
 	ppsspp: { label: 'PPSSPP', systems: ['psp'], exe: ['PPSSPPWindows64.exe', 'PPSSPPWindows.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen']), f], site: 'https://www.ppsspp.org/download/' },
-	rpcs3: { label: 'RPCS3', systems: ['ps3'], exe: ['rpcs3.exe'], args: f => ['--no-gui', f], site: 'https://rpcs3.net/download', note: 'Nécessite le firmware PS3 officiel (téléchargeable chez Sony).' },
+	rpcs3: { label: 'RPCS3', systems: ['ps3'], exe: ['rpcs3.exe'], hotkeys: { pause: 'CTRL+P' }, keysHint: 'pause avec le bouton de la barre, <b>Alt+Entrée</b> plein écran', args: f => ['--no-gui', f], site: 'https://rpcs3.net/download', note: 'Nécessite le firmware PS3 officiel (téléchargeable chez Sony).' },
 	xemu: { label: 'xemu', systems: ['xbox'], exe: ['xemu.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-full-screen']), '-dvd_path', f], site: 'https://xemu.app/', note: 'Nécessite le BIOS et le disque dur de ta Xbox.' },
 	shadps4: { label: 'shadPS4', systems: ['ps4'], exe: ['shadPS4.exe', 'shadps4.exe'], args: f => ['-g', f], site: 'https://shadps4.net/', note: 'Choisis le eboot.bin d’un jeu PS4 copié depuis ta console (dossier CUSA…). Compatibilité encore limitée.' },
 	xenia: { label: 'Xenia', systems: ['x360'], exe: ['xenia_canary.exe', 'xenia.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen=true']), f], site: 'https://xenia.jp/download/' },

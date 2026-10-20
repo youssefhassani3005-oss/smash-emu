@@ -26,6 +26,9 @@ public static class SmashWin {
 	[DllImport("user32.dll")] static extern uint MapVirtualKey(uint code, uint type);
 	[DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
 	[DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr h, uint flags);
+	[DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
+	[DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
+	[DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
 	[StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 	[StructLayout(LayoutKind.Sequential)] struct KEYBDINPUT { public ushort vk; public ushort scan; public uint flags; public uint time; public IntPtr extra; }
 	[StructLayout(LayoutKind.Explicit, Size = 40)] struct INPUT { [FieldOffset(0)] public uint type; [FieldOffset(8)] public KEYBDINPUT ki; }
@@ -33,7 +36,8 @@ public static class SmashWin {
 	const int GWL_STYLE = -16;
 	const long WS_CHILD = 0x40000000, WS_POPUP = 0x80000000, WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000, WS_SYSMENU = 0x00080000, WS_MINMAX = 0x00030000, WS_VISIBLE = 0x10000000;
 
-	// Fenêtres visibles d'un processus : « handle|largeur|hauteur|titre », la plus grande d'abord.
+	// Fenêtres visibles d'un processus : « handle|largeur|hauteur|possédée|classe|titre », la plus grande d'abord.
+	// « Possédée » (fenêtre propriétaire) ou classe #32770 : boîte de dialogue de l'émulateur.
 	public static string Find(uint pid) {
 		var list = new List<string>();
 		EnumWindows((h, p) => {
@@ -41,7 +45,9 @@ public static class SmashWin {
 			if (wp == pid && IsWindowVisible(h)) {
 				RECT r; GetWindowRect(h, out r);
 				var sb = new StringBuilder(512); GetWindowText(h, sb, 512);
-				list.Add((r.R - r.L) * (r.B - r.T) + "|" + h.ToInt64() + "|" + (r.R - r.L) + "|" + (r.B - r.T) + "|" + sb.ToString().Replace("\n", " "));
+				var cls = new StringBuilder(256); GetClassName(h, cls, 256);
+				string owned = GetWindow(h, 4) != IntPtr.Zero ? "1" : "0";
+				list.Add((r.R - r.L) * (r.B - r.T) + "|" + h.ToInt64() + "|" + (r.R - r.L) + "|" + (r.B - r.T) + "|" + owned + "|" + cls.ToString().Replace("|", " ") + "|" + sb.ToString().Replace("\n", " "));
 			}
 			return true;
 		}, IntPtr.Zero);
@@ -102,6 +108,13 @@ public static class SmashWin {
 
 	// Capture de la zone d'une fenêtre : PNG, ou JPEG réduit à « width » pixels de large (vignettes).
 	public static void Shot(long h, string path, int width) {
+		// Coordonnées en pixels réels (écrans mis à l'échelle à 125 %, 150 %…) le temps de la capture.
+		IntPtr old = IntPtr.Zero;
+		try { old = SetThreadDpiAwarenessContext(new IntPtr(-4)); } catch { }
+		try { ShotRaw(h, path, width); } finally { if (old != IntPtr.Zero) SetThreadDpiAwarenessContext(old); }
+	}
+
+	static void ShotRaw(long h, string path, int width) {
 		RECT r; GetWindowRect(new IntPtr(h), out r);
 		using (var bmp = new Bitmap(r.R - r.L, r.B - r.T)) {
 			using (var g = Graphics.FromImage(bmp)) g.CopyFromScreen(r.L, r.T, 0, 0, bmp.Size);

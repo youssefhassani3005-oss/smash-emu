@@ -56,33 +56,98 @@ const attach = async (h) => {
 	const deadline = Date.now() + 90000;
 	while (Date.now() < deadline && !h.closed && gen === h.gen) {
 		const wins = h.proc ? await winhelper.windowsOf(h.proc.pid).catch(() => []) : [];
-		const target = wins.find(w => (ext.render ? ext.render(w) : true) && w.w > 200 && w.h > 150);
+		// Les boîtes de dialogue (BIOS manquant, erreur, assistant) ne sont jamais incrustées ni masquées :
+		// elles passent au premier plan pour que le joueur puisse y répondre.
+		const dialogs = wins.filter(w => w.dialog);
+		const target = wins.find(w => !w.dialog && (ext.render ? ext.render(w) : true) && w.w > 200 && w.h > 150);
 		if (target) {
 			await winhelper.embed(target.hwnd, hwndOf(h.win), 0, BAR, 640, 480);
 			h.child = target.hwnd;
-			for (const w of wins) if (w.hwnd !== target.hwnd) winhelper.hide(w.hwnd).catch(() => {});
+			for (const w of wins) if (w.hwnd !== target.hwnd && !w.dialog) winhelper.hide(w.hwnd).catch(() => {});
 			layout(h);
 			send(h, 'ext:state', { attached: true, title: target.title });
+			// Affiché mais bloqué (écran noir faute de BIOS ou de firmware) : on prévient le joueur.
+			setTimeout(() => {
+				if (h.closed || gen !== h.gen) return;
+				const lines = lastLines(h).filter(l => /bios|firmware|keys?\b|prod\.keys/i.test(l));
+				if (lines.length) send(h, 'ext:notice', { text: requirement(h), lines });
+			}, 8000);
 			// Les fenêtres secondaires qui réapparaissent (liste de jeux…) sont masquées pendant quelques secondes.
 			for (let i = 0; i < 10 && !h.closed && gen === h.gen; i++) {
 				await new Promise(r => setTimeout(r, 1000));
-				for (const w of await winhelper.windowsOf(h.proc.pid).catch(() => [])) if (w.hwnd !== h.child) winhelper.hide(w.hwnd).catch(() => {});
+				for (const w of await winhelper.windowsOf(h.proc.pid).catch(() => [])) {
+					if (w.hwnd === h.child) continue;
+					if (w.dialog) winhelper.focus(w.hwnd).catch(() => {});
+					else winhelper.hide(w.hwnd).catch(() => {});
+				}
 			}
 			return;
 		}
+		if (dialogs.length && !h.dialogShown) {
+			h.dialogShown = true;
+			winhelper.focus(dialogs[0].hwnd).catch(() => {});
+			send(h, 'ext:state', { waiting: true, dialog: dialogs[0].title || 'Fenêtre de l’émulateur' });
+		}
+		if (!dialogs.length) h.dialogShown = false;
+		// Rien après 25 s : l'émulateur attend sans doute un réglage (BIOS, firmware…).
+		if (!h.slowSent && Date.now() - h.spawnedAt > 25000) { h.slowSent = true; send(h, 'ext:state', { slow: true, hint: requirement(h) }); }
 		await new Promise(r => setTimeout(r, 700));
 	}
-	if (!h.closed && gen === h.gen) send(h, 'ext:state', { attached: false, error: 'La fenêtre de jeu de l’émulateur n’est pas apparue.' });
+	if (!h.closed && gen === h.gen) send(h, 'ext:state', { attached: false, failed: true, error: 'La fenêtre de jeu de l’émulateur n’est pas apparue.', hint: requirement(h), lines: lastLines(h) });
+};
+
+// Ce qu'il faut à l'émulateur pour démarrer un jeu (affiché quand il ne s'ouvre pas).
+const REQUIREMENTS = {
+	pcsx2: 'PCSX2 a besoin du BIOS de ta PlayStation 2 : ouvre PCSX2, puis Paramètres → BIOS, et choisis le dossier qui le contient.',
+	rpcs3: 'RPCS3 a besoin du firmware PS3 officiel (PS3UPDAT.PUP, gratuit sur le site de Sony) : ouvre RPCS3, puis Fichier → Installer le firmware. Le jeu doit être un dossier PS3_GAME ou un .pkg/.iso valide.',
+	xemu: 'xemu a besoin du BIOS, du MCPX boot ROM et du disque dur de ta Xbox : ouvre xemu, puis Machine → Paramètres → Système.',
+	shadps4: 'shadPS4 lance les jeux PS4 copiés depuis ta console (dossier CUSA… avec eboot.bin et sce_sys). Beaucoup de jeux ne marchent pas encore.',
+	xenia: 'Xenia lance les jeux Xbox 360 (.iso, .xex, dossiers GOD/STFS). Vérifie que le fichier vient bien de ton disque.',
+	ryujinx: 'Ryujinx a besoin des clés (prod.keys) et du firmware de ta Switch : importe les clés dans Paramètres, puis installe le firmware dans Ryujinx (Outils).',
+	azahar: 'Azahar lance les jeux 3DS décryptés (.3ds, .cci, .cxi, .3dsx).',
+	cemu: 'Cemu lance les jeux Wii U (.wua, .wud, .wux, .rpx) ; certains jeux demandent les clés de ta console (keys.txt).',
+	dolphin: 'Vérifie que le fichier est bien un jeu GameCube ou Wii (.iso, .rvz, .wbfs…).',
+	duckstation: 'DuckStation a besoin du BIOS de ta PlayStation : ouvre DuckStation, puis Paramètres → BIOS.',
+	ppsspp: 'Vérifie que le fichier est bien un jeu PSP (.iso, .cso).',
+};
+const requirement = h => REQUIREMENTS[h.plan.emulator] || (emulators.EXTERNAL[h.plan.emulator] || {}).note || '';
+
+// Dernières lignes utiles du journal (erreurs de l'émulateur), pour expliquer un échec.
+const lastLines = (h, n = 4) => {
+	let logs = [];
+	try { logs = runner.getLogs(h.id) || []; } catch { /* pas de journal */ }
+	return logs.filter(l => l.stream !== 'launcher' && /error|erreur|fail|échec|missing|not found|invalid|not valid|corrupt|critical|bios|firmware|key/i.test(l.line) && !/warning|\bwarn\b|<info>|\[info\]/i.test(l.line)).slice(-n).map(l => l.line.trim().slice(0, 220));
 };
 
 const spawnEmu = (h) => {
 	const { id, plan } = h;
 	const proc = spawn(plan.exe, plan.args, { cwd: plan.cwd, windowsHide: false });
 	h.proc = proc;
+	h.spawnedAt = Date.now();
+	h.slowSent = false;
+	h.failed = false;
 	proc.stdout.on('data', d => runner.pushLog(id, 'stdout', d.toString()));
 	proc.stderr.on('data', d => runner.pushLog(id, 'stderr', d.toString()));
 	proc.on('error', e => runner.pushLog(id, 'launcher', `Erreur de lancement : ${e.message}`));
-	proc.on('exit', () => { if (h.proc === proc && !h.closed && !h.win.isDestroyed()) h.win.close(); });
+	proc.on('exit', (code) => {
+		if (h.proc !== proc || h.closed || h.win.isDestroyed()) return;
+		// Fermé avant d'afficher le jeu, ou juste après (jeu illisible, BIOS absent) : la fenêtre reste ouverte
+		// pour expliquer pourquoi.
+		if (!h.child || Date.now() - h.spawnedAt < 20000) {
+			h.failed = true;
+			h.child = null;
+			h.gen++;
+			send(h, 'ext:state', { attached: false, failed: true, error: `${(emulators.EXTERNAL[plan.emulator] || {}).label || plan.emulator} s’est fermé sans lancer le jeu${code && code < 256 ? ` (code ${code})` : ''}.`, hint: requirement(h), lines: lastLines(h) });
+			return;
+		}
+		h.win.close();
+	});
+};
+
+// Ouvre l'émulateur seul (sans jeu, avec sa propre interface) pour régler BIOS, firmware, manettes…
+const openNative = (h) => {
+	const p = spawn(h.plan.exe, [], { cwd: h.plan.cwd, detached: true, stdio: 'ignore', windowsHide: false });
+	p.unref();
 };
 
 const killProc = (proc) => { if (proc && proc.exitCode === null) spawn('taskkill', ['/pid', String(proc.pid), '/t', '/f']); };
@@ -106,6 +171,8 @@ const openExternalHost = (id, plan) => {
 	win.on('focus', bind);
 	win.on('blur', unbind);
 	bind();
+	h.bind = bind;
+	h.unbind = unbind;
 
 	// Barre qui réapparaît quand le curseur touche le haut de la fenêtre en mode immersif.
 	const poll = setInterval(() => {
@@ -144,7 +211,10 @@ const press = async (h, name, arg) => {
 	const k = hk(h);
 	const spec = { pause: k.pause, turboDown: k.turboDown, turboUp: k.turboUp, undo: k.undoLoad, save: k.save && k.save(arg || 1), load: k.load && k.load(arg || 1) }[name];
 	if (!spec) throw new Error('Action non prise en charge par cet émulateur.');
-	await winhelper.keys(spec);
+	// Raccourci de l'émulateur identique à un raccourci Smash Emu (Ctrl+P pour RPCS3) : libéré le temps de l'envoi.
+	const clash = /^CTRL\+(P|M)$/i.test(spec);
+	if (clash && h.unbind) h.unbind();
+	try { await winhelper.keys(spec); } finally { if (clash && h.bind && h.win.isFocused()) h.bind(); }
 	if (name === 'pause') h.paused = !h.paused;
 };
 
@@ -193,6 +263,8 @@ const ACTIONS = {
 			systemId: h.plan.system, theme: store.themeFor(store.getInstance(h.id), h.plan.system), logo: store.getSettings().logo || 'classic', fontMode: store.getSettings().fontMode || 'titles', customThemes: store.getSettings().customThemes || [],
 			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable },
 			slots: k.slots || 1,
+			keysHint: ext.keysHint || '',
+			requirement: requirement(h),
 			shaders: ext.shaders || [],
 			opts: { ...(o.dolphin || {}), shader: (o.dolphin || {}).shader || o.externalShader || 'FXAA' },
 			extension: ext.tunable && h.plan.system === 'wii' ? currentExtension() : null,
@@ -201,6 +273,8 @@ const ACTIONS = {
 		};
 	},
 	key: (h, name, arg) => press(h, name, arg),
+	openNative: (h) => openNative(h),
+	retry: (h) => relaunch(h),
 	screenshot: async (h) => shotTo(h, path.join(store.instanceDir(h.id), 'screenshots', `capture-${new Date().toISOString().replace(/[:.]/g, '-')}.png`)),
 	quickSave: async (h, n) => { await saveSlot(h, n); return ACTIONS.config(h).slotInfo[n]; },
 	loadSlot: (h, n) => press(h, 'load', n),

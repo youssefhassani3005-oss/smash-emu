@@ -9,6 +9,8 @@ const call = async (channel, ...args) => {
 contextBridge.exposeInMainWorld('smashExt', {
 	config: () => call('ext:config'),
 	key: (name, arg) => call('ext:key', name, arg),
+	openNative: () => call('ext:openNative'),
+	retry: () => call('ext:retry'),
 	screenshot: () => call('ext:screenshot'),
 	quickSave: n => call('ext:quickSave', n),
 	loadSlot: n => call('ext:loadSlot', n),
@@ -27,4 +29,5 @@ contextBridge.exposeInMainWorld('smashExt', {
 	onFullscreen: fn => ipcRenderer.on('ext:fullscreen', (_e, v) => fn(v)),
 	onHotkey: fn => ipcRenderer.on('ext:hotkey', (_e, v) => fn(v)),
 	onBar: fn => ipcRenderer.on('ext:bar', (_e, v) => fn(v)),
+	onNotice: fn => ipcRenderer.on('ext:notice', (_e, v) => fn(v)),
 });
