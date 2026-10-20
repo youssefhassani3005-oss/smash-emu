@@ -224,7 +224,7 @@ document.addEventListener('click', async (e) => {
 	const el = e.target.closest('.bar [data-action]');
 	if (!el) return;
 	try { await ACTIONS[el.dataset.action](); } catch (err) { toast(err.message, true); }
-	if (!['close', 'minimize', 'panel'].includes(el.dataset.action)) backToGame();
+	if (!['close', 'minimize', 'panel', 'remote'].includes(el.dataset.action)) backToGame();
 });
 
 window.addEventListener('keydown', (e) => {
@@ -237,6 +237,7 @@ smashExt.onHotkey((name) => {
 	if (name === 'panel') ACTIONS.panel();
 	if (name === 'fullscreen') ACTIONS.fullscreen();
 	if (name === 'screenshot' && !st.panel) ACTIONS.screenshot().catch(err => toast(err.message, true));
+	if (name === 'remote' && ACTIONS.remote) ACTIONS.remote();
 	if (name === 'immersive') {
 		st.immersive = !st.immersive;
 		smashExt.immersive(st.immersive);
@@ -333,3 +334,94 @@ const tick = () => {
 	setInterval(tick, 1000);
 	tick();
 })();
+
+// ---------- Jeu à distance (même système que l'émulateur intégré) ----------
+// L'image envoyée à l'ami est celle de la fenêtre (sans la barre ni le panneau), le son celui du PC ; ses
+// commandes deviennent des touches lues par la manette 2 de Dolphin (préparée une fois depuis le panneau).
+const log = (...a) => console.log(...a);
+const focusGame = () => backToGame();
+const RP_SIDE = 400;
+// Touches du clavier de l'ami (réglages par défaut d'EmulatorJS) → bouton.
+const RP_GUEST_KEYS = { 0: 88, 1: 83, 2: 86, 3: 13, 4: 38, 5: 40, 6: 37, 7: 39, 8: 90, 9: 65, 10: 81, 11: 69, 16: 72, 17: 70, 18: 71, 19: 84, 20: 76, 21: 74, 22: 75, 23: 73 };
+// Bouton (numérotation EmulatorJS) → touche lue par la manette 2 de Dolphin.
+const RP_P2 = { 8: 'NUMPAD0', 0: 'NUMPAD1', 9: 'NUMPAD2', 1: 'NUMPAD3', 3: 'NUMPAD4', 2: 'NUMPAD5', 10: 'NUMPAD6', 11: 'NUMPAD7', 12: 'NUMPAD8', 13: 'NUMPAD9', 15: 'MULTIPLY', 4: 'Y', 5: 'U', 6: 'O', 7: 'P', 19: 'V', 18: 'B', 17: 'N', 16: 'M', 23: 'ADD', 22: 'SUBTRACT', 21: 'DECIMAL', 20: 'R' };
+const rpHeld = new Set();
+// Fenêtre du jeu au premier plan ? Sinon les touches de l'ami iraient dans une autre application.
+let rpFront = true;
+smashExt.onFront((v) => {
+	rpFront = v;
+	if (!v) for (const k of [...rpHeld]) { rpHeld.delete(k); smashExt.padKey(k, false).catch(() => {}); }
+});
+let rpPrepared = null;
+smashExt.remoteInfo().then((r) => { rpPrepared = r.prepared; }).catch(() => {});
+
+window.smashRemoteAdapter = {
+	maxGuests: 1,
+	slots: [1],
+	ready: () => !!(st.attached && st.cfg && st.cfg.can.remote),
+	keyFor: id => RP_GUEST_KEYS[id] || null,
+	send: (slot, id, v) => {
+		const key = slot === 1 && RP_P2[id];
+		if (!key || !rpFront) return;
+		const down = window.SmashRemote.ANALOG.includes(id) ? v > 0x3fff : v > 0;
+		if (down === rpHeld.has(key)) return;
+		if (down) rpHeld.add(key); else rpHeld.delete(key);
+		smashExt.padKey(key, down).catch(() => {});
+	},
+	tracks: async () => {
+		const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: true });
+		const video = document.createElement('video');
+		video.srcObject = new MediaStream(s.getVideoTracks());
+		video.muted = true;
+		await video.play();
+		// On ne garde que la zone du jeu (l'écran entier est capturé) : ni la barre du haut, ni le panneau à droite.
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d', { alpha: false });
+		let rect = await smashExt.captureRect();
+		// Dès que la fenêtre perd le premier plan, plus rien n'est filmé (l'écran pourrait montrer autre chose).
+		let front = rect.front;
+		smashExt.onFront((v) => { front = v; if (v) smashExt.captureRect().then((r) => { rect = r; }).catch(() => {}); });
+		setInterval(() => { smashExt.captureRect().then((r) => { rect = r; if (!r.front) front = false; }).catch(() => {}); }, 300);
+		const draw = () => {
+			const scale = video.videoWidth / rect.dw;
+			const top = document.body.classList.contains('bar-hidden') || document.fullscreenElement ? 0 : 48;
+			const side = window.smashRemoteAdapter.side ? RP_SIDE : 0;
+			const sx = Math.round(rect.x * scale);
+			const sy = Math.round((rect.y + top) * scale);
+			const w = Math.max(2, Math.round((rect.w - side) * scale));
+			const h = Math.max(2, Math.round((rect.h - top) * scale));
+			if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+			if (!front || !rect.front) {
+				ctx.fillStyle = '#000';
+				ctx.fillRect(0, 0, w, h);
+				ctx.fillStyle = '#fff';
+				ctx.font = `bold ${Math.round(h / 22)}px sans-serif`;
+				ctx.textAlign = 'center';
+				ctx.fillText('L’hôte a quitté la fenêtre du jeu : image en pause', w / 2, h / 2);
+			} else ctx.drawImage(video, sx, sy, w, h, 0, 0, w, h);
+			video.requestVideoFrameCallback(draw);
+		};
+		video.requestVideoFrameCallback(draw);
+		return { video: canvas.captureStream(60).getVideoTracks()[0], audio: s.getAudioTracks()[0] || null };
+	},
+	onPanel: (open) => {
+		window.smashRemoteAdapter.side = open;
+		smashExt.side(open ? RP_SIDE : 0).catch(() => {});
+		const box = document.querySelector('.rp-prepare-box');
+		if (open && box) box.outerHTML = window.smashRemoteAdapter.prepareHtml();
+	},
+	prepareHtml: () => `<div class="rp-guest rp-prepare-box">
+		<div class="rp-step"><b>Manette de ton ami</b> : ${rpPrepared ? `prête (joueur 2${st.cfg.systemId === 'wii' ? `, Wiimote + ${rpPrepared === 'Classic' ? 'Classic Controller' : rpPrepared === 'None' ? 'rien' : 'Nunchuk'}` : ''}).` : 'à préparer une fois (Dolphin redémarre : sauvegarde dans le jeu avant).'}</div>
+		<div class="rp-row">${st.cfg.systemId === 'wii'
+		? '<button class="pbtn sm" data-rp="prepare" data-v="Nunchuk">Wiimote + Nunchuk</button><button class="pbtn sm" data-rp="prepare" data-v="Classic">Classic Controller</button><button class="pbtn sm" data-rp="prepare" data-v="None">Wiimote seule</button>'
+		: '<button class="pbtn sm" data-rp="prepare" data-v="Nunchuk">Préparer la manette GameCube 2</button>'}</div>
+		<div class="rp-hint">Ton ami joue avec sa manette ou son clavier. Garde la fenêtre du jeu au premier plan et visible : c’est elle qui est filmée. Les jeux où l’on vise l’écran avec la Wiimote ne marchent pas à distance.</div>
+	</div>`,
+	prepare: async (kind) => {
+		if (!confirm('Dolphin va redémarrer avec la manette du joueur 2 prête. Sauvegarde dans le jeu avant. Continuer ?')) return;
+		window.smashRemoteHost.toggle(false);
+		await smashExt.remotePrepare(kind);
+		rpPrepared = kind;
+		toast('Manette du joueur 2 prête : relance « Inviter un ami » une fois le jeu affiché.');
+	},
+};

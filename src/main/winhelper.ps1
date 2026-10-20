@@ -99,9 +99,11 @@ public static class SmashWin {
 	static ushort Vk(string n) {
 		n = n.Trim().ToUpperInvariant();
 		if (n.Length > 1 && n[0] == 'F') { int f; if (int.TryParse(n.Substring(1), out f)) return (ushort)(0x6F + f); }
+		if (n.StartsWith("NUMPAD") && n.Length == 7) return (ushort)(0x60 + (n[6] - '0'));
 		switch (n) {
 			case "SHIFT": return 0x10; case "CTRL": return 0x11; case "ALT": return 0x12; case "TAB": return 0x09;
 			case "ESC": return 0x1B; case "ENTER": return 0x0D; case "SPACE": return 0x20; case "PAUSE": return 0x13;
+			case "MULTIPLY": return 0x6A; case "ADD": return 0x6B; case "SUBTRACT": return 0x6D; case "DECIMAL": return 0x6E;
 		}
 		return (ushort)n[0];
 	}

@@ -12,6 +12,23 @@ const winhelper = require('./winhelper');
 const systems = require('./systems');
 const games = require('./games');
 const switchkeys = require('./switchkeys');
+const netplay = require('./netplay');
+
+// Capture d'image demandée par une fenêtre hôte (jeu à distance) : uniquement sa propre fenêtre, et le son du PC.
+const allowCapture = () => {
+	// La fenêtre de l'émulateur est incrustée : Windows ne la capture pas avec la fenêtre Smash Emu. On capture
+	// donc l'écran qui contient la fenêtre, et la page découpe exactement la zone du jeu (ext:captureRect).
+	const { session, webContents, desktopCapturer } = require('electron');
+	session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+		const wc = request.frame && webContents.fromFrame(request.frame);
+		const h = wc && hosts.get(wc.id);
+		if (!h || h.win.isDestroyed()) { callback({}); return; }
+		const display = screen.getDisplayMatching(h.win.getBounds());
+		const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+		const src = sources.find(s => s.display_id === String(display.id)) || sources[0];
+		callback({ video: src, audio: 'loopback' });
+	});
+};
 
 const SRC = path.join(__dirname, '..');
 const BAR = 48;
@@ -27,7 +44,9 @@ const layout = (h) => {
 	const b = h.win.getContentBounds();
 	const sf = screen.getDisplayMatching(h.win.getBounds()).scaleFactor;
 	const top = h.win.isFullScreen() || (h.immersive && !h.reveal) ? 0 : BAR;
-	winhelper.move(h.child, 0, Math.round(top * sf), Math.round(b.width * sf), Math.round((b.height - top) * sf)).catch(() => {});
+	// Panneau « À distance » ouvert à droite : le jeu lui laisse la place.
+	const side = Math.min(h.side || 0, b.width - 320);
+	winhelper.move(h.child, 0, Math.round(top * sf), Math.round((b.width - Math.max(0, side)) * sf), Math.round((b.height - top) * sf)).catch(() => {});
 };
 
 // Extension branchée à la Wiimote 1 (Dolphin lit WiimoteNew.ini au lancement).
@@ -165,11 +184,12 @@ const openExternalHost = (id, plan) => {
 	spawnEmu(h);
 
 	// Raccourcis de l'hôte actifs seulement quand la fenêtre Smash Emu (ou le jeu incrusté) a le focus.
-	const hotkeys = { 'CommandOrControl+P': 'panel', F11: 'fullscreen', 'CommandOrControl+M': 'immersive', 'CommandOrControl+Shift+S': 'screenshot' };
+	const hotkeys = { 'CommandOrControl+J': 'remote', 'CommandOrControl+P': 'panel', F11: 'fullscreen', 'CommandOrControl+M': 'immersive', 'CommandOrControl+Shift+S': 'screenshot' };
 	const bind = () => { for (const [k, name] of Object.entries(hotkeys)) { try { globalShortcut.register(k, () => send(h, 'ext:hotkey', name)); } catch { /* raccourci pris */ } } };
 	const unbind = () => { for (const k of Object.keys(hotkeys)) { try { globalShortcut.unregister(k); } catch { /* ignoré */ } } };
-	win.on('focus', bind);
-	win.on('blur', unbind);
+	win.on('focus', () => { bind(); send(h, 'ext:front', true); });
+	win.on('blur', () => { unbind(); send(h, 'ext:front', false); });
+	win.on('minimize', () => send(h, 'ext:front', false));
 	bind();
 	h.bind = bind;
 	h.unbind = unbind;
@@ -198,6 +218,56 @@ const openExternalHost = (id, plan) => {
 	win.loadURL('smash://app/emu/external.html');
 	win.webContents.once('did-finish-load', () => attach(h));
 	return win;
+};
+
+// ---------- Manette du joueur 2 dans Dolphin (jeu à distance) ----------
+// Les commandes de l'ami arrivent comme des touches du pavé numérique et de lettres libres ; la manette 2 de
+// Dolphin (GameCube et Wiimote) est réglée sur ces touches. Dolphin lit le clavier même sans le focus.
+
+const P2 = {
+	a: 'NUMPAD0', b: 'NUMPAD1', x: 'NUMPAD2', y: 'NUMPAD3', start: 'NUMPAD4', select: 'NUMPAD5', l: 'NUMPAD6', r: 'NUMPAD7', l2: 'NUMPAD8', r2: 'NUMPAD9', home: 'MULTIPLY',
+	up: 'Y', down: 'U', left: 'O', right: 'P', lsU: 'V', lsD: 'B', lsL: 'N', lsR: 'M', rsU: 'ADD', rsD: 'SUBTRACT', rsL: 'DECIMAL', rsR: 'R',
+};
+const P2_KEY_NAMES = new Set(Object.values(P2));
+const MARK = 'SmashEmuRemote';
+
+const dolphinCfg = () => {
+	const exe = emulators.pathFor('dolphin');
+	if (!exe) throw new Error('Dolphin introuvable.');
+	return path.join(netplay.userDir(exe), 'Config');
+};
+
+const dolphinP2State = () => {
+	try { return netplay.readIni(path.join(dolphinCfg(), 'WiimoteNew.ini'), 'Wiimote2')['Smash'] === MARK ? (netplay.readIni(path.join(dolphinCfg(), 'WiimoteNew.ini'), 'Wiimote2').Extension || 'Nunchuk') : null; } catch { return null; }
+};
+
+const dolphinP2 = (kind = 'Nunchuk') => {
+	const dir = dolphinCfg();
+	const ext = ['Nunchuk', 'Classic', 'None'].includes(kind) ? kind : 'Nunchuk';
+	const kb = 'DInput/0/Keyboard Mouse';
+	netplay.setIni(path.join(dir, 'GCPadNew.ini'), 'GCPad2', {
+		Device: kb, 'Buttons/A': P2.a, 'Buttons/B': P2.b, 'Buttons/X': P2.x, 'Buttons/Y': P2.y, 'Buttons/Z': P2.r, 'Buttons/Start': P2.start,
+		'Main Stick/Up': P2.lsU, 'Main Stick/Down': P2.lsD, 'Main Stick/Left': P2.lsL, 'Main Stick/Right': P2.lsR,
+		'C-Stick/Up': P2.rsU, 'C-Stick/Down': P2.rsD, 'C-Stick/Left': P2.rsL, 'C-Stick/Right': P2.rsR,
+		'Triggers/L': P2.l2, 'Triggers/R': P2.r2, 'D-Pad/Up': P2.up, 'D-Pad/Down': P2.down, 'D-Pad/Left': P2.left, 'D-Pad/Right': P2.right,
+	});
+	netplay.setIni(path.join(dir, 'WiimoteNew.ini'), 'Wiimote2', {
+		Smash: MARK, Device: kb, Source: 1, Extension: ext,
+		'Buttons/A': P2.a, 'Buttons/B': P2.b, 'Buttons/1': P2.x, 'Buttons/2': P2.y, 'Buttons/+': P2.start, 'Buttons/-': P2.select, 'Buttons/Home': P2.home,
+		'D-Pad/Up': P2.up, 'D-Pad/Down': P2.down, 'D-Pad/Left': P2.left, 'D-Pad/Right': P2.right,
+		'Shake/X': P2.r, 'Shake/Y': P2.r, 'Shake/Z': P2.r,
+		'Nunchuk/Buttons/C': P2.l, 'Nunchuk/Buttons/Z': P2.l2,
+		'Nunchuk/Stick/Up': P2.lsU, 'Nunchuk/Stick/Down': P2.lsD, 'Nunchuk/Stick/Left': P2.lsL, 'Nunchuk/Stick/Right': P2.lsR,
+		'Classic/Buttons/A': P2.a, 'Classic/Buttons/B': P2.b, 'Classic/Buttons/X': P2.x, 'Classic/Buttons/Y': P2.y,
+		'Classic/Buttons/ZL': P2.l2, 'Classic/Buttons/ZR': P2.r2, 'Classic/Buttons/-': P2.select, 'Classic/Buttons/+': P2.start, 'Classic/Buttons/Home': P2.home,
+		'Classic/Triggers/L': P2.l, 'Classic/Triggers/R': P2.r,
+		'Classic/D-Pad/Up': P2.up, 'Classic/D-Pad/Down': P2.down, 'Classic/D-Pad/Left': P2.left, 'Classic/D-Pad/Right': P2.right,
+		'Classic/Left Stick/Up': P2.lsU, 'Classic/Left Stick/Down': P2.lsD, 'Classic/Left Stick/Left': P2.lsL, 'Classic/Left Stick/Right': P2.lsR,
+		'Classic/Right Stick/Up': P2.rsU, 'Classic/Right Stick/Down': P2.rsD, 'Classic/Right Stick/Left': P2.rsL, 'Classic/Right Stick/Right': P2.rsR,
+	});
+	// Port manette 2 de la GameCube : manette standard.
+	const ini = path.join(dir, 'Dolphin.ini');
+	if ((netplay.readIni(ini, 'Core').SIDevice1 || '0') === '0') netplay.setIni(ini, 'Core', { SIDevice1: 6 });
 };
 
 // ---------- Actions de la barre ----------
@@ -261,9 +331,12 @@ const ACTIONS = {
 		return {
 			name: h.plan.name, emulator: ext.label || h.plan.emulator, emulatorId: h.plan.emulator, system: (systems.SYSTEMS[h.plan.system] || {}).label || '',
 			systemId: h.plan.system, theme: store.themeFor(store.getInstance(h.id), h.plan.system), logo: store.getSettings().logo || 'classic', fontMode: store.getSettings().fontMode || 'titles', customThemes: store.getSettings().customThemes || [],
-			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable },
+			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable, remote: h.plan.emulator === 'dolphin' },
 			slots: k.slots || 1,
 			keysHint: ext.keysHint || '',
+			remote: h.plan.emulator === 'dolphin',
+			playerName: store.getSettings().playerName || 'Hôte',
+			systemLabel: (systems.SYSTEMS[h.plan.system] || {}).label || '',
 			requirement: requirement(h),
 			shaders: ext.shaders || [],
 			opts: { ...(o.dolphin || {}), shader: (o.dolphin || {}).shader || o.externalShader || 'FXAA' },
@@ -274,6 +347,27 @@ const ACTIONS = {
 	},
 	key: (h, name, arg) => press(h, name, arg),
 	openNative: (h) => openNative(h),
+	// Jeu à distance : place du panneau, touches du joueur 2, préparation de sa manette dans Dolphin.
+	side: (h, px) => { h.side = Math.max(0, Math.min(600, Number(px) || 0)); layout(h); },
+	padKey: (h, key, down) => {
+		if (!P2_KEY_NAMES.has(key)) throw new Error('Touche inconnue.');
+		return winhelper.keys(`${key}:${down ? 'down' : 'up'}`);
+	},
+	remotePrepare: async (h, kind) => {
+		if (h.plan.emulator !== 'dolphin') throw new Error('Réservé à Dolphin.');
+		dolphinP2(kind);
+		await relaunch(h);
+		return true;
+	},
+	remoteInfo: () => ({ prepared: dolphinP2State() }),
+	// Zone de la fenêtre sur son écran (en pixels logiques), pour découper l'image envoyée à l'ami.
+	// « front » : la fenêtre du jeu est au premier plan. Sinon, rien n'est envoyé (l'écran pourrait montrer autre chose).
+	captureRect: async (h) => {
+		const b = h.win.getContentBounds();
+		const d = screen.getDisplayMatching(h.win.getBounds());
+		const fg = Number(await winhelper.foreground().catch(() => 0));
+		return { x: b.x - d.bounds.x, y: b.y - d.bounds.y, w: b.width, h: b.height, dw: d.bounds.width, front: !h.win.isMinimized() && fg === hwndOf(h.win) };
+	},
 	retry: (h) => relaunch(h),
 	screenshot: async (h) => shotTo(h, path.join(store.instanceDir(h.id), 'screenshots', `capture-${new Date().toISOString().replace(/[:.]/g, '-')}.png`)),
 	quickSave: async (h, n) => { await saveSlot(h, n); return ACTIONS.config(h).slotInfo[n]; },
@@ -330,6 +424,7 @@ const ACTIONS = {
 };
 
 const registerIpc = () => {
+	allowCapture();
 	for (const [name, fn] of Object.entries(ACTIONS)) {
 		ipcMain.handle(`ext:${name}`, async (event, ...args) => {
 			const h = hosts.get(event.sender.id);

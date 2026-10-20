@@ -5,13 +5,17 @@
 // Les commandes reçues passent par smashInputs.send : elles n'interfèrent ni avec le bot ni avec les films.
 
 (() => {
-	const MAX_GUESTS = 3;
+	// Fenêtre d'un émulateur externe (Dolphin…) : la page fournit l'image, le son et l'envoi des commandes.
+	const A = window.smashRemoteAdapter || null;
+	const MAX_GUESTS = A ? A.maxGuests : 3;
+	const SLOTS = A ? A.slots : [1, 2, 3];
 	const R = { guests: [], quality: 'balanced', blockAll: false, micTrack: null, micOn: false, ptt: false, pttDown: false, game: null, panel: null, chat: [], timer: 0, nextId: 1 };
 
 	// ---------- Flux du jeu (image du canvas + son d'EmulatorJS) ----------
 
-	const gameTracks = () => {
+	const gameTracks = async () => {
 		if (R.game) return R.game;
+		if (A) { R.game = await A.tracks(); return R.game; }
 		const canvas = emu().canvas;
 		const video = canvas.captureStream(60).getVideoTracks()[0];
 		let audio = null;
@@ -28,6 +32,7 @@
 	// ---------- Commandes des invités ----------
 
 	const labelFor = (slot, id) => {
+		if (A) return SmashRemote.DEFAULT_PAD[id];
 		const E = emu();
 		const own = E.controls && E.controls[slot] && E.controls[slot][id];
 		if (own && own.value2 !== undefined) return own.value2;
@@ -35,7 +40,7 @@
 		if (p1 && p1.value2 !== undefined) return p1.value2;
 		return SmashRemote.DEFAULT_PAD[id];
 	};
-	const keyFor = (id) => { const c = emu().controls && emu().controls[0] && emu().controls[0][id]; return c && typeof c.value === 'number' ? c.value : null; };
+	const keyFor = (id) => { if (A) return A.keyFor(id); const c = emu().controls && emu().controls[0] && emu().controls[0][id]; return c && typeof c.value === 'number' ? c.value : null; };
 
 	const apply = (g) => {
 		const allowed = g.allowed && !R.blockAll && g.state === 'connected';
@@ -46,7 +51,7 @@
 				const code = keyFor(id);
 				if (code && g.keys.has(code)) v = Math.max(v, SmashRemote.ANALOG.includes(id) ? 0x7fff : 1);
 			}
-			if ((g.applied.get(id) || 0) !== v) { g.applied.set(id, v); window.smashInputs.send(g.slot, id, v); }
+			if ((g.applied.get(id) || 0) !== v) { g.applied.set(id, v); (A ? A.send : window.smashInputs.send)(g.slot, id, v); }
 		}
 	};
 	const release = (g) => { g.pad = null; g.keys.clear(); apply({ ...g, allowed: false, state: 'off', applied: g.applied }); };
@@ -100,16 +105,17 @@
 
 	// ---------- Invitations ----------
 
-	const freeSlot = () => [1, 2, 3].find(s => !R.guests.some(g => g.slot === s && g.state !== 'closed'));
+	const freeSlot = () => SLOTS.find(s => !R.guests.some(g => g.slot === s && g.state !== 'closed'));
 
 	const invite = async () => {
 		const live = R.guests.filter(g => g.state !== 'closed');
-		if (live.length >= MAX_GUESTS) { toast('3 invités au maximum (joueurs 2 à 4).', { error: true }); return; }
+		if (live.length >= MAX_GUESTS) { toast(MAX_GUESTS === 1 ? 'Un invité au maximum (joueur 2) pour ce jeu.' : '3 invités au maximum (joueurs 2 à 4).', { error: true }); return; }
 		const slot = freeSlot();
 		const pc = new RTCPeerConnection({ iceServers: SmashRemote.ICE });
 		const g = { id: R.nextId++, name: 'Invité', slot, pc, state: 'invite', allowed: true, keys: new Set(), applied: new Map(), seq: -1, pad: null, code: '', stats: null, prev: {}, muted: false, padName: '' };
 		R.guests.push(g);
-		const tracks = gameTracks();
+		let tracks;
+		try { tracks = await gameTracks(); } catch (e) { R.guests = R.guests.filter(x => x !== g); toast(`Image du jeu indisponible : ${esc(e.message)}`, { error: true }); return; }
 		g.videoTx = pc.addTransceiver(tracks.video, { direction: 'sendonly' });
 		SmashRemote.preferCodecs(g.videoTx);
 		SmashRemote.preferCodecs(pc.addTransceiver(tracks.audio || 'audio', { direction: 'sendonly' }), 'audio');
@@ -210,7 +216,7 @@
 		return `<div class="rp-guest ${g.state}" data-g="${g.id}">
 			<div class="rp-guest-head">
 				<span class="rp-dot"></span><b>${esc(g.name)}</b><span class="rp-state">${STATE[g.state] || g.state}</span><span class="grow"></span>
-				<select data-rp="slot" data-g="${g.id}">${[1, 2, 3].map(sl => `<option value="${sl}" ${g.slot === sl ? 'selected' : ''}>Joueur ${sl + 1}</option>`).join('')}</select>
+				<select data-rp="slot" data-g="${g.id}">${SLOTS.map(sl => `<option value="${sl}" ${g.slot === sl ? 'selected' : ''}>Joueur ${sl + 1}</option>`).join('')}</select>
 			</div>
 			${pending ? `
 				<div class="rp-step"><b>1.</b> Envoie ce code d’invitation à ton ami (ou le fichier) :</div>
@@ -274,6 +280,7 @@
 			<div class="panel-head"><div class="panel-title">À DISTANCE</div><button class="wc" data-rp="close"><span>✕</span></button></div>
 			<div class="rp-body">
 				<p class="rp-intro">Tes amis voient <b>uniquement l’image du jeu</b> (jamais ton bureau) et jouent avec leur manette comme joueurs 2 à 4. Connexion directe et chiffrée entre vos PC, sans serveur.</p>
+				${A && A.prepareHtml ? A.prepareHtml() : ''}
 				<button class="pbtn primary rp-invite" data-rp="invite">${icon('plus')}Inviter un ami</button>
 				<div class="rp-guests"></div>
 				<div class="rp-label">Qualité de l’image</div><div class="rp-quality"></div>
@@ -342,14 +349,16 @@
 			case 'ptt': R.ptt = !R.ptt; if (R.micTrack) R.micTrack.enabled = R.micOn && !R.ptt; render(); break;
 			case 'block': R.blockAll = !R.blockAll; for (const x of R.guests) apply(x); render(); toast(R.blockAll ? 'Commandes à distance bloquées : tu as la main' : 'Commandes à distance réactivées'); break;
 			case 'send': sendChat(); break;
+			case 'prepare': if (A && A.prepare) await A.prepare(b.dataset.v); break;
 		}
 	};
 
 	const toggle = (open) => {
-		if (!st.started) return;
+		if (A ? !A.ready() : !st.started) { if (A) toast('Attends que le jeu soit affiché.', { error: true }); return; }
 		R.panel = R.panel || build();
 		const show = open === undefined ? R.panel.classList.contains('hidden') : open;
 		R.panel.classList.toggle('hidden', !show);
+		if (A && A.onPanel) A.onPanel(show);
 		if (show) { render(); if (!R.timer) R.timer = setInterval(tick, 1000); } else focusGame();
 	};
 
