@@ -225,6 +225,10 @@
 	// ---------- Illustration ----------
 
 	let uid = 0;
+	// Chemin d'image → URL affichable (fourni par la fenêtre qui l'affiche ; sans lui, pas d'image).
+	let imageUrl = null;
+	const setImageUrl = (fn) => { imageUrl = fn; };
+	const imgOf = (t, k) => (t[k] && imageUrl ? imageUrl(t[k]) : '');
 	// Scène du thème (SVG 200×100 étirable) : ciel dégradé + motifs.
 	const scene = (id, { sky = true } = {}) => {
 		const t = byId[resolve(id)];
@@ -232,7 +236,12 @@
 		const p = palette(t);
 		const grad = `g-${t.id}-${++uid}`;
 		const items = t.scene.map(([m, x, y, s = 1, r = 0]) => (M[m] ? `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})">${M[m](p)}</g>` : '')).join('');
-		return `<svg class="theme-scene" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${sky ? `<defs><linearGradient id="${grad}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(t.bg, t.accent2, t.light ? 0.25 : 0.22)}"/><stop offset="1" stop-color="${t.bg}"/></linearGradient></defs><rect width="200" height="100" fill="url(#${grad})"/>` : ''}${items}</svg>`;
+		// Thème personnalisé : image de fond (assombrie) et image d'illustration à droite.
+		const bgImg = sky ? imgOf(t, 'image') : '';
+		const back = bgImg ? `<image href="${bgImg}" width="200" height="100" preserveAspectRatio="xMidYMid slice"/><rect width="200" height="100" fill="${t.bg}" opacity="${Math.min(0.6, t.imageDim || 0)}"/>` : '';
+		const stickerImg = imgOf(t, 'sticker');
+		const sticker = stickerImg ? `<image href="${stickerImg}" x="112" y="6" width="84" height="90" preserveAspectRatio="xMidYMax meet"/>` : '';
+		return `<svg class="theme-scene" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${sky ? `<defs><linearGradient id="${grad}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(t.bg, t.accent2, t.light ? 0.25 : 0.22)}"/><stop offset="1" stop-color="${t.bg}"/></linearGradient></defs><rect width="200" height="100" fill="url(#${grad})"/>` : ''}${back}${items}${sticker}</svg>`;
 	};
 
 	// Petite icône du thème (son motif principal), pour les listes.
@@ -249,7 +258,7 @@
 		const t = byId[resolve(id)];
 		if (!t || mode === 'off') return '';
 		const p = palette(t);
-		const part = PARTICLES[t.particles];
+		const part = t.particles === 'none' ? null : PARTICLES[t.particles];
 		let particles = '';
 		if (part && mode === 'full') {
 			for (let k = 0; k < part.count; k++) {
@@ -258,7 +267,9 @@
 				particles += `<svg class="decor-p ${part.motion} ${part.glow ? 'glow' : ''}" style="${style}" viewBox="-55 -55 110 110" aria-hidden="true">${part.draw(p, k)}</svg>`;
 			}
 		}
-		return `<div class="decor-scene">${scene(t.id, { sky: false })}</div><div class="decor-particles">${particles}</div>`;
+		const bgImg = imgOf(t, 'image');
+		const back = bgImg ? `<div class="decor-image" style="background-image:url(&quot;${bgImg}&quot;);filter:blur(${t.imageBlur || 0}px)"></div><div class="decor-dim" style="opacity:${t.imageDim}"></div>` : '';
+		return `${back}<div class="decor-scene ${bgImg ? 'over-image' : ''}">${scene(t.id, { sky: false })}</div><div class="decor-particles">${particles}</div>`;
 	};
 
 	// ---------- Choix du thème d'un jeu ----------
@@ -277,8 +288,74 @@
 		return best ? best.id : (SYSTEM_THEME[system] || null);
 	};
 
+	// ---------- Thèmes personnalisés (créés dans Paramètres → Apparence) ----------
+
+	const FONTS = ['Inter', 'Russo One', 'Nunito', 'Audiowide', 'Fredoka', 'Silkscreen', 'Cinzel', 'Luckiest Guy', 'Bangers', 'Pirata One', 'Orbitron', 'Creepster', 'VT323', 'Bebas Neue', 'Lilita One', 'Permanent Marker', 'Metal Mania', 'Press Start 2P'];
+	const ICON_STYLES = ['default', 'wii', 'ornate', 'pixel', 'neon', 'paper', 'bubble', 'tech'];
+	const SPOTS = [[62, 56, 0.72, -6], [142, 40, 0.46, 8], [174, 78, 0.3, 0], [28, 26, 0.3, -12]];
+	const CUSTOM = [];
+	const HEX = /^#[0-9a-f]{6}$/i;
+	const IMG = /\.(png|jpe?g|webp|gif)$/i;
+	const clamp = (v, a, b, d) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Math.min(b, Math.max(a, Number(v))) : d);
+
+	// Valide et complète une définition ; les champs inconnus sont ignorés.
+	const normalize = (d = {}) => {
+		const id = /^custom-[a-z0-9-]{1,40}$/.test(d.id || '') ? d.id : `custom-${Date.now().toString(36)}`;
+		const motifs = (Array.isArray(d.motifs) ? d.motifs : []).filter(m => M[m]).slice(0, 4);
+		return {
+			id,
+			label: String(d.label || 'Mon thème').slice(0, 40),
+			game: 'Thème personnalisé', console: 'Perso', tagline: String(d.tagline || 'Créé dans Smash Emu').slice(0, 80),
+			bg: HEX.test(d.bg) ? d.bg : '#101014',
+			accent: HEX.test(d.accent) ? d.accent : '#ff1f3d',
+			accent2: HEX.test(d.accent2) ? d.accent2 : '#ffd23f',
+			font: FONTS.includes(d.font) ? d.font : 'Inter',
+			icons: ICON_STYLES.includes(d.icons) ? d.icons : 'default',
+			particles: PARTICLES[d.particles] ? d.particles : (d.particles === 'none' ? 'none' : 'stars'),
+			motifs,
+			scene: motifs.map((m, k) => [m, ...SPOTS[k]]),
+			keywords: '',
+			light: !!d.light,
+			image: typeof d.image === 'string' && IMG.test(d.image) ? d.image : '',
+			sticker: typeof d.sticker === 'string' && IMG.test(d.sticker) ? d.sticker : '',
+			imageDim: clamp(d.imageDim, 0, 0.9, 0.55),
+			imageBlur: clamp(d.imageBlur, 0, 20, 0),
+			custom: true,
+		};
+	};
+
+	const register = (def) => {
+		const t = normalize(def);
+		const k = CUSTOM.findIndex(x => x.id === t.id);
+		if (k >= 0) CUSTOM[k] = t; else CUSTOM.push(t);
+		byId[t.id] = t;
+		if (typeof document !== 'undefined') {
+			let style = document.getElementById(`theme-${t.id}`);
+			if (!style) { style = document.createElement('style'); style.id = `theme-${t.id}`; document.head.appendChild(style); }
+			style.textContent = `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([key, v]) => `${key}:${v};`).join('')}}`;
+		}
+		return t;
+	};
+	const unregister = (id) => { const k = CUSTOM.findIndex(x => x.id === id); if (k >= 0) CUSTOM.splice(k, 1); delete byId[id]; if (typeof document !== 'undefined') { const s = document.getElementById(`theme-${id}`); if (s) s.remove(); } };
+
+	// Code de partage : « SMASHTHEME- » + JSON en base64 URL (sans les champs calculés).
+	const exportCode = (t) => {
+		const json = JSON.stringify({ label: t.label, tagline: t.tagline, bg: t.bg, accent: t.accent, accent2: t.accent2, font: t.font, icons: t.icons, particles: t.particles, motifs: t.motifs, light: t.light, imageDim: t.imageDim, imageBlur: t.imageBlur });
+		const b64 = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(json))) : Buffer.from(json, 'utf8').toString('base64');
+		return `SMASHTHEME-${b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+	};
+	const importCode = (code) => {
+		const m = String(code || '').trim().match(/^SMASHTHEME-([A-Za-z0-9_-]+)$/);
+		if (!m) throw new Error('Code de thème invalide (il commence par SMASHTHEME-).');
+		const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+		let data;
+		try { data = JSON.parse(typeof atob === 'function' ? decodeURIComponent(escape(atob(b64))) : Buffer.from(b64, 'base64').toString('utf8')); } catch { throw new Error('Code de thème abîmé.'); }
+		return normalize({ ...data, id: undefined });
+	};
+
 	const api = {
-		THEMES, css, match, vars, scene, emblem, decor, resolve, BASE_FONTS, MOTIFS: Object.keys(M),
+		THEMES, CUSTOM, FONTS, ICON_STYLES, setImageUrl, PARTICLE_TYPES: Object.keys(PARTICLES), register, unregister, normalize, exportCode, importCode,
+		css, match, vars, scene, emblem, decor, resolve, BASE_FONTS, MOTIFS: Object.keys(M),
 		get: id => byId[resolve(id)] || null,
 		fontOf: id => (byId[resolve(id)] ? byId[resolve(id)].font : BASE_FONTS[id] || 'Inter'),
 		iconsOf: id => (byId[resolve(id)] ? byId[resolve(id)].icons : 'default'),

@@ -397,3 +397,30 @@ test('trophées : paliers de temps de jeu et trophées généraux', () => {
 	assert.ok(t.evaluate().some(f => f.key === 'g-night'), 'oiseau de nuit');
 	assert.ok(t.list().points > 0);
 });
+
+test('thèmes personnalisés : code de partage, fichier .smashtheme avec images, nettoyage', () => {
+	const themes = require('../src/renderer/game-themes.js');
+	const themefiles = require('../src/main/themefiles');
+	const t = themes.normalize({ label: 'Forêt', bg: '#0b2a1c', accent: '#3dff8a', motifs: ['castle', 'inconnu', 'star'], particles: 'fairies', imageDim: 5 });
+	assert.deepStrictEqual(t.motifs, ['castle', 'star']);
+	assert.strictEqual(t.imageDim, 0.9);
+	const back = themes.importCode(themes.exportCode(t));
+	assert.strictEqual(back.label, 'Forêt');
+	assert.strictEqual(back.accent, '#3dff8a');
+	assert.throws(() => themes.importCode('pas un code'), /invalide/);
+	// Image PNG minimale : signature reconnue, copiée dans le dossier des thèmes.
+	const png = path.join(HOME, 'fond.png');
+	fs.writeFileSync(png, Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(32)]));
+	const image = themefiles.importImage(png);
+	assert.ok(themefiles.inDir(image));
+	const file = path.join(HOME, 'test.smashtheme');
+	themefiles.exportFile({ ...t, image }, file);
+	const imported = themefiles.importFile(file);
+	assert.strictEqual(imported.label, 'Forêt');
+	assert.ok(imported.image && imported.image !== image && fs.existsSync(imported.image));
+	// Une « image » qui n'en est pas une est refusée.
+	fs.writeFileSync(file, JSON.stringify({ format: 'smash-theme', theme: { label: 'x' }, images: { image: Buffer.from('<script>').toString('base64') } }));
+	assert.throws(() => themefiles.importFile(file), /Image non reconnue/);
+	assert.strictEqual(themefiles.cleanup([{ image }]), 1);
+	assert.ok(fs.existsSync(image));
+});

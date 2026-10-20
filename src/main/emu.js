@@ -242,6 +242,7 @@ const HANDLERS = {
 			logo: settings.logo || 'classic',
 			fontMode: settings.fontMode || 'titles',
 			playerName: settings.playerName || 'Hôte',
+			customThemes: settings.customThemes || [],
 			remoteHost: !!s.remoteHost,
 			volume: typeof inst.options.emuVolume === 'number' ? inst.options.emuVolume : settings.emuVolume,
 			slots: listStates(s.id),

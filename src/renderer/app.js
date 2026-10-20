@@ -36,15 +36,28 @@ for (const t of SmashThemes.THEMES) {
 }
 for (const id of Object.keys(THEME_INFO)) THEME_INFO[id].font = SmashThemes.fontOf(id);
 
+// Thèmes personnalisés : enregistrés dans les réglages, ajoutés au registre des thèmes.
+SmashThemes.setImageUrl(fileUrl);
+const syncCustomThemes = () => {
+	for (const c of [...SmashThemes.CUSTOM]) if (!(state.settings.customThemes || []).some(x => x.id === c.id)) { SmashThemes.unregister(c.id); delete THEME_INFO[c.id]; }
+	for (const def of state.settings.customThemes || []) {
+		const t = SmashThemes.register(def);
+		THEME_INFO[t.id] = { label: t.label, desc: t.tagline, colors: [t.bg, t.bg, t.accent], game: false, custom: true, font: t.font };
+	}
+};
+
 // Thème appliqué : couleurs, police, style d'icônes (Wii, ornements, pixel…) et décor animé des thèmes de jeux.
 let decorKey = '';
 const applyTheme = (theme) => {
-	const id = THEME_INFO[theme] ? theme : (THEME_INFO[SmashThemes.resolve(theme)] ? SmashThemes.resolve(theme) : 'smash');
+	const r = SmashThemes.resolve(theme);
+	const id = THEME_INFO[theme] ? theme : (THEME_INFO[r] || SmashThemes.get(r) ? r : 'smash');
 	const root = document.documentElement;
 	root.dataset.theme = id;
 	root.dataset.icons = SmashThemes.iconsOf(id);
+	const def = SmashThemes.get(id);
+	root.toggleAttribute('data-bgimage', !!(def && def.image));
 	const mode = (state.settings && state.settings.decor) || 'full';
-	const key = `${id}|${mode}`;
+	const key = `${id}|${mode}|${def && def.custom ? [def.image, def.sticker, def.imageDim, def.imageBlur, def.particles, def.motifs.join()].join() : ''}`;
 	if (key !== decorKey) {
 		decorKey = key;
 		const el = document.getElementById('decor');
@@ -113,6 +126,7 @@ const instIcon = (inst, cls = '') => {
 const refreshInstances = async () => { state.instances = await api('instances:list'); };
 const refreshAll = async () => {
 	[state.info, state.settings, state.meta, state.running] = await Promise.all([api('app:info'), api('settings:get'), api('catalog:meta'), api('run:status')]);
+	syncCustomThemes();
 	applyTheme(state.settings.theme);
 	applyLogo(state.settings.logo);
 	await refreshInstances();
@@ -633,6 +647,114 @@ const homeStats = () => {
 		${tile('puzzle', mods, 'mods actifs', null)}
 		${tile('clock', time < 60000 ? '0 min' : playTime(time), 'de jeu', null)}
 	</div>`;
+};
+
+// ---------- Éditeur de thème ----------
+
+const ICON_STYLE_LABEL = { default: 'Classique', wii: 'Icônes Wii', ornate: 'Ornements dorés', pixel: 'Pixel', neon: 'Néon', paper: 'Papier', bubble: 'Bulles', tech: 'Futuriste' };
+const PARTICLE_LABEL = { none: 'Aucune', fairies: 'Fées', stars: 'Étoiles', coins: 'Pièces', leaves: 'Feuilles', bubbles: 'Bulles', sparks: 'Étincelles', ghosts: 'Fantômes', petals: 'Pétales', embers: 'Braises', hearts: 'Cœurs', notes: 'Notes', rain: 'Pluie', warp: 'Vitesse lumière', confetti: 'Confettis', moons: 'Lunes' };
+const MOTIF_LABEL = { star: 'Étoile', starA: 'Étoile (accent)', mushroom: 'Champignon', coin: 'Pièce', brick: 'Brique', pipe: 'Tuyau', cloud: 'Nuage', hill: 'Colline', castle: 'Château', planet: 'Planète', moon: 'Lune', hat: 'Casquette', flag: 'Drapeau', wheel: 'Roue', burst: 'Explosion', door: 'Porte', ghost: 'Fantôme', lantern: 'Lampe', fairy: 'Fée', sword: 'Épée', shield: 'Bouclier', ocarina: 'Ocarina', glider: 'Paravoile', mountain: 'Montagne', gem: 'Gemme', island: 'Île', boat: 'Bateau', wave: 'Vagues', sun: 'Soleil', ball: 'Balle', bolt: 'Éclair', ring: 'Anneau', swords: 'Épées croisées', crown: 'Couronne', barrel: 'Tonneau', banana: 'Banane', palm: 'Palmier', heart: 'Cœur', visor: 'Casque', orb: 'Orbe', ship: 'Vaisseau', leaf: 'Feuille', tennis: 'Tennis', pin: 'Quille', board: 'Planche', paw: 'Patte', bone: 'Os', speech: 'Bulle', house: 'Maison', sprout: 'Pousse', flower: 'Fleur', present: 'Cadeau', egg: 'Œuf', micro: 'Mini-jeu', dice: 'Dé', tank: 'Tank', spot: 'Projecteur', note: 'Note', swordGlow: 'Épée lumineuse' };
+
+const saveCustomTheme = async (t, use = true) => {
+	const list = [...(state.settings.customThemes || [])];
+	const def = { id: t.id, label: t.label, tagline: t.tagline, bg: t.bg, accent: t.accent, accent2: t.accent2, font: t.font, icons: t.icons, particles: t.particles, motifs: t.motifs, light: t.light, image: t.image, sticker: t.sticker, imageDim: t.imageDim, imageBlur: t.imageBlur };
+	const k = list.findIndex(x => x.id === t.id);
+	if (k >= 0) list[k] = def; else list.push(def);
+	state.settings = await api('settings:set', { customThemes: list.slice(-30), ...(use ? { theme: t.id } : {}) });
+	api('themes:cleanup').catch(() => {});
+	syncCustomThemes();
+	render();
+};
+
+const openThemeEditor = async (existing) => {
+	const before = state.settings.theme;
+	let t = SmashThemes.normalize(existing || { label: 'Mon thème', bg: '#120f1c', accent: '#ff3d7f', accent2: '#ffd23f', font: 'Fredoka', icons: 'bubble', particles: 'stars', motifs: ['star', 'planet', 'heart'] });
+	const preview = () => { SmashThemes.register(t); applyTheme(t.id); const art = document.getElementById('te-art'); if (art) art.innerHTML = SmashThemes.scene(t.id); };
+	const saved = await modal({
+		title: existing ? 'Modifier le thème' : 'Créer un thème',
+		width: 860,
+		body: `<div class="te">
+			<div class="te-form">
+				<div class="field"><label>Nom</label><input class="input" id="te-label" maxlength="40" value="${esc(t.label)}"></div>
+				<div class="field"><label>Description</label><input class="input" id="te-tagline" maxlength="80" value="${esc(t.tagline)}"></div>
+				<div class="te-colors">
+					<label>Fond<input type="color" id="te-bg" value="${t.bg}"></label>
+					<label>Accent<input type="color" id="te-accent" value="${t.accent}"></label>
+					<label>Accent 2<input type="color" id="te-accent2" value="${t.accent2}"></label>
+					<label class="te-check"><input type="checkbox" id="te-light" ${t.light ? 'checked' : ''}> Thème clair</label>
+				</div>
+				<div class="field"><label>Images</label>
+					<div class="te-images">
+						<div class="te-img" data-k="image"><div class="te-img-prev" id="te-prev-image"></div><div><b>Fond</b><span>Recouvre toute la fenêtre (paysage, fond d’écran…)</span><div class="row" style="gap:4px"><button class="btn sm" data-img="pick" data-k="image">${icon('image')}Choisir</button><button class="btn sm" data-img="clear" data-k="image">${icon('x')}</button></div></div></div>
+						<div class="te-img" data-k="sticker"><div class="te-img-prev" id="te-prev-sticker"></div><div><b>Illustration</b><span>Personnage ou logo, idéalement un PNG transparent</span><div class="row" style="gap:4px"><button class="btn sm" data-img="pick" data-k="sticker">${icon('image')}Choisir</button><button class="btn sm" data-img="clear" data-k="sticker">${icon('x')}</button></div></div></div>
+					</div>
+					<div class="te-sliders">
+						<label>Assombrir le fond <input type="range" id="te-dim" min="0" max="0.9" step="0.05" value="${t.imageDim}"></label>
+						<label>Flou du fond <input type="range" id="te-blur" min="0" max="20" step="1" value="${t.imageBlur}"></label>
+					</div>
+				</div>
+				<div class="field"><label>Police</label><select class="input" id="te-font">${SmashThemes.FONTS.map(f => `<option ${t.font === f ? 'selected' : ''} style="font-family:'${f}'">${f}</option>`).join('')}</select></div>
+				<div class="field"><label>Style des icônes</label><div class="chips" id="te-icons">${SmashThemes.ICON_STYLES.map(v => `<button class="chip ${t.icons === v ? 'active' : ''}" data-v="${v}">${ICON_STYLE_LABEL[v]}</button>`).join('')}</div></div>
+				<div class="field"><label>Décor animé</label><div class="chips" id="te-particles">${['none', ...SmashThemes.PARTICLE_TYPES].map(v => `<button class="chip ${t.particles === v ? 'active' : ''}" data-v="${v}">${PARTICLE_LABEL[v] || v}</button>`).join('')}</div></div>
+				<div class="field"><label>Illustration (4 motifs au maximum)</label><div class="chips te-motifs" id="te-motifs">${SmashThemes.MOTIFS.map(m => `<button class="chip ${t.motifs.includes(m) ? 'active' : ''}" data-v="${m}">${MOTIF_LABEL[m] || m}</button>`).join('')}</div></div>
+			</div>
+			<div class="te-preview"><div class="theme-art" id="te-art" style="height:150px"></div><div class="small muted" style="margin-top:8px">L’application entière montre l’aperçu pendant que tu modifies.</div></div>
+		</div>`,
+		foot: '<button class="btn" data-no>Annuler</button><button class="btn primary" data-ok>Enregistrer et utiliser</button>',
+		setup: (el, close) => {
+			const read = () => {
+				t = SmashThemes.normalize({ ...t, id: t.id, label: $('#te-label', el).value, tagline: $('#te-tagline', el).value, bg: $('#te-bg', el).value, accent: $('#te-accent', el).value, accent2: $('#te-accent2', el).value, light: $('#te-light', el).checked, font: $('#te-font', el).value, imageDim: $('#te-dim', el).value, imageBlur: $('#te-blur', el).value });
+				preview();
+			};
+			const drawImages = () => {
+				for (const k of ['image', 'sticker']) {
+					const box = $(`#te-prev-${k}`, el);
+					box.innerHTML = t[k] ? `<img src="${fileUrl(t[k])}" alt="">` : icon('image');
+					$(`[data-img=clear][data-k=${k}]`, el).hidden = !t[k];
+				}
+				$('.te-sliders', el).hidden = !t.image;
+			};
+			el.addEventListener('click', async (e) => {
+				const b = e.target.closest('[data-img]');
+				if (!b) return;
+				const k = b.dataset.k;
+				if (b.dataset.img === 'clear') t = SmashThemes.normalize({ ...t, [k]: '' });
+				else {
+					const p = await api('themes:pickImage').catch(toastError);
+					if (!p) return;
+					t = SmashThemes.normalize({ ...t, [k]: p });
+				}
+				drawImages();
+				preview();
+			});
+			drawImages();
+			el.addEventListener('input', read);
+			el.addEventListener('change', read);
+			const chips = (sel, key, multi) => $(sel, el).addEventListener('click', (e) => {
+				const b = e.target.closest('[data-v]');
+				if (!b) return;
+				if (multi) {
+					const list = t.motifs.includes(b.dataset.v) ? t.motifs.filter(m => m !== b.dataset.v) : [...t.motifs, b.dataset.v].slice(-4);
+					t = SmashThemes.normalize({ ...t, motifs: list });
+					for (const c of $(sel, el).querySelectorAll('[data-v]')) c.classList.toggle('active', list.includes(c.dataset.v));
+				} else {
+					t = SmashThemes.normalize({ ...t, [key]: b.dataset.v });
+					for (const c of $(sel, el).querySelectorAll('[data-v]')) c.classList.toggle('active', c === b);
+				}
+				preview();
+			});
+			chips('#te-icons', 'icons');
+			chips('#te-particles', 'particles');
+			chips('#te-motifs', 'motifs', true);
+			el.querySelector('[data-no]').onclick = () => close(false);
+			el.querySelector('[data-ok]').onclick = () => close(true);
+			preview();
+		},
+	});
+	if (saved) await saveCustomTheme(t, true);
+	else { if (!existing) SmashThemes.unregister(t.id); syncCustomThemes(); applyTheme(before); }
+	decorKey = '';
+	render();
 };
 
 // ---------- Trophées ----------
@@ -1544,11 +1666,23 @@ PAGES.settings = () => {
 					${[['full', 'Illustration et animations'], ['calm', 'Illustration seule'], ['off', 'Aucun']].map(([v, l]) => `<button class="chip ${(s.decor || 'full') === v ? 'active' : ''}" data-action="set-decor" data-v="${v}">${l}</button>`).join('')}</div>
 				<div id="theme-grid">
 					<div class="theme-group">Thèmes Smash Emu</div>
-					<div class="theme-grid">${Object.entries(THEME_INFO).filter(([, t]) => !t.game).map(([id, t]) => `
+					<div class="theme-grid">${Object.entries(THEME_INFO).filter(([, t]) => !t.game && !t.custom).map(([id, t]) => `
 						<button class="theme-card ${SmashThemes.resolve(s.theme || 'smash') === id ? 'active' : ''}" data-action="set-theme" data-v="${id}">
 							<div class="theme-preview" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><span style="background:${t.colors[2]}"></span><i style="background:${t.colors[2]}"></i></div>
 							<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div><div class="small muted">${esc(t.desc)} · ${esc(t.font)}</div>
 						</button>`).join('')}</div>
+					<div class="theme-group">Mes thèmes · ${SmashThemes.CUSTOM.length}</div>
+					<div class="theme-grid games">
+						<button class="theme-card game theme-new" data-action="theme-edit">${icon('plus')}<b>Créer un thème</b><span class="theme-meta">Couleurs, police, icônes, décor et illustration</span></button>
+						<button class="theme-card game theme-new" data-action="theme-import">${icon('upload')}<b>Importer un thème</b><span class="theme-meta">Un code SMASHTHEME ou un fichier .smashtheme (avec ses images)</span></button>
+						${SmashThemes.CUSTOM.map(t => `
+						<div class="theme-card game ${(s.theme || 'smash') === t.id ? 'active' : ''}" style="--card-bg:${t.bg};--card-accent:${t.accent}">
+							<div class="theme-art" data-action="set-theme" data-v="${t.id}">${SmashThemes.scene(t.id)}<span class="theme-console">Perso</span></div>
+							<div class="bold" style="font-family:'${esc(t.font)}', 'Inter', sans-serif">${esc(t.label)}</div>
+							<div class="theme-meta">${esc(t.tagline)}</div>
+							<div class="row" style="gap:4px;margin-top:6px;flex-wrap:wrap"><button class="btn sm" data-action="set-theme" data-v="${t.id}">Utiliser</button><button class="btn sm" data-action="theme-edit" data-id="${t.id}">Modifier</button><button class="btn sm" data-action="theme-share" data-id="${t.id}" data-tip="${t.image || t.sticker ? 'Code à partager (sans les images)' : 'Copier le code à partager'}">${icon('copy')}</button><button class="btn sm" data-action="theme-export" data-id="${t.id}" data-tip="Exporter en fichier .smashtheme, images comprises">${icon('download')}</button><button class="icon-btn" data-action="theme-delete" data-id="${t.id}">${icon('trash-2')}</button></div>
+						</div>`).join('')}
+					</div>
 					<div class="theme-group">Thèmes des jeux · ${SmashThemes.THEMES.length}</div>
 					<div class="theme-grid games">${SmashThemes.THEMES.map(t => `
 						<button class="theme-card game ${SmashThemes.resolve(s.theme || 'smash') === t.id ? 'active' : ''}" data-action="set-theme" data-v="${t.id}" style="--card-bg:${t.bg};--card-accent:${t.accent}">
@@ -1991,6 +2125,50 @@ const ACTIONS = {
 	'remote-join': async () => {
 		const code = ($('#remote-code') || {}).value || '';
 		await api('remote:join', code);
+	},
+	'theme-edit': el => openThemeEditor(el.dataset.id ? SmashThemes.get(el.dataset.id) : null),
+	'theme-share': async (el) => {
+		const t = SmashThemes.get(el.dataset.id);
+		await navigator.clipboard.writeText(SmashThemes.exportCode(t));
+		toast(t.image || t.sticker ? 'Code copié. Les images ne tiennent pas dans un code : pour les partager, exporte le thème en fichier.' : 'Code du thème copié : envoie-le à tes amis', { timeout: 6000 });
+	},
+	'theme-export': async (el) => {
+		const p = await api('themes:exportFile', SmashThemes.get(el.dataset.id)).catch(toastError);
+		if (p) toast(`Thème exporté : <b>${esc(p.split(/[\\/]/).pop())}</b>`);
+	},
+	'theme-import': async () => {
+		const code = await modal({
+			title: 'Importer un thème',
+			body: `<div class="field"><label>Code du thème</label><textarea class="input" id="ti-code" rows="4" placeholder="SMASHTHEME-…"></textarea></div>
+				<div class="row" style="gap:10px"><button class="btn" data-file>${icon('file-plus')}Ouvrir un fichier .smashtheme</button><span class="small muted">Le fichier contient aussi les images du thème.</span></div>`,
+			foot: '<button class="btn" data-no>Annuler</button><button class="btn primary" data-ok>Importer le code</button>',
+			setup: (el, close) => {
+				el.querySelector('[data-no]').onclick = () => close(null);
+				el.querySelector('[data-ok]').onclick = () => close($('#ti-code', el).value);
+				el.querySelector('[data-file]').onclick = () => close({ file: true });
+			},
+		});
+		if (!code) return;
+		try {
+			let t;
+			if (code.file) {
+				const def = await api('themes:importFile');
+				if (!def) return;
+				t = SmashThemes.normalize({ ...def, id: undefined });
+			} else t = SmashThemes.importCode(code);
+			await saveCustomTheme(t, true);
+			toast(`Thème « ${esc(t.label)} » importé`);
+		} catch (error) { toastError(error); }
+	},
+	'theme-delete': async (el) => {
+		if (!await confirmModal('Supprimer ce thème ?', 'Il disparaîtra de tes thèmes.', { confirm: 'Supprimer', danger: true })) return;
+		const list = (state.settings.customThemes || []).filter(t => t.id !== el.dataset.id);
+		const patch = { customThemes: list };
+		if (state.settings.theme === el.dataset.id) patch.theme = 'smash';
+		state.settings = await api('settings:set', patch);
+		api('themes:cleanup').catch(() => {});
+		syncCustomThemes();
+		render();
 	},
 	'set-decor': async (el) => { state.settings = await api('settings:set', { decor: el.dataset.v }); render(); },
 	'set-fontmode': async (el) => { state.settings = await api('settings:set', { fontMode: el.dataset.v }); render(); },

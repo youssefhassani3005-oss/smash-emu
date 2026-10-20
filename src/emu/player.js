@@ -583,6 +583,7 @@ const onStarted = () => {
 		showError(e.message);
 		return;
 	}
+	for (const c of st.cfg.customThemes || []) if (window.SmashThemes) SmashThemes.register(c);
 	document.documentElement.dataset.font = st.cfg.fontMode || 'titles';
 	if (st.cfg.logo && st.cfg.logo !== SmashLogo.variant()) {
 		SmashLogo.setVariant(st.cfg.logo);

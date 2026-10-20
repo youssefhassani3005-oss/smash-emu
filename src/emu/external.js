@@ -267,6 +267,7 @@ const tick = () => {
 	$('#logo').innerHTML = SmashLogo.svg(26);
 	$('#splash').innerHTML = SmashLogo.svg(80) + SmashLogo.wordmark();
 	st.cfg = await smashExt.config();
+	for (const c of st.cfg.customThemes || []) if (window.SmashThemes) SmashThemes.register(c);
 	document.documentElement.dataset.font = st.cfg.fontMode || 'titles';
 	if (st.cfg.logo && st.cfg.logo !== SmashLogo.variant()) {
 		SmashLogo.setVariant(st.cfg.logo);

@@ -77,6 +77,7 @@ const writeJson = (file, data) => {
 const themeFor = (inst, system) => {
 	const s = getSettings();
 	const themes = require('../renderer/game-themes.js');
+	for (const c of s.customThemes || []) themes.register(c);
 	if (!s.autoTheme || !inst) return themes.resolve(s.theme);
 	const info = inst.rom && inst.rom.info;
 	const name = inst.type === 'coopdx' ? 'Super Mario 64' : (info && (info.known || info.title)) || inst.name;

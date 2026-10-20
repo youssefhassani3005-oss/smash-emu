@@ -29,7 +29,7 @@ const HANDLERS = {
 	'remote:config': (g) => {
 		const s = store.getSettings();
 		const themes = require('../renderer/game-themes.js');
-		return { theme: themes.resolve(s.theme), logo: s.logo || 'classic', playerName: s.playerName || '', code: g.code };
+		return { theme: themes.resolve(s.theme), logo: s.logo || 'classic', playerName: s.playerName || '', code: g.code, customThemes: s.customThemes || [] };
 	},
 	'remote:setName': (g, name) => { if (typeof name === 'string' && name.trim()) store.setSettings({ playerName: name.trim().slice(0, 24) }); },
 	'remote:addRecent': (g, entry) => {

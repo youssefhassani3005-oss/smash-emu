@@ -21,6 +21,7 @@ const external = require('./external');
 const remote = require('./remote');
 const covers = require('./covers');
 const trophies = require('./trophies');
+const themefiles = require('./themefiles');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -270,6 +271,21 @@ const handlers = {
 	},
 	'remote:join': (code) => { remote.openGuest(typeof code === 'string' ? code.trim() : ''); return true; },
 	'remote:recent': () => remote.recent(),
+	// Images des thèmes personnalisés et fichiers .smashtheme.
+	'themes:pickImage': async () => {
+		const r = await dialog.showOpenDialog(win, { title: 'Choisir une image', properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }] });
+		return r.canceled ? null : themefiles.importImage(r.filePaths[0]);
+	},
+	'themes:exportFile': async (def) => {
+		const name = String((def && def.label) || 'Mon thème').replace(/[<>:"/\\|?*]+/g, '').trim() || 'Mon thème';
+		const r = await dialog.showSaveDialog(win, { title: 'Exporter le thème', defaultPath: path.join(app.getPath('desktop'), `${name}.smashtheme`), filters: [{ name: 'Thème Smash Emu', extensions: ['smashtheme'] }] });
+		return r.canceled ? null : themefiles.exportFile(def, r.filePath);
+	},
+	'themes:importFile': async () => {
+		const r = await dialog.showOpenDialog(win, { title: 'Importer un thème', properties: ['openFile'], filters: [{ name: 'Thème Smash Emu', extensions: ['smashtheme'] }] });
+		return r.canceled ? null : themefiles.importFile(r.filePaths[0]);
+	},
+	'themes:cleanup': () => themefiles.cleanup(store.getSettings().customThemes || []),
 	'trophies:list': () => { trophies.evaluate(runner.status()); return trophies.list(runner.status()); },
 	// Jaquettes et images (libretro-thumbnails ou fichiers de l'utilisateur).
 	'covers:search': async (id) => {
