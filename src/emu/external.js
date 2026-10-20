@@ -343,6 +343,21 @@ const focusGame = () => backToGame();
 const RP_SIDE = 400;
 // Touches du clavier de l'ami (réglages par défaut d'EmulatorJS) → bouton.
 const RP_GUEST_KEYS = { 0: 88, 1: 83, 2: 86, 3: 13, 4: 38, 5: 40, 6: 37, 7: 39, 8: 90, 9: 65, 10: 81, 11: 69, 16: 72, 17: 70, 18: 71, 19: 84, 20: 76, 21: 74, 22: 75, 23: 73 };
+// Réglage guidé de la manette 2 dans les émulateurs autres que Dolphin : bouton de l'ami → touche du PC hôte.
+const RP_GUIDE = [
+	['A (bas)', 'NUMPAD0', '0 du pavé'], ['B (droite)', 'NUMPAD1', '1 du pavé'], ['X (gauche)', 'NUMPAD2', '2 du pavé'], ['Y (haut)', 'NUMPAD3', '3 du pavé'],
+	['Start', 'NUMPAD4', '4 du pavé'], ['Select / Back', 'NUMPAD5', '5 du pavé'], ['LB', 'NUMPAD6', '6 du pavé'], ['RB', 'NUMPAD7', '7 du pavé'],
+	['LT', 'NUMPAD8', '8 du pavé'], ['RT', 'NUMPAD9', '9 du pavé'], ['Clic stick droit', 'MULTIPLY', '* du pavé'],
+	['Croix ↑', 'Y', 'Y'], ['Croix ↓', 'U', 'U'], ['Croix ←', 'O', 'O'], ['Croix →', 'P', 'P'],
+	['Stick gauche ↑', 'V', 'V'], ['Stick gauche ↓', 'B', 'B'], ['Stick gauche ←', 'N', 'N'], ['Stick gauche →', 'M', 'M'],
+	['Stick droit ↑', 'ADD', '+ du pavé'], ['Stick droit ↓', 'SUBTRACT', '− du pavé'], ['Stick droit ←', 'DECIMAL', '. du pavé'], ['Stick droit →', 'R', 'R'],
+];
+const rpManualHtml = () => `<div class="rp-guest rp-prepare-box">
+	<div class="rp-step"><b>Manette de ton ami (à régler une fois)</b> : dans ${esc(st.cfg.emulator)}, règle la manette du <b>joueur 2</b> (ou une 2<sup>e</sup> touche du joueur 1 pour les jeux à un joueur) sur ces touches du clavier. Pas de pavé numérique ? Clique sur le bouton à régler dans l’émulateur, puis sur « Appuyer » ici : Smash Emu appuie à ta place 3 s plus tard.</div>
+	<div class="rp-row"><button class="pbtn sm" data-rp="prepare" data-v="native">Ouvrir ${esc(st.cfg.emulator)} (réglages)</button></div>
+	<div class="rp-keys">${RP_GUIDE.map(([pad, key, label]) => `<div><span>${esc(pad)}</span><b>${esc(label)}</b><button class="rp-chip" data-rp="prepare" data-v="key:${key}">Appuyer</button></div>`).join('')}</div>
+	<div class="rp-hint">Garde la fenêtre du jeu au premier plan et visible pendant la partie : c’est elle qui est filmée et qui reçoit les touches.</div>
+</div>`;
 // Bouton (numérotation EmulatorJS) → touche lue par la manette 2 de Dolphin.
 const RP_P2 = { 8: 'NUMPAD0', 0: 'NUMPAD1', 9: 'NUMPAD2', 1: 'NUMPAD3', 3: 'NUMPAD4', 2: 'NUMPAD5', 10: 'NUMPAD6', 11: 'NUMPAD7', 12: 'NUMPAD8', 13: 'NUMPAD9', 15: 'MULTIPLY', 4: 'Y', 5: 'U', 6: 'O', 7: 'P', 19: 'V', 18: 'B', 17: 'N', 16: 'M', 23: 'ADD', 22: 'SUBTRACT', 21: 'DECIMAL', 20: 'R' };
 const rpHeld = new Set();
@@ -410,14 +425,22 @@ window.smashRemoteAdapter = {
 		const box = document.querySelector('.rp-prepare-box');
 		if (open && box) box.outerHTML = window.smashRemoteAdapter.prepareHtml();
 	},
-	prepareHtml: () => `<div class="rp-guest rp-prepare-box">
+	prepareHtml: () => (st.cfg.emulatorId !== 'dolphin' ? rpManualHtml() : `<div class="rp-guest rp-prepare-box">
 		<div class="rp-step"><b>Manette de ton ami</b> : ${rpPrepared ? `prête (joueur 2${st.cfg.systemId === 'wii' ? `, Wiimote + ${rpPrepared === 'Classic' ? 'Classic Controller' : rpPrepared === 'None' ? 'rien' : 'Nunchuk'}` : ''}).` : 'à préparer une fois (Dolphin redémarre : sauvegarde dans le jeu avant).'}</div>
 		<div class="rp-row">${st.cfg.systemId === 'wii'
 		? '<button class="pbtn sm" data-rp="prepare" data-v="Nunchuk">Wiimote + Nunchuk</button><button class="pbtn sm" data-rp="prepare" data-v="Classic">Classic Controller</button><button class="pbtn sm" data-rp="prepare" data-v="None">Wiimote seule</button>'
 		: '<button class="pbtn sm" data-rp="prepare" data-v="Nunchuk">Préparer la manette GameCube 2</button>'}</div>
 		<div class="rp-hint">Ton ami joue avec sa manette ou son clavier. Garde la fenêtre du jeu au premier plan et visible : c’est elle qui est filmée. Les jeux où l’on vise l’écran avec la Wiimote ne marchent pas à distance.</div>
-	</div>`,
+	</div>`),
 	prepare: async (kind) => {
+		// Réglage guidé (autres émulateurs) : ouvrir l'émulateur, ou « appuyer » sur une touche à la place de l'hôte.
+		if (kind === 'native') { await smashExt.openNative(); toast(`${esc(st.cfg.emulator)} est ouvert : règle la manette du joueur 2 sur les touches du tableau.`); return; }
+		if (String(kind).startsWith('key:')) {
+			const key = kind.slice(4);
+			toast(`Clique sur le bouton à régler dans ${esc(st.cfg.emulator)} : j’appuie sur la touche dans 3 s`);
+			setTimeout(async () => { await smashExt.padKey(key, true).catch(() => {}); setTimeout(() => smashExt.padKey(key, false).catch(() => {}), 150); }, 3000);
+			return;
+		}
 		if (!confirm('Dolphin va redémarrer avec la manette du joueur 2 prête. Sauvegarde dans le jeu avant. Continuer ?')) return;
 		window.smashRemoteHost.toggle(false);
 		await smashExt.remotePrepare(kind);

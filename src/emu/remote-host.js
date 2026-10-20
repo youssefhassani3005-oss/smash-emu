@@ -7,8 +7,15 @@
 (() => {
 	// Fenêtre d'un émulateur externe (Dolphin…) : la page fournit l'image, le son et l'envoi des commandes.
 	const A = window.smashRemoteAdapter || null;
-	const MAX_GUESTS = A ? A.maxGuests : 3;
-	const SLOTS = A ? A.slots : [1, 2, 3];
+	// Places proposées : joueurs 2 à N selon la console, puis « joueur 1 partagé » (l'ami pilote avec l'hôte),
+	// seule place des consoles à un joueur (Game Boy, GBA, DS, PSP…).
+	const PLAYERS = { n64: 4, nes: 2, snes: 2, psx: 2, md: 2, sms: 2, pce: 2, a2600: 2, a7800: 2, jaguar: 2, saturn: 2, segacd: 2, '32x': 2, '3do': 1, gb: 1, gbc: 1, gba: 1, nds: 1, vb: 1, gg: 1, lynx: 1, psp: 1 };
+	const slotsOf = () => {
+		if (A) return A.slots;
+		const n = PLAYERS[st.cfg && st.cfg.system] ?? 2;
+		return [...Array(Math.max(0, n - 1)).keys()].map(k => k + 1).concat(0);
+	};
+	const SLOT_LABEL = sl => (sl === 0 ? 'Joueur 1 (partagé)' : `Joueur ${sl + 1}`);
 	const R = { guests: [], quality: 'balanced', blockAll: false, micTrack: null, micOn: false, ptt: false, pttDown: false, game: null, panel: null, chat: [], timer: 0, nextId: 1 };
 
 	// ---------- Flux du jeu (image du canvas + son d'EmulatorJS) ----------
@@ -105,11 +112,12 @@
 
 	// ---------- Invitations ----------
 
-	const freeSlot = () => SLOTS.find(s => !R.guests.some(g => g.slot === s && g.state !== 'closed'));
+	const freeSlot = () => slotsOf().find(s => !R.guests.some(g => g.slot === s && g.state !== 'closed'));
 
 	const invite = async () => {
 		const live = R.guests.filter(g => g.state !== 'closed');
-		if (live.length >= MAX_GUESTS) { toast(MAX_GUESTS === 1 ? 'Un invité au maximum (joueur 2) pour ce jeu.' : '3 invités au maximum (joueurs 2 à 4).', { error: true }); return; }
+		const MAX_GUESTS = A ? A.maxGuests : slotsOf().length;
+		if (live.length >= MAX_GUESTS) { toast(MAX_GUESTS === 1 ? 'Un seul invité pour ce jeu.' : ` invités au maximum pour cette console.`, { error: true }); return; }
 		const slot = freeSlot();
 		const pc = new RTCPeerConnection({ iceServers: SmashRemote.ICE });
 		const g = { id: R.nextId++, name: 'Invité', slot, pc, state: 'invite', allowed: true, keys: new Set(), applied: new Map(), seq: -1, pad: null, code: '', stats: null, prev: {}, muted: false, padName: '' };
@@ -216,7 +224,7 @@
 		return `<div class="rp-guest ${g.state}" data-g="${g.id}">
 			<div class="rp-guest-head">
 				<span class="rp-dot"></span><b>${esc(g.name)}</b><span class="rp-state">${STATE[g.state] || g.state}</span><span class="grow"></span>
-				<select data-rp="slot" data-g="${g.id}">${SLOTS.map(sl => `<option value="${sl}" ${g.slot === sl ? 'selected' : ''}>Joueur ${sl + 1}</option>`).join('')}</select>
+				<select data-rp="slot" data-g="${g.id}">${slotsOf().map(sl => `<option value="${sl}" ${g.slot === sl ? 'selected' : ''}>${SLOT_LABEL(sl)}</option>`).join('')}</select>
 			</div>
 			${pending ? `
 				<div class="rp-step"><b>1.</b> Envoie ce code d’invitation à ton ami (ou le fichier) :</div>

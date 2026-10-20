@@ -331,10 +331,10 @@ const ACTIONS = {
 		return {
 			name: h.plan.name, emulator: ext.label || h.plan.emulator, emulatorId: h.plan.emulator, system: (systems.SYSTEMS[h.plan.system] || {}).label || '',
 			systemId: h.plan.system, theme: store.themeFor(store.getInstance(h.id), h.plan.system), logo: store.getSettings().logo || 'classic', fontMode: store.getSettings().fontMode || 'titles', customThemes: store.getSettings().customThemes || [],
-			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable, remote: h.plan.emulator === 'dolphin' },
+			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable, remote: true },
 			slots: k.slots || 1,
 			keysHint: ext.keysHint || '',
-			remote: h.plan.emulator === 'dolphin',
+			remote: true,
 			playerName: store.getSettings().playerName || 'Hôte',
 			systemLabel: (systems.SYSTEMS[h.plan.system] || {}).label || '',
 			requirement: requirement(h),
