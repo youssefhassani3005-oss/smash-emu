@@ -424,3 +424,18 @@ test('thèmes personnalisés : code de partage, fichier .smashtheme avec images,
 	assert.strictEqual(themefiles.cleanup([{ image }]), 1);
 	assert.ok(fs.existsSync(image));
 });
+
+test('présence Discord : trames RPC et identifiant d’application vérifié', () => {
+	const discord = require('../src/main/discord');
+	const frame = discord.encode(1, { cmd: 'SET_ACTIVITY' });
+	assert.strictEqual(frame.readInt32LE(0), 1);
+	assert.strictEqual(frame.readInt32LE(4), frame.length - 8);
+	assert.deepStrictEqual(JSON.parse(frame.subarray(8).toString()), { cmd: 'SET_ACTIVITY' });
+	discord.configure({ on: true, appId: 'abc' });
+	assert.strictEqual(discord.status().status, 'invalid');
+	discord.configure({ on: false, appId: '' });
+	assert.strictEqual(discord.status().status, 'off');
+	discord.setActivity({ details: 'x', buttons: [{ label: 'a'.repeat(50), url: 'https://example.com' }] });
+	assert.strictEqual(discord.status().activity.details, 'x ');
+	assert.strictEqual(discord.status().activity.buttons[0].label.length, 32);
+});

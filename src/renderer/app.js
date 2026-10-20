@@ -649,6 +649,25 @@ const homeStats = () => {
 	</div>`;
 };
 
+// ---------- Présence Discord ----------
+
+const DISCORD_STATE = {
+	off: ['', 'Désactivée'],
+	connecting: ['orange', 'Connexion à Discord…'],
+	connected: ['green', 'Connectée'],
+	'no-discord': ['orange', 'Discord n’est pas ouvert : nouvel essai toutes les 15 s'],
+	invalid: ['red', 'Application ID à vérifier'],
+	error: ['red', 'Erreur'],
+};
+const drawDiscordState = (st) => {
+	const el = document.getElementById('discord-state');
+	if (!el || !st) return;
+	const [tone, label] = DISCORD_STATE[st.status] || DISCORD_STATE.off;
+	const a = st.activity;
+	el.innerHTML = `<span class="tag ${tone}">${esc(label)}</span>${st.user ? `<span class="muted">compte ${esc(st.user)}</span>` : ''}${st.error && st.status !== 'connected' ? `<span class="muted">${esc(st.error)}</span>` : ''}${st.status === 'connected' && a ? `<span class="muted">Affiché : ${esc([a.details, a.state].filter(Boolean).join(' · '))}</span>` : ''}`;
+};
+window.launcher.on('discord:state', () => api('discord:status').then(drawDiscordState).catch(() => {}));
+
 // ---------- Éditeur de thème ----------
 
 const ICON_STYLE_LABEL = { default: 'Classique', wii: 'Icônes Wii', ornate: 'Ornements dorés', pixel: 'Pixel', neon: 'Néon', paper: 'Papier', bubble: 'Bulles', tech: 'Futuriste' };
@@ -1634,6 +1653,7 @@ PAGES.opera = (params) => {
 PAGES.settings = () => {
 	if (!state.emulators) api('emulators:status').then((st) => { state.emulators = st; const box = $('#emu-list'); if (box) box.innerHTML = renderEmuList(); });
 	api('switch:status').then((k) => { state.switchKeys = k; const box = $('#emu-list'); if (box) box.innerHTML = renderEmuList(); }).catch(() => {});
+	api('discord:status').then(drawDiscordState).catch(() => {});
 	const s = state.settings;
 	const p = state.info.paths;
 	const st = state.opera.status || {};
@@ -1744,6 +1764,21 @@ PAGES.settings = () => {
 				${toggle('skipIntro', 'Passer l\'intro', 'Ajoute --skip-intro au lancement de sm64coopdx.')}
 				${toggle('discord', 'Intégration Discord', 'Affiche ton activité de jeu sur Discord (sm64coopdx).')}
 				${toggle('closeOnLaunch', 'Réduire Smash Emu au lancement d’un jeu', 'La fenêtre principale se réduit quand un jeu démarre.')}
+			</div>
+			<div class="card col"><h3>${icon('message-circle')}Présence Discord</h3>
+				${toggle('richPresence', 'Afficher « Joue à Smash Emu » sur Discord', 'Ton profil Discord montre le jeu en cours, sa console, sa jaquette et depuis combien de temps tu joues. Discord doit être ouvert sur ce PC.')}
+				<div class="field"><label>Application ID Discord</label><input class="input" data-setting="discordAppId" value="${esc(s.discordAppId || '')}" placeholder="Ex. 1234567890123456789" inputmode="numeric" maxlength="21"></div>
+				<details class="small muted"><summary>Où trouver l’Application ID ?</summary>
+					<ol style="margin:6px 0 0;padding-left:18px;line-height:1.6">
+						<li>Ouvre le portail des développeurs Discord (bouton ci-dessous) et connecte-toi.</li>
+						<li>« New Application », nomme-la <b>Smash Emu</b> : c’est le nom affiché après « Joue à ».</li>
+						<li>Copie l’<b>Application ID</b> (page General Information) et colle-le ici.</li>
+					</ol>
+					<button class="btn sm" style="margin-top:6px" data-action="external" data-url="https://discord.com/developers/applications">${icon('external-link')}Portail des développeurs Discord</button>
+				</details>
+				${toggle('presenceShowGame', 'Montrer le nom du jeu', 'Sinon, Discord affiche seulement « En jeu ».')}
+				${toggle('presenceIdle', 'Afficher aussi quand tu es dans les menus', '« Dans le menu » quand aucun jeu n’est lancé.')}
+				<div class="row small" id="discord-state" style="flex-wrap:wrap;gap:8px"></div>
 			</div>
 			<div class="card col"><h3>Mises à jour</h3><div id="upd-box">${renderUpdate()}</div></div>
 			<div class="card col"><h3>À propos</h3>

@@ -43,6 +43,10 @@ const DEFAULT_SETTINGS = {
 	saveBackups: 10,      // copies de secours gardées par jeu pour les sauvegardes en jeu
 	savesSyncDir: '',     // dossier cloud (Dropbox, Drive, Syncthing…) servant de miroir, vide = désactivé
 	resumeMode: 'ask',
+	richPresence: false,
+	discordAppId: '',
+	presenceShowGame: true,
+	presenceIdle: true,
 	logo: 'classic',
 	autoTheme: true,
 	fontMode: 'titles',

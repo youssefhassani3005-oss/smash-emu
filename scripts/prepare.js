@@ -14,6 +14,7 @@ const ICONS = [
 	'maximize-2', 'square-stack', 'cpu', 'list-filter', 'house', 'cloud-download', 'eye', 'rocket', 'save', 'pencil', 'swords',
 	'pause', 'camera', 'rotate-ccw', 'keyboard', 'volume-2', 'volume-x', 'maximize', 'minimize', 'layers', 'history', 'log-out',
 	'palette', 'gauge', 'disc-3', 'joystick', 'fast-forward', 'file-plus', 'flame', 'trophy', 'zap-off',
+	'message-circle', 'shield-check', 'crown', 'key-round', 'shuffle', 'gift', 'radio', 'list-music', 'skip-forward', 'skip-back', 'repeat', 'badge-check', 'chart-column', 'lock',
 ];
 
 const icons = {};

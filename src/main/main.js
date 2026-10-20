@@ -22,6 +22,7 @@ const remote = require('./remote');
 const covers = require('./covers');
 const trophies = require('./trophies');
 const themefiles = require('./themefiles');
+const discord = require('./discord');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -39,7 +40,35 @@ const rom = require('./rom');
 
 let win = null;
 const send = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
-runner.setEmitter((type, payload) => send(`run:${type}`, payload));
+runner.setEmitter((type, payload) => { send(`run:${type}`, payload); if (type === 'status') updatePresence(); });
+
+// Présence Discord : jeu en cours (le plus récent), console, jaquette libretro et chrono ; « Dans le menu » sinon.
+const REPO_URL = 'https://github.com/youssefhassani3005-oss/smash-emu';
+const ICON_URL = 'https://raw.githubusercontent.com/youssefhassani3005-oss/smash-emu/main/src/renderer/assets/icon.png';
+const APP_START = Date.now();
+function updatePresence() {
+	const s = store.getSettings();
+	discord.configure({ on: s.richPresence, appId: s.discordAppId });
+	if (!s.richPresence) return;
+	const base = { assets: { large_image: ICON_URL, large_text: 'Smash Emu' }, buttons: [{ label: 'Découvrir Smash Emu', url: REPO_URL }] };
+	const st = runner.status();
+	if (!st.length) { discord.setActivity(s.presenceIdle === false ? null : { ...base, details: 'Dans le menu', timestamps: { start: APP_START } }); return; }
+	const r = st.reduce((a, b) => (b.startedAt > a.startedAt ? b : a));
+	const inst = store.getInstance(r.id) || { name: 'Jeu' };
+	const hidden = s.presenceShowGame === false;
+	const sys = systems.SYSTEMS[games.systemOf(inst)];
+	let cover = null;
+	try { cover = hidden ? null : covers.info(r.id).boxart; } catch { /* pas d'images */ }
+	const img = cover && !cover.custom && cover.url;
+	discord.setActivity({
+		...base,
+		details: hidden ? 'En jeu' : inst.name,
+		state: [inst.type === 'coopdx' ? 'Coop DX' : sys && sys.label, emu.isRemoteHost(r.id) ? 'partie à distance' : '', st.length > 1 ? `${st.length} jeux ouverts` : ''].filter(Boolean).join(' · ') || 'Smash Emu',
+		timestamps: { start: r.startedAt },
+		assets: img ? { large_image: img, large_text: inst.name, small_image: ICON_URL, small_text: 'Smash Emu' } : { ...base.assets, large_text: hidden ? 'Smash Emu' : inst.name },
+	});
+}
+discord.onState(st => send('discord:state', st));
 runner.setEmuOpener(emu.openEmu);
 
 // Trophées : vérifiés à la fin d'une partie et chaque minute pendant une partie ; la notification apparaît
@@ -210,6 +239,7 @@ const handlers = {
 		const s = store.setSettings(patch);
 		if ('logo' in patch && win && !win.isDestroyed()) win.setIcon(store.windowIcon());
 		if ('watchOperaDownloads' in patch) startOperaWatch();
+		if (['richPresence', 'discordAppId', 'presenceShowGame', 'presenceIdle'].some(k => k in patch)) updatePresence();
 		return s;
 	},
 
@@ -286,6 +316,7 @@ const handlers = {
 		return r.canceled ? null : themefiles.importFile(r.filePaths[0]);
 	},
 	'themes:cleanup': () => themefiles.cleanup(store.getSettings().customThemes || []),
+	'discord:status': () => discord.status(),
 	'trophies:list': () => { trophies.evaluate(runner.status()); return trophies.list(runner.status()); },
 	// Jaquettes et images (libretro-thumbnails ou fichiers de l'utilisateur).
 	'covers:search': async (id) => {
@@ -475,6 +506,7 @@ app.whenReady().then(() => {
 	const id = playArg();
 	if (id) win.webContents.once('did-finish-load', () => { try { runner.launch(id); } catch (error) { console.error(error.message); } });
 	startOperaWatch();
+	updatePresence();
 });
 
 app.on('window-all-closed', () => {
