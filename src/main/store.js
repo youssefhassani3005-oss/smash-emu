@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = {
 	discordAppId: '',
 	presenceShowGame: true,
 	presenceIdle: true,
+	musicPauseInGame: true,
 	logo: 'classic',
 	autoTheme: true,
 	fontMode: 'titles',

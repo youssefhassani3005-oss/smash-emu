@@ -173,6 +173,7 @@ const renderTopbar = () => {
 		<button class="circle-btn" data-action="forward" ${state.forward.length ? '' : 'disabled'} data-tip="Suivant" data-tip-pos="bottom">${icon('chevron-right')}</button>
 		<div class="breadcrumb">${icon('play', 'sm')}${crumbs.map((c, i) => (i ? `<span class="sep">${icon('chevron-right', 'sm')}</span>` : '') + (c.to ? `<a data-action="crumb" data-i="${i}">${esc(c.label)}</a>` : `<span>${esc(c.label)}</span>`)).join('')}</div>
 		<div class="spacer"></div>
+		<button class="circle-btn" data-action="music-dock" data-tip="Musique : lecteur et favoris" data-tip-pos="bottom">${icon('music')}</button>
 		<button class="circle-btn downloads-btn" data-action="downloads" data-tip="Téléchargements" data-tip-pos="bottom">${icon('download')}${active ? `<span class="badge">${active}</span>` : ''}</button>
 		<div class="pill ${n ? 'active' : ''}" data-action="running"><span class="dot"></span>${n ? `${n} instance${n > 1 ? 's' : ''} en cours` : 'Aucune instance en cours'}</div>
 		<div class="win-controls">
@@ -1182,30 +1183,43 @@ const openSoundtrack = async (gameName, systemId) => {
 				$('#ost', el).innerHTML = `<div class="empty">${icon('triangle-alert')}<h3>Bande-son introuvable</h3><div>${esc(error.message)}</div></div>`;
 				return;
 			}
-			const items = r.videos;
-			const play = (i) => {
-				const it = items[i];
-				$('#ost-player', el).innerHTML = `<iframe src="${ytEmbed(it)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-				$('#ost-now', el).textContent = it.title;
-				for (const b of el.querySelectorAll('.ost-item')) b.classList.toggle('on', +b.dataset.i === i);
-			};
-			$('#ost', el).innerHTML = items.length ? `
-				<div class="ost">
-					<div class="ost-main">
-						<div class="ost-player" id="ost-player"></div>
-						<div class="bold ellipsis" id="ost-now" style="margin-top:10px"></div>
-						${r.albums.length ? `<div class="small muted" style="margin:14px 0 6px">Albums complets (KHInsider, dans Opera)</div>
-						<div class="chips">${r.albums.map(a => `<button class="chip" data-action="external" data-url="${esc(a.url)}">${icon('music')}${esc(a.title)}</button>`).join('')}</div>` : ''}
-						<div style="margin-top:12px"><a data-action="external" data-url="${esc(r.youtubeUrl)}">Plus de résultats sur YouTube</a></div>
-					</div>
-					<div class="ost-list">${items.map((v, i) => `
-						<button class="ost-item" data-i="${i}">
+			// Lecture dans le lecteur permanent (en bas de la fenêtre) : la musique continue après la fermeture.
+			const items = r.videos.map(v => ({ ...v, game: gameName }));
+			const draw = () => {
+				$('#ost', el).innerHTML = items.length ? `
+				<div class="ost-head">
+					<button class="btn primary" data-ost="all">${icon('play')}Tout écouter</button>
+					<button class="btn" data-ost="shuffle">${icon('shuffle')}Aléatoire</button>
+					<button class="btn" data-ost="favs">${icon('heart')}Mes favoris</button>
+					<span class="grow"></span>
+					<a data-action="external" data-url="${esc(r.youtubeUrl)}">Plus de résultats sur YouTube</a>
+				</div>
+				<div class="ost-grid">${items.map((v, i) => `
+					<div class="ost-item ${mItem() && mKey(mItem()) === mKey(v) ? 'on' : ''}">
+						<button class="ost-main-btn" data-ost="play" data-i="${i}">
 							${v.thumb ? `<img src="${esc(v.thumb)}" alt="">` : `<div class="ost-pl">${icon('layers')}</div>`}
 							<div class="grow"><div class="t">${esc(v.title)}</div><div class="small muted">${v.type === 'playlist' ? 'Playlist' : esc(v.duration)}${v.channel ? ` · ${esc(v.channel)}` : ''}</div></div>
-						</button>`).join('')}</div>
-				</div>` : `<div class="empty">${icon('music')}<h3>Aucune bande-son trouvée</h3><div><a data-action="external" data-url="${esc(r.youtubeUrl)}">Chercher sur YouTube</a></div></div>`;
-			el.querySelectorAll('.ost-item').forEach(b => b.addEventListener('click', () => play(+b.dataset.i)));
-			if (items.length) play(0);
+						</button>
+						<div class="ost-acts"><button class="md-btn" data-ost="queue" data-i="${i}" data-tip="Ajouter à la file">${icon('plus')}</button><button class="md-btn ${mIsFav(v) ? 'on' : ''}" data-ost="fav" data-i="${i}" data-tip="Favori">${icon('heart')}</button></div>
+					</div>`).join('')}</div>
+				${r.albums.length ? `<div class="small muted" style="margin:14px 0 6px">Albums complets (KHInsider, dans Opera)</div>
+				<div class="chips">${r.albums.map(a => `<button class="chip" data-action="external" data-url="${esc(a.url)}">${icon('music')}${esc(a.title)}</button>`).join('')}</div>` : ''}
+				<div class="small muted" style="margin-top:10px">La musique continue dans le lecteur en bas de la fenêtre, même après avoir fermé cette fenêtre ; elle se met en pause quand un jeu démarre.</div>`
+					: `<div class="empty">${icon('music')}<h3>Aucune bande-son trouvée</h3><div><a data-action="external" data-url="${esc(r.youtubeUrl)}">Chercher sur YouTube</a></div></div>`;
+			};
+			draw();
+			el.addEventListener('click', async (e) => {
+				const b = e.target.closest('[data-ost]');
+				if (!b) return;
+				const i = +b.dataset.i;
+				if (b.dataset.ost === 'play') musicPlay(items, i);
+				if (b.dataset.ost === 'all') { music.shuffle = false; musicPlay(items, 0); }
+				if (b.dataset.ost === 'shuffle') { music.shuffle = true; musicPlay(items, Math.floor(Math.random() * items.length)); }
+				if (b.dataset.ost === 'queue') musicEnqueue(items[i]);
+				if (b.dataset.ost === 'fav') await musicToggleFav(items[i]);
+				if (b.dataset.ost === 'favs') musicOpenFavs();
+				draw();
+			});
 		},
 	});
 };
@@ -1775,6 +1789,7 @@ PAGES.settings = () => {
 				${toggle('skipIntro', 'Passer l\'intro', 'Ajoute --skip-intro au lancement de sm64coopdx.')}
 				${toggle('discord', 'Intégration Discord', 'Affiche ton activité de jeu sur Discord (sm64coopdx).')}
 				${toggle('closeOnLaunch', 'Réduire Smash Emu au lancement d’un jeu', 'La fenêtre principale se réduit quand un jeu démarre.')}
+				${toggle('musicPauseInGame', 'Mettre la musique en pause pendant les parties', 'Le lecteur de bandes-son reprend quand le jeu est fermé.')}
 			</div>
 			<div class="card col"><h3>${icon('message-circle')}Présence Discord</h3>
 				${toggle('richPresence', 'Afficher « Joue à Smash Emu » sur Discord', 'Ton profil Discord montre le jeu en cours, sa console, sa jaquette et depuis combien de temps tu joues. Discord doit être ouvert sur ce PC.')}

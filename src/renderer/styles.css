@@ -1277,6 +1277,48 @@ html[data-icons="tech"] .nav-btn.active { box-shadow: inset 3px 0 0 var(--brand-
 .admin-box { margin-top: 16px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(var(--brand-rgb), 0.5); background: rgba(var(--brand-rgb), 0.05); }
 @media (max-width: 1100px) { .dash-grid { grid-template-columns: 1fr; } .sup-themes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+/* ---------- Lecteur de musique ---------- */
+
+.music-dock { position: fixed; right: 16px; bottom: 16px; z-index: 900; width: min(620px, calc(100vw - 120px)); border-radius: 18px; background: color-mix(in srgb, var(--raised) 92%, transparent); backdrop-filter: blur(14px); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(var(--brand-rgb), 0.25); overflow: hidden; }
+.music-dock.hidden { display: block !important; transform: translateY(calc(100% + 40px)); pointer-events: none; opacity: 0; }
+.music-dock { transition: transform 0.25s, opacity 0.25s; }
+.md-video { position: absolute; left: -10000px; top: 0; width: 320px; height: 180px; }
+.music-dock.show-video .md-video { position: relative; left: 0; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.md-video iframe { width: 100%; height: 100%; border: 0; display: block; }
+.md-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; flex-wrap: wrap; }
+.md-art { width: 52px; height: 52px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: rgba(var(--brand-rgb), 0.15); display: grid; place-items: center; color: var(--brand); }
+.md-art img { width: 100%; height: 100%; object-fit: cover; }
+.md-meta { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
+.md-meta b { color: var(--contrast); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-meta span { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-track { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.md-progress { flex: 1; height: 4px; border-radius: 2px; background: var(--button); overflow: hidden; }
+.md-progress i { display: block; height: 100%; width: 0; background: var(--brand); transition: width 0.4s linear; }
+.md-track small { font-size: 10.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.md-ctrls { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.md-btn { width: 30px; height: 30px; border: none; border-radius: 8px; background: transparent; color: var(--text); display: grid; place-items: center; cursor: pointer; }
+.md-btn svg.icon { width: 16px; height: 16px; }
+.md-btn:hover { background: var(--button-hover); color: var(--contrast); }
+.md-btn.on { color: var(--brand); }
+.md-btn.md-play { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: var(--on-brand); }
+.md-vol { width: 70px; accent-color: var(--brand); }
+.md-panel { border-top: 1px solid var(--divider); max-height: 280px; display: flex; flex-direction: column; }
+.md-panel.hidden { display: none; }
+.md-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 13px; color: var(--contrast); }
+.md-list { overflow-y: auto; padding: 0 6px 8px; }
+.md-row { display: flex; align-items: center; gap: 4px; border-radius: 10px; }
+.md-row.on { background: rgba(var(--brand-rgb), 0.12); }
+.md-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 5px 6px; border: none; background: none; color: inherit; cursor: pointer; text-align: left; }
+.md-row-main img, .md-pl { width: 56px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--button); display: grid; place-items: center; }
+.md-row-main b { display: block; font-size: 12.5px; color: var(--contrast); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-row-main small { display: block; font-size: 11px; color: var(--text-dim); }
+.md-row-main .grow { min-width: 0; }
+.ost-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.ost-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; max-height: 430px; overflow-y: auto; }
+.ost-grid .ost-item { padding: 0; align-items: stretch; }
+.ost-main-btn { flex: 1; min-width: 0; display: flex; gap: 10px; align-items: center; padding: 6px; border: none; background: none; color: inherit; cursor: pointer; text-align: left; }
+.ost-acts { display: flex; flex-direction: column; justify-content: center; padding-right: 4px; }
+
 /* ---------- Multiworld (Archipelago) ---------- */
 
 .ap-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 14px; }
