@@ -1,0 +1,78 @@
+# Construit l'installateur Windows sur GitHub, le fait signer par SignPath (signature gratuite de la
+# SignPath Foundation pour les projets open source) puis publie la version avec le fichier de mise à jour.
+# Lancement : pousser un tag « vX.Y.Z », ou bouton « Run workflow » dans l'onglet Actions.
+# Secrets et variables à créer (Settings → Secrets and variables → Actions) une fois SignPath accepté :
+#   secret   SIGNPATH_API_TOKEN
+#   variable SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG (ex. smash-emu), SIGNPATH_POLICY_SLUG (ex. release-signing)
+# Sans ces réglages, l'installateur est construit et publié non signé (comme aujourd'hui).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Installateur (non signé)
+        run: |
+          npm run prepare-assets
+          node scripts/make-installer-art.js
+          npx electron-builder --win nsis --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Envoi à la signature
+        id: unsigned
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: dist/Smash-Emu-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Signature SignPath
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Remplace par l'installateur signé et met à jour latest.yml
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        shell: pwsh
+        run: |
+          Copy-Item signed/*.exe dist/ -Force
+          node scripts/refresh-latest-yml.js dist
+
+      - name: Publication sur GitHub
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Smash-Emu-Setup-*.exe
+            dist/Smash-Emu-Setup-*.exe.blockmap
+            dist/latest.yml
+          generate_release_notes: true
