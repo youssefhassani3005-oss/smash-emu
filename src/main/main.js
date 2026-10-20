@@ -146,13 +146,19 @@ const romsWithUsage = () => {
 };
 
 // « Jouer » depuis la bibliothèque : réutilise une instance sans patch de cette ROM, sinon en crée une.
-const playRom = (romId) => {
+const playRom = (romId, { remote = false } = {}) => {
 	const lib = romlib.get(romId);
 	let inst = store.listInstances().find(i => i.type === 'rom' && i.rom && (i.rom.libraryId === lib.id || i.rom.info.md5 === lib.id)
 		&& !games.listContent(i.id).some(c => c.source === 'instance' && c.enabled));
 	if (!inst) {
 		inst = store.createInstance({ name: lib.name, type: 'rom', group: (systems.SYSTEMS[lib.system] || {}).label || 'ROMs' });
 		attachLibraryRom(inst.id, lib.id);
+	}
+	// Héberger à distance : le panneau d'invitation s'ouvre au démarrage du jeu.
+	if (remote) {
+		if (games.engineFor(store.getInstance(inst.id)) === 'smash') emu.markRemoteHost(inst.id);
+		else external.markRemoteHost(inst.id);
+		remote.noteHosted(inst.name);
 	}
 	runner.launch(inst.id);
 	return inst.id;
@@ -302,7 +308,9 @@ const handlers = {
 	'remote:host': (id) => {
 		const inst = store.getInstance(id);
 		if (!inst) throw new Error('Jeu introuvable.');
-		emu.markRemoteHost(id);
+		// Le panneau d'invitation s'ouvre tout seul au démarrage : moteur intégré ou émulateur externe.
+		if (games.engineFor(inst) === 'smash') emu.markRemoteHost(id);
+		else external.markRemoteHost(id);
 		remote.noteHosted(inst.name);
 		const r = runner.launch(id);
 		if (store.getSettings().closeOnLaunch && win) win.minimize();
@@ -446,6 +454,7 @@ const handlers = {
 	'roms:rename': (id, name) => romlib.rename(id, name),
 	'roms:remove': (id) => romlib.remove(id),
 	'roms:play': (id) => playRom(id),
+	'remote:hostRom': (id) => playRom(id, { remote: true }),
 	'roms:show': (id) => shell.showItemInFolder(romlib.get(id).path),
 
 	'window:minimize': () => win.minimize(),

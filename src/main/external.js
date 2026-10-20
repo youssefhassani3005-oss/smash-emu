@@ -33,6 +33,8 @@ const allowCapture = () => {
 const SRC = path.join(__dirname, '..');
 const BAR = 48;
 const hosts = new Map(); // id webContents -> hôte
+const remoteHosts = new Set(); // jeux lancés pour être hébergés à distance
+const markRemoteHost = id => remoteHosts.add(id);
 const WIIMOTE_INI = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Dolphin Emulator', 'Config', 'WiimoteNew.ini');
 
 const hwndOf = win => Number(win.getNativeWindowHandle().readBigUInt64LE(0));
@@ -85,6 +87,8 @@ const attach = async (h) => {
 			for (const w of wins) if (w.hwnd !== target.hwnd && !w.dialog) winhelper.hide(w.hwnd).catch(() => {});
 			layout(h);
 			send(h, 'ext:state', { attached: true, title: target.title });
+			// Lancé depuis « Héberger une partie » : le panneau d'invitation s'ouvre une fois le jeu affiché.
+			if (remoteHosts.delete(h.id)) setTimeout(() => send(h, 'ext:hotkey', 'remote'), 1500);
 			// Affiché mais bloqué (écran noir faute de BIOS ou de firmware) : on prévient le joueur.
 			setTimeout(() => {
 				if (h.closed || gen !== h.gen) return;
@@ -434,4 +438,4 @@ const registerIpc = () => {
 	}
 };
 
-module.exports = { openExternalHost, registerIpc };
+module.exports = { openExternalHost, registerIpc, markRemoteHost };

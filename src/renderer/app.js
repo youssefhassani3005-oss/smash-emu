@@ -888,8 +888,10 @@ const openCovers = async (inst) => {
 TITLES.remote = () => [{ label: 'Jeu à distance' }];
 
 PAGES.remote = async () => {
-	const games = state.instances.filter(i => i.type === 'rom' && instEngine(i) === 'smash');
+	// Tous les jeux : moteur intégré et émulateurs externes incrustés (Project64 garde sa fenêtre : pas d'image à envoyer).
+	const games = state.instances.filter(i => i.type === 'rom' && instEngine(i) !== 'project64');
 	const recent = await api('remote:recent').catch(() => []);
+	if (!state.roms) state.roms = await api('roms:list').catch(() => []);
 	if (state.route.name !== 'remote') return;
 	setMain(`
 		<div class="section-title"><h1>Jeu à distance</h1><span class="muted">jouer ensemble depuis deux maisons différentes</span></div>
@@ -903,7 +905,7 @@ PAGES.remote = async () => {
 			<div class="card col">
 				<h3>${icon('users')}Héberger une partie</h3>
 				<div class="small muted">Le jeu tourne chez toi ; tes amis voient l’image et jouent avec leur manette (joueurs 2 à 4).</div>
-				<div class="col" style="gap:6px;max-height:260px;overflow-y:auto">${games.map(i => `<div class="sug-row"><div class="avatar">${instIcon(i, 'sm')}</div><div class="grow bold ellipsis">${esc(i.name)}</div><button class="btn sm primary" data-action="remote-host" data-id="${esc(i.id)}">${icon('wifi')}Inviter</button></div>`).join('') || '<div class="small muted">Aucun jeu de l’émulateur intégré pour l’instant.</div>'}</div>
+				<div class="col" style="gap:6px;max-height:320px;overflow-y:auto">${games.map(i => `<div class="sug-row"><div class="avatar">${instIcon(i, 'sm')}</div><div class="grow"><div class="bold ellipsis">${esc(i.name)}</div><div class="small muted">${esc(sysInfo(sysOf(i)).label)}</div></div><button class="btn sm primary" data-action="remote-host" data-id="${esc(i.id)}">${icon('wifi')}Inviter</button></div>`).join('') || ''}${(state.roms || []).filter(r => !(r.instances || []).length).map(r => `<div class="sug-row"><div class="avatar">${romCover(r, 'sm')}</div><div class="grow"><div class="bold ellipsis">${esc(r.name)}</div><div class="small muted">${esc(sysInfo(r.system || 'n64').label)} · bibliothèque</div></div><button class="btn sm primary" data-action="remote-host-rom" data-id="${esc(r.id)}">${icon('wifi')}Inviter</button></div>`).join('')}${games.length || (state.roms || []).length ? '' : '<div class="small muted">Aucun jeu pour l’instant : importe-en un dans « Jeux ».</div>'}</div>
 			</div>
 		</div>
 		<div class="card col" style="margin-top:14px">
@@ -1291,7 +1293,7 @@ PAGES.instance = async ({ id, tab = 'content' }) => {
 				</div>
 			</div>
 			<button class="btn lg" data-action="ost-inst" data-id="${esc(inst.id)}" data-tip="Écouter la bande-son" data-tip-pos="bottom">${icon('music')}Bande-son</button>
-			${inst.type === 'rom' && instEngine(inst) === 'smash' ? `<button class="btn lg" data-action="remote-host" data-id="${esc(inst.id)}" data-tip="Inviter des amis à jouer à distance" data-tip-pos="bottom">${icon('wifi')}À distance</button>` : ''}
+			${inst.type === 'rom' && instEngine(inst) !== 'project64' ? `<button class="btn lg" data-action="remote-host" data-id="${esc(inst.id)}" data-tip="Inviter des amis à jouer à distance" data-tip-pos="bottom">${icon('wifi')}À distance</button>` : ''}
 			${playButton(inst, 'lg')}
 			<button class="btn icon-only lg" data-action="inst-menu" data-id="${esc(inst.id)}">${icon('ellipsis-vertical')}</button>
 		</div>
@@ -2247,6 +2249,9 @@ const ACTIONS = {
 	},
 	'remote-host': async (el) => {
 		try { await api('remote:host', el.dataset.id); toast('Le jeu démarre : le panneau d’invitation s’ouvre dans sa fenêtre (Ctrl+J)'); } catch (error) { toastError(error); }
+	},
+	'remote-host-rom': async (el) => {
+		try { await api('remote:hostRom', el.dataset.id); await refreshInstances(); toast('Le jeu démarre : le panneau d’invitation s’ouvre dans sa fenêtre (Ctrl+J)'); } catch (error) { toastError(error); }
 	},
 	'remote-join': async () => {
 		const code = ($('#remote-code') || {}).value || '';
