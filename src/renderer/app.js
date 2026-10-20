@@ -202,6 +202,7 @@ const renderNav = () => {
 		${navBtn('remote', 'wifi', 'À distance')}
 		${navBtn('trophies', 'trophy', 'Trophées')}
 		${navBtn('dashboard', 'gauge', 'Tableau de bord')}
+		${navBtn('multiworld', 'shuffle', 'Multiworld')}
 		<div class="nav-group">Mods</div>
 		${navBtn('discover', 'compass', 'Découvrir')}
 		${navBtn('opera', 'globe', 'Recherche Opera')}

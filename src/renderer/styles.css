@@ -1277,6 +1277,34 @@ html[data-icons="tech"] .nav-btn.active { box-shadow: inset 3px 0 0 var(--brand-
 .admin-box { margin-top: 16px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(var(--brand-rgb), 0.5); background: rgba(var(--brand-rgb), 0.05); }
 @media (max-width: 1100px) { .dash-grid { grid-template-columns: 1fr; } .sup-themes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+/* ---------- Multiworld (Archipelago) ---------- */
+
+.ap-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 14px; }
+.ap-layout .card { margin: 0; }
+.ap-feed { height: 380px; overflow-y: auto; background: var(--raised-2); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; line-height: 1.55; }
+.ap-line { padding: 3px 0; border-bottom: 1px solid var(--divider); }
+.ap-line.sys { color: var(--text-dim); font-style: italic; }
+.ap-line.err { color: var(--danger); }
+.ap-line.to-me { background: rgba(var(--brand-rgb), 0.12); border-radius: 8px; padding: 4px 8px; margin: 2px -8px; box-shadow: inset 3px 0 0 var(--brand); }
+.ap-line.from-me { opacity: 0.85; }
+.ap-line.chat, .ap-line.serverchat { color: var(--contrast); }
+.ap-line.goal { color: #ffc93c; font-weight: 700; }
+.ap-player { font-weight: 800; color: #7fc8ff; }
+.ap-player.me { color: var(--brand); }
+.ap-item { font-weight: 700; }
+.ap-item.prog { color: #c58bff; } .ap-item.useful { color: #6fb6ff; } .ap-item.trap { color: #ff6b6b; } .ap-item.filler { color: #4dd0a1; }
+.ap-loc { color: #ffd76b; }
+.ap-hint { color: var(--text-dim); font-style: italic; }
+.ap-players { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; max-height: 260px; overflow-y: auto; }
+.ap-prow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: var(--raised-2); font-size: 13px; }
+.ap-prow b { color: var(--contrast); } .ap-prow span { color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-prow i { font-style: normal; font-size: 11px; color: var(--brand); font-weight: 800; }
+.ap-prow.me { box-shadow: inset 0 0 0 1px var(--brand); }
+.ap-recent { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 4px; padding: 7px 9px; border: none; border-radius: 10px; background: var(--raised-2); color: var(--text); cursor: pointer; font-size: 12.5px; text-align: left; }
+.ap-recent:hover { background: var(--button-hover); }
+.ap-recent small { color: var(--text-dim); }
+@media (max-width: 1000px) { .ap-layout { grid-template-columns: 1fr; } }
+
 /* ---------- Recommandations « Pour toi » ---------- */
 
 .reco-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }

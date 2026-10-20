@@ -25,6 +25,7 @@ const themefiles = require('./themefiles');
 const discord = require('./discord');
 const stats = require('./stats');
 const supporter = require('./supporter');
+const archipelago = require('./archipelago');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -323,6 +324,10 @@ const handlers = {
 	// Tableau de bord et mode supporter.
 	'dashboard:get': () => stats.dashboard({ running: runner.status(), emulators: emulators.status(), roms: romlib.list() }),
 	'supporter:status': () => supporter.status(),
+	// Multiworld Archipelago : lanceur officiel.
+	'archipelago:status': () => archipelago.status(),
+	'archipelago:install': () => archipelago.install(p => send('archipelago:progress', p)),
+	'archipelago:open': () => archipelago.openLauncher(),
 	'supporter:activate': code => supporter.activate(code),
 	'supporter:deactivate': () => supporter.deactivate(),
 	'supporter:generate': (name, tier) => supporter.generate(name, tier),
