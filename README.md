@@ -29,7 +29,14 @@ npm start
 | **ROM hacks** | IPS/BPS patches you can toggle and reorder, applied to the ROM at launch |
 | **Discover** | mods.sm64coopdx.com catalogue (categories, sorting, search, mod page, Install button, GitHub-hosted mods) |
 | **Opera search** | Search in Opera; mods and ROMs downloaded there get **Installer** or **Ajouter aux ROM** buttons |
-| **Themes** | Smash (red & black, default), Modrinth, Neon, Ocean, Game Boy, Gold, Light |
+| **Themes** | 7 base themes, 40 illustrated game themes (automatic per game), 4 supporter themes, and a custom theme editor (colours, font, icons, animated decor, your own background and illustration images, shareable as a code or a `.smashtheme` file) |
+| **External emulators** | One-click install and update from the official sources (PCSX2, RPCS3, xemu, shadPS4, Xenia Canary, DuckStation, Azahar, Cemu, PPSSPP, Ryujinx); the emulator window is embedded under the Smash Emu bar (pause, states, turbo, screenshots) with help when a BIOS or firmware is missing |
+| **Remote play** | Host a game and let up to 3 friends join as players 2–4 over WebRTC (video, audio, controllers, text and voice chat), with copy-paste invitation codes |
+| **Multiworld** | Archipelago client: follow a multiworld game (items sent and received, notifications, hints, chat) and install the official Archipelago launcher |
+| **Dashboard** | Play time, 30-day activity, favourite hours, time per console, top games, library, emulators, storage, trophies; supporter codes and admin tools |
+| **Trophies** | Per-game play-time tiers (10 min to 100 h) and global trophies, unlocked live |
+| **Music** | Game soundtracks in a persistent player (queue, shuffle, repeat, favourites), paused automatically while playing |
+| **Discord** | Rich Presence ("Playing Smash Emu" with the game, console, cover and timer) and a "Join the Discord" button driven by `community.json` (see `docs/DISCORD.md`) |
 
 ### Game window shortcuts
 

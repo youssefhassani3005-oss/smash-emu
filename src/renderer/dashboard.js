@@ -2,8 +2,14 @@
 // Tableau de bord (statistiques, activité, bibliothèque, émulateurs, stockage, supporter et administration),
 // recommandations « Pour toi » de l'accueil et lien vers la communauté Discord.
 
-// Serveur Discord de la communauté (invitation permanente) ; vide tant qu'il n'existe pas.
+// Serveur Discord de la communauté : lien publié par l'administrateur dans community.json (GitHub), lu au
+// démarrage ; le bouton « Rejoindre le Discord » n'apparaît que lorsqu'il existe.
 const COMMUNITY = { discord: '' };
+api('community:get').then((c) => {
+	COMMUNITY.discord = c.discord || '';
+	COMMUNITY.published = c.published || {};
+	if (COMMUNITY.discord && typeof renderNav === 'function') renderNav();
+}).catch(() => {});
 
 const fmtBytes = (b) => {
 	if (b < 1024) return `${b} o`;
@@ -156,6 +162,11 @@ const supporterCard = sup => `
 			<button class="btn primary" data-action="adm-generate">${icon('key-round')}Créer un code</button>
 		</div>
 		<div id="adm-issued" class="dash-lines" style="margin-top:10px"></div>
+		<div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
+			<input class="input grow" id="adm-invite" placeholder="Lien d’invitation du serveur Discord (https://discord.gg/…)" value="${esc(COMMUNITY.discord || '')}">
+			<button class="btn" data-action="adm-invite">${icon('message-circle')}Enregistrer</button>
+		</div>
+		<div class="small muted" style="margin-top:6px">Ce lien active le bouton « Rejoindre le Discord » sur ce PC. Pour tous les joueurs, mets-le dans <b>community.json</b> sur GitHub (champ « discord ») ; le champ « discordAppId » y active la présence Discord chez tout le monde.</div>
 	</div>` : ''}`;
 
 const loadIssued = async () => {
@@ -194,6 +205,13 @@ Object.assign(ACTIONS, {
 		loadIssued();
 	},
 	'adm-copy': async (el) => { await navigator.clipboard.writeText(el.dataset.code); toast('Code copié'); },
+	'adm-invite': async () => {
+		const c = await api('community:setLocal', document.getElementById('adm-invite').value);
+		COMMUNITY.discord = c.discord || '';
+		renderNav();
+		toast(COMMUNITY.discord ? 'Lien Discord enregistré : le bouton « Rejoindre le Discord » est actif.' : 'Lien Discord retiré.');
+	},
+	'join-discord': () => { if (COMMUNITY.discord) api('shell:open', COMMUNITY.discord).catch(toastError); },
 });
 
 // ---------- Recommandations « Pour toi » (accueil) ----------

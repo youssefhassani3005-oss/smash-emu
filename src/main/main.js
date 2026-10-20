@@ -26,6 +26,7 @@ const discord = require('./discord');
 const stats = require('./stats');
 const supporter = require('./supporter');
 const archipelago = require('./archipelago');
+const community = require('./community');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -51,9 +52,12 @@ const ICON_URL = 'https://raw.githubusercontent.com/youssefhassani3005-oss/smash
 const APP_START = Date.now();
 function updatePresence() {
 	const s = store.getSettings();
-	discord.configure({ on: s.richPresence, appId: s.discordAppId });
+	// Application ID : réglage du joueur, sinon celui publié par l'administrateur (community.json).
+	const cc = s.communityCache || {};
+	discord.configure({ on: s.richPresence, appId: s.discordAppId || cc.discordAppId });
 	if (!s.richPresence) return;
-	const base = { assets: { large_image: ICON_URL, large_text: 'Smash Emu' }, buttons: [{ label: 'Découvrir Smash Emu', url: REPO_URL }] };
+	const invite = s.communityDiscord || cc.discord;
+	const base = { assets: { large_image: ICON_URL, large_text: 'Smash Emu' }, buttons: [{ label: 'Découvrir Smash Emu', url: REPO_URL }, ...(invite ? [{ label: 'Rejoindre le Discord', url: invite }] : [])] };
 	const st = runner.status();
 	if (!st.length) { discord.setActivity(s.presenceIdle === false ? null : { ...base, details: 'Dans le menu', timestamps: { start: APP_START } }); return; }
 	const r = st.reduce((a, b) => (b.startedAt > a.startedAt ? b : a));
@@ -325,6 +329,8 @@ const handlers = {
 	'dashboard:get': () => stats.dashboard({ running: runner.status(), emulators: emulators.status(), roms: romlib.list() }),
 	'supporter:status': () => supporter.status(),
 	// Multiworld Archipelago : lanceur officiel.
+	'community:get': () => community.get(),
+	'community:setLocal': invite => community.setLocal(invite),
 	'archipelago:status': () => archipelago.status(),
 	'archipelago:install': () => archipelago.install(p => send('archipelago:progress', p)),
 	'archipelago:open': () => archipelago.openLauncher(),
@@ -522,6 +528,7 @@ app.whenReady().then(() => {
 	if (id) win.webContents.once('did-finish-load', () => { try { runner.launch(id); } catch (error) { console.error(error.message); } });
 	startOperaWatch();
 	updatePresence();
+	community.get().then(() => updatePresence()).catch(() => {});
 });
 
 app.on('window-all-closed', () => {

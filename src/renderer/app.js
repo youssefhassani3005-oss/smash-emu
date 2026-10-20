@@ -211,6 +211,7 @@ const renderNav = () => {
 		${recent.map(i => `<div class="nav-inst ${r.name === 'instance' && r.params.id === i.id ? 'active' : ''} ${isRunning(i.id) ? 'running' : ''}" data-action="open-instance" data-id="${esc(i.id)}" data-tip="${collapsed ? esc(i.name) : ''}"><span class="nav-inst-ic">${instIcon(i, 'sm')}</span><span class="nav-label">${esc(i.name)}</span></div>`).join('')}
 		<button class="nav-btn" data-action="new-instance" data-tip="${collapsed ? 'Nouvelle instance' : ''}">${icon('plus')}<span class="nav-label">Nouvelle instance</span></button>
 		<div class="grow"></div>
+		${typeof COMMUNITY !== 'undefined' && COMMUNITY.discord ? `<button class="nav-btn nav-discord" data-action="join-discord" data-tip="${collapsed ? 'Rejoindre le Discord' : ''}">${icon('message-circle')}<span class="nav-label">Rejoindre le Discord</span></button>` : ''}
 		${navBtn('settings', 'settings', 'Paramètres')}
 		<button class="nav-btn nav-toggle" data-action="nav-collapse" data-tip="${collapsed ? 'Agrandir le menu' : ''}">${icon(collapsed ? 'chevron-right' : 'chevron-left')}<span class="nav-label">Réduire le menu</span></button>`;
 };

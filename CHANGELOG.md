@@ -1,6 +1,42 @@
 # Changelog
 
-## Unreleased
+## 2.3.0
+
+Le détail demande par demande est dans [docs/STATUT.md](docs/STATUT.md).
+
+### Nouveautés
+
+- **Multiworld (Archipelago)** : nouvelle page. Les objets de vos jeux sont mélangés entre amis ; Smash Emu se
+  connecte à la partie (protocole officiel, client « texte ») et affiche le fil des objets envoyés et reçus, avec
+  une notification quand un ami t’envoie un objet, les indices et le chat. Installation du lanceur officiel en un
+  clic, liste de tes jeux compatibles.
+- **Tableau de bord** : temps de jeu, activité des 30 derniers jours, heures et jours préférés, temps par console,
+  classement des jeux, bibliothèque, émulateurs, stockage, trophées, jeu à distance.
+- **Mode supporter et administration** : codes signés (Ed25519) vérifiés hors ligne, niveaux Supporter, VIP et
+  Fondateur, badge et 4 thèmes exclusifs originaux (Aurore boréale, Velours royal, Sakura de nuit, Synthwave). Le PC
+  administrateur (qui a la clé privée) crée les codes depuis le tableau de bord.
+- **Recommandations « Pour toi »** sur l’accueil.
+- **Thèmes personnalisés** : éditeur avec aperçu en direct (couleurs, police, icônes, décor, illustration), image de
+  fond et image d’illustration, partage par code ou par fichier `.smashtheme` (images comprises).
+- **Lecteur de musique** : les bandes-son se jouent dans un lecteur permanent (file, suivant, aléatoire, répétition,
+  volume, favoris) qui continue pendant la navigation et se met en pause pendant les parties.
+- **Présence Discord** : « Joue à Smash Emu » avec le jeu, la console, la jaquette et le chrono. Bouton
+  **Rejoindre le Discord** piloté par `community.json` (voir [docs/DISCORD.md](docs/DISCORD.md)).
+- **Émulateurs** : installation et mise à jour en un clic depuis les sources officielles (PCSX2, RPCS3, xemu,
+  shadPS4, Xenia Canary, DuckStation, Azahar, Cemu, PPSSPP, Ryujinx), vérification des versions, console PS4.
+- **Trophées** : paliers de temps de jeu par jeu (10 min à 100 h) et trophées généraux, notification en jeu.
+- **Jaquettes** : recherche dans libretro-thumbnails avec score de ressemblance, choix manuel, import, version
+  précédente ; affichées en entier.
+
+### Émulateurs externes mieux intégrés
+
+- Les fenêtres de dialogue des émulateurs (assistant de premier lancement, BIOS manquant, erreurs) restent visibles
+  au premier plan au lieu d’être masquées.
+- Si l’émulateur se ferme ou n’affiche rien, Smash Emu explique ce qu’il lui manque (BIOS, firmware, clés), montre
+  ses dernières erreurs et propose « Ouvrir l’émulateur pour le configurer » et « Réessayer ».
+- Raccourcis de la barre (pause, états, turbo) pour PCSX2, DuckStation, Azahar et RPCS3, et aide adaptée à chaque
+  émulateur.
+- Les captures d’écran visent la bonne zone sur les écrans mis à l’échelle (125 %, 150 %…).
 
 ### Jalon 1 : confort
 
