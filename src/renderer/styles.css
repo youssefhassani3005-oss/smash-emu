@@ -1228,6 +1228,20 @@ html[data-icons="tech"] .card { border-radius: 0; clip-path: polygon(0 0, calc(1
 html[data-icons="tech"] .btn { border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
 html[data-icons="tech"] .nav-btn.active { box-shadow: inset 3px 0 0 var(--brand-2), inset 0 0 0 1px rgba(var(--brand-rgb), 0.4); }
 
+/* ---------- Trophées ---------- */
+
+.cup { width: 34px; height: 34px; color: var(--button-hover); flex-shrink: 0; }
+.cup.on.bronze { color: #cd7f32; } .cup.on.silver { color: #c0c8d4; } .cup.on.gold { color: #ffc93c; } .cup.on.platinum { color: #7fe0ff; filter: drop-shadow(0 0 6px rgba(127, 224, 255, 0.6)); }
+.trophy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.trophy { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; background: var(--raised-2); opacity: 0.55; }
+.trophy.on { opacity: 1; box-shadow: inset 0 0 0 1px rgba(var(--brand-rgb), 0.3); }
+.trophy b { display: block; color: var(--contrast); } .trophy span { display: block; font-size: 12px; color: var(--text-dim); } .trophy small { font-size: 11px; color: var(--text-dim); }
+.trophy-game { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--divider); }
+.trophy-tiers { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.trophy-tiers .tier { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--text-dim); opacity: 0.5; }
+.trophy-tiers .tier.on { opacity: 1; color: var(--contrast); }
+.trophy-tiers .tier .cup { width: 26px; height: 26px; } .trophy-tiers i { font-style: normal; }
+
 /* ---------- Jaquettes ---------- */
 
 /* Jaquettes : affichées en entier, jamais recadrées (bandes discrètes autour si besoin). */

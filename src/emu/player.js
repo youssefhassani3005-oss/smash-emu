@@ -344,6 +344,16 @@ smashEmu.onBeforeClose(async () => {
 	smashEmu.readyToClose();
 });
 
+// Trophée débloqué pendant la partie.
+smashEmu.onTrophy((t) => {
+	const el = document.createElement('div');
+	el.className = `trophy-pop ${t.rank}`;
+	el.innerHTML = `<div class="tp-cup">🏆</div><div><b>Trophée débloqué</b><span>${esc(t.name)} · ${esc(t.desc)}</span></div><i>+${t.points}</i>`;
+	document.body.appendChild(el);
+	setTimeout(() => el.classList.add('out'), 5200);
+	setTimeout(() => el.remove(), 6000);
+});
+
 smashEmu.onFullscreen((on) => {
 	$('#btn-fs').innerHTML = icon(on ? 'minimize' : 'maximize');
 	if (on && st.started && !st.paused) document.body.classList.add('immersive');

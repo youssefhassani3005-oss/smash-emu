@@ -38,5 +38,6 @@ contextBridge.exposeInMainWorld('smashEmu', {
 	takeStash: () => call('emu:takeStash'),
 	onBeforeClose: fn => ipcRenderer.on('emu:before-close', () => fn()),
 	onFullscreen: fn => ipcRenderer.on('emu:fullscreen', (_e, v) => fn(v)),
+	onTrophy: fn => ipcRenderer.on('emu:trophy', (_e, v) => fn(v)),
 	onVideoSaved: fn => ipcRenderer.on('emu:video-saved', (_e, v) => fn(v)),
 });

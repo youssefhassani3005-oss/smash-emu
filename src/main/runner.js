@@ -11,6 +11,10 @@ let openEmu = null;        // ouvre la fenêtre de l'émulateur intégré (fourn
 let openExternalHost = null; // fenêtre Smash Emu autour d'un émulateur externe
 
 const setEmitter = fn => { emit = fn; };
+let onFinish = () => {};
+const setFinishHook = fn => { onFinish = fn; };
+// Fenêtre de jeu d'une partie en cours (pour y afficher une notification).
+const windowOf = id => { const r = running.get(id); return r && r.win && !r.win.isDestroyed() ? r.win : null; };
 const setEmuOpener = fn => { openEmu = fn; };
 const setExternalOpener = fn => { openExternalHost = fn; };
 
@@ -36,6 +40,7 @@ const finish = (id, startedAt, reason) => {
 	} catch { /* instance supprimée pendant la partie */ }
 	pushLog(id, 'launcher', `${reason} après ${Math.round(played / 1000)} s.`);
 	emit('status', status());
+	try { onFinish(id, startedAt); } catch { /* trophées */ }
 };
 
 const launch = (id) => {
@@ -99,4 +104,4 @@ const stop = (id) => {
 const getLogs = id => logs.get(id) || [];
 const isRunning = id => running.has(id);
 
-module.exports = { setEmitter, setEmuOpener, setExternalOpener, pushLog, launch, stop, status, getLogs, isRunning };
+module.exports = { setFinishHook, windowOf, setEmitter, setEmuOpener, setExternalOpener, pushLog, launch, stop, status, getLogs, isRunning };

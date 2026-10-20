@@ -370,3 +370,30 @@ test('jeu à distance : codes d’invitation et commandes de manette', async () 
 	assert.equal(R.valueFor(17, 'LEFT_STICK_X:-1', st), 0);
 	assert.equal(R.valueFor(7, 'LEFT_STICK_X:+1', st), 1, 'un stick peut piloter un bouton de direction');
 });
+
+test('trophées : paliers de temps de jeu et trophées généraux', () => {
+	const M = require('module');
+	const load = M._load;
+	const settings = {};
+	const insts = [
+		{ id: 'a', name: 'Jeu A', type: 'rom', rom: { system: 'n64' }, playTimeMs: 65 * 60000 },
+		{ id: 'b', name: 'Jeu B', type: 'rom', rom: { system: 'snes' }, playTimeMs: 0 },
+	];
+	M._load = function (request, ...rest) {
+		return /store$/.test(request) ? { getSettings: () => settings, setSettings: p => Object.assign(settings, p), listInstances: () => insts } : load.call(this, request, ...rest);
+	};
+	let t;
+	try { delete require.cache[require.resolve('../src/main/trophies')]; t = require('../src/main/trophies'); } finally { M._load = load; }
+	const fresh = t.evaluate();
+	const keys = fresh.map(f => f.key);
+	assert.ok(keys.includes('a:t10m') && keys.includes('a:t1h'), 'paliers 10 min et 1 h du jeu A');
+	assert.ok(!keys.includes('a:t5h'));
+	assert.ok(keys.includes('g-first'));
+	assert.equal(t.evaluate().length, 0, 'rien de nouveau au second passage');
+	// Partie en cours : le jeu B passe 10 min en direct.
+	const live = t.evaluate([{ id: 'b', startedAt: Date.now() - 11 * 60000 }]);
+	assert.deepEqual(live.map(f => f.key), ['b:t10m']);
+	t.noteSession(new Date(2026, 0, 1, 23, 50).getTime(), new Date(2026, 0, 2, 0, 30).getTime());
+	assert.ok(t.evaluate().some(f => f.key === 'g-night'), 'oiseau de nuit');
+	assert.ok(t.list().points > 0);
+});

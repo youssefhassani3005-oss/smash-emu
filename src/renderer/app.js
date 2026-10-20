@@ -185,6 +185,7 @@ const renderNav = () => {
 		${navBtn('library', 'library', 'Bibliothèque')}
 		${navBtn('controls', 'gamepad-2', 'Manettes')}
 		${navBtn('remote', 'wifi', 'À distance')}
+		${navBtn('trophies', 'trophy', 'Trophées')}
 		<div class="nav-group">Mods</div>
 		${navBtn('discover', 'compass', 'Découvrir')}
 		${navBtn('opera', 'globe', 'Recherche Opera')}
@@ -633,6 +634,45 @@ const homeStats = () => {
 		${tile('clock', time < 60000 ? '0 min' : playTime(time), 'de jeu', null)}
 	</div>`;
 };
+
+// ---------- Trophées ----------
+
+TITLES.trophies = () => [{ label: 'Trophées' }];
+const RANK_LABEL = { bronze: 'Bronze', silver: 'Argent', gold: 'Or', platinum: 'Platine' };
+const cup = (rank, on) => `<svg class="cup ${rank} ${on ? 'on' : ''}" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 4h14v6a7 7 0 0 1-14 0zM9 6H4v2a5 5 0 0 0 5 5M23 6h5v2a5 5 0 0 1-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 4h14v6a7 7 0 0 1-14 0z" fill="currentColor" opacity=".35"/><path d="M16 17v5M11 27h10l-1-5h-8z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
+
+PAGES.trophies = async () => {
+	const t = await api('trophies:list').catch(e => { toastError(e); return null; });
+	if (!t || state.route.name !== 'trophies') return;
+	const fmt = ms => playTime(ms);
+	setMain(`
+		<div class="section-title"><h1>Trophées</h1><span class="muted">${t.count} débloqués · ${t.points} points</span></div>
+		<div class="card col"><h3>Trophées généraux</h3>
+			<div class="trophy-grid">${t.global.map(g => `<div class="trophy ${g.at ? 'on' : ''}">${cup(g.rank, g.at)}<div><b>${esc(g.name)}</b><span>${esc(g.desc)}</span><small>${RANK_LABEL[g.rank]} · ${g.points} pts${g.at ? ` · ${dateFr(g.at)}` : ''}</small></div></div>`).join('')}</div>
+		</div>
+		<div class="card col" style="margin-top:14px"><h3>Par jeu</h3>
+			<div class="small muted">Un trophée par palier de temps de jeu : 10 min, 1 h, 5 h, 10 h, 25 h, 50 h et 100 h. Ils se débloquent même en pleine partie.</div>
+			${t.perGame.length ? t.perGame.map((g) => {
+		const next = g.tiers.find(x => !x.at);
+		const prev = [...g.tiers].reverse().find(x => x.at);
+		const from = prev ? prev.ms : 0;
+		const pct = next ? Math.min(100, Math.round(((g.ms - from) / (next.ms - from)) * 100)) : 100;
+		const inst = instById(g.id);
+		return `<div class="trophy-game">
+					${inst ? instIcon(inst, 'sm') : ''}
+					<div class="grow"><div class="row" style="gap:8px"><b class="ellipsis">${esc(g.name)}</b><span class="small muted">${fmt(g.ms)} de jeu</span></div>
+						<div class="trophy-tiers">${g.tiers.map(x => `<span class="tier ${x.at ? 'on' : ''}" data-tip="${esc(x.name)} · ${x.label}${x.at ? ` · débloqué le ${dateFr(x.at)}` : ''}">${cup(x.rank, x.at)}<i>${x.label}</i></span>`).join('')}</div>
+						<div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+						<div class="small muted">${next ? `Prochain : <b>${esc(next.name)}</b> à ${next.label} (encore ${fmt(next.ms - g.ms)})` : 'Tous les paliers sont débloqués !'}</div>
+					</div></div>`;
+	}).join('') : '<div class="empty small">Joue à un jeu pour gagner tes premiers trophées.</div>'}
+		</div>`);
+};
+
+window.launcher.on('trophy', (t) => {
+	toast(`🏆 <b>${esc(t.name)}</b> · ${esc(t.desc)} <span class="muted">(+${t.points} pts)</span>`, { type: 'success', timeout: 7000 });
+	if (state.route.name === 'trophies') render();
+});
 
 // ---------- Jaquettes et images ----------
 

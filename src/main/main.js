@@ -20,6 +20,7 @@ const emulators = require('./emulators');
 const external = require('./external');
 const remote = require('./remote');
 const covers = require('./covers');
+const trophies = require('./trophies');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -39,6 +40,18 @@ let win = null;
 const send = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
 runner.setEmitter((type, payload) => send(`run:${type}`, payload));
 runner.setEmuOpener(emu.openEmu);
+
+// Trophées : vérifiés à la fin d'une partie et chaque minute pendant une partie ; la notification apparaît
+// dans la fenêtre principale et dans la fenêtre du jeu.
+const announceTrophies = (fresh) => {
+	for (const t of fresh) {
+		send('trophy', t);
+		const w = t.gameId ? runner.windowOf(t.gameId) : null;
+		if (w) w.webContents.send('emu:trophy', t);
+	}
+};
+runner.setFinishHook((id, startedAt) => { trophies.noteSession(startedAt); announceTrophies(trophies.evaluate(runner.status())); });
+setInterval(() => { const st = runner.status(); if (st.length) announceTrophies(trophies.evaluate(st)); }, 60000);
 runner.setExternalOpener(external.openExternalHost);
 
 // ---------- Icônes d'instance ----------
@@ -257,6 +270,7 @@ const handlers = {
 	},
 	'remote:join': (code) => { remote.openGuest(typeof code === 'string' ? code.trim() : ''); return true; },
 	'remote:recent': () => remote.recent(),
+	'trophies:list': () => { trophies.evaluate(runner.status()); return trophies.list(runner.status()); },
 	// Jaquettes et images (libretro-thumbnails ou fichiers de l'utilisateur).
 	'covers:search': async (id) => {
 		const inst = store.getInstance(id);
