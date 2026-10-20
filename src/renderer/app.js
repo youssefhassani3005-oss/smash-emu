@@ -100,6 +100,7 @@ const isRunning = id => state.running.some(r => r.id === id);
 const instById = id => state.instances.find(i => i.id === id);
 // Icône d'instance : image choisie, sinon jaquette de la ROM, sinon initiale.
 const instIcon = (inst, cls = '') => {
+	if (inst.coverFile) return avatar(`${fileUrl(inst.coverFile)}?v=${inst.coverAt || 0}`, inst.name, `${cls} cover`);
 	if (!inst.iconData && inst.rom && inst.rom.info) {
 		const coverCls = { sm: 'sm', lg: 'av-lg', xl: 'av-xl' }[cls] || '';
 		return romCover({ name: inst.rom.info.known || inst.rom.info.title, info: inst.rom.info, system: sysOf(inst) }, coverCls);
@@ -228,6 +229,7 @@ const playButton = (inst, cls = '') => isRunning(inst.id)
 const instanceMenu = (anchor, inst) => menu(anchor, [
 	isRunning(inst.id) ? { icon: 'square', label: 'Arrêter', run: () => stopInstance(inst.id) } : { icon: 'play', label: 'Jouer', run: () => launchInstance(inst.id) },
 	{ icon: 'music', label: 'Bande-son', run: () => openSoundtrack(instGameName(inst), sysOf(inst)) },
+	...(inst.type === 'rom' ? [{ icon: 'image', label: 'Jaquette et images…', run: () => openCovers(inst) }] : []),
 	...(inst.type === 'rom' && instEngine(inst) === 'smash' ? [{ icon: 'gamepad-2', label: 'Manettes de ce jeu', run: () => go('controls', { system: sysOf(inst), instance: inst.id }) }] : []),
 	{ icon: 'puzzle', label: 'Ajouter du contenu', run: () => openDiscoverFor(inst) },
 	{ icon: 'folder-open', label: 'Ouvrir le dossier', run: () => api('instance:openFolder', inst.id) },
@@ -630,6 +632,68 @@ const homeStats = () => {
 		${tile('puzzle', mods, 'mods actifs', null)}
 		${tile('clock', time < 60000 ? '0 min' : playTime(time), 'de jeu', null)}
 	</div>`;
+};
+
+// ---------- Jaquettes et images ----------
+
+const COVER_KINDS = [['boxart', 'Boîte'], ['title', 'Écran titre'], ['snap', 'Capture']];
+
+const openCovers = async (inst) => {
+	await modal({
+		title: `Jaquette et images · ${inst.name}`,
+		width: 920,
+		body: '<div id="cov"><div class="loading"><div class="spinner"></div>Recherche…</div></div>',
+		setup: async (el) => {
+			const box = $('#cov', el);
+			let info = await api('covers:info', inst.id).catch(() => ({}));
+			const current = () => `<div class="cov-current">${COVER_KINDS.map(([k, label]) => {
+				const m = info[k];
+				return `<div class="cov-slot"><div class="cov-img">${m && m.path ? `<img src="${fileUrl(m.path)}?v=${m.at}" alt="">` : `<span>${label}</span>`}</div>
+					<div class="cov-meta"><b>${label}</b><span>${m && m.path ? (m.custom ? 'Image importée' : `libretro-thumbnails · ${esc(m.name || '')}`) : 'Aucune'}</span></div>
+					<div class="cov-acts"><button class="btn sm" data-cov="import" data-k="${k}">${icon('upload')}Importer</button>${m && m.hasPrev ? `<button class="btn sm" data-cov="restore" data-k="${k}">${icon('rotate-ccw')}Précédente</button>` : ''}${m && m.path ? `<button class="btn sm" data-cov="remove" data-k="${k}">${icon('x')}</button>` : ''}</div></div>`;
+			}).join('')}</div>`;
+			let found = null;
+			const draw = () => {
+				box.innerHTML = `${current()}
+					<div class="cov-head"><h3>Résultats</h3><span class="small muted">libretro-thumbnails (base communautaire utilisée par RetroArch) · ${found ? `recherche : ${esc(found.queries.slice(0, 2).join(' · '))}` : ''}</span></div>
+					${found && found.error ? `<div class="empty small">${icon('triangle-alert')}<div>${esc(found.error)}</div></div>` : ''}
+					${found && found.results ? (found.results.length ? `<div class="cov-grid">${found.results.map((r, i) => {
+		const img = r.media.boxart || r.media.title || r.media.snap;
+		const tone = r.score >= 90 ? 'green' : r.score >= 60 ? 'orange' : 'red';
+		return `<button class="cov-card" data-cov="pick" data-i="${i}">
+							<div class="cov-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : ''}</div>
+							<div class="cov-name">${esc(r.name)}</div>
+							<div class="cov-line"><span class="tag ${tone}">${r.score} %</span>${Object.keys(r.media).map(k => `<span class="tag">${({ boxart: 'boîte', title: 'titre', snap: 'capture' })[k]}</span>`).join('')}</div>
+							${r.differences.length ? `<div class="cov-diff">${esc(r.differences.join(' · '))}</div>` : ''}
+						</button>`;
+	}).join('')}</div>` : '<div class="empty small">Aucun résultat : importe ta propre image.</div>') : (found ? '' : '<div class="loading"><div class="spinner"></div>Recherche dans la base…</div>')}
+					<div class="small muted" style="margin-top:8px">Rien n’est choisi automatiquement : le score indique la ressemblance (titre, région, édition). Les images restent sur ton PC, avec leur source et leur date.</div>`;
+			};
+			draw();
+			try { found = await api('covers:search', inst.id); } catch (error) { found = { error: error.message, queries: [] }; }
+			draw();
+			box.addEventListener('click', async (e) => {
+				const b = e.target.closest('[data-cov]');
+				if (!b) return;
+				const k = b.dataset.k;
+				try {
+					if (b.dataset.cov === 'pick') {
+						const r = found.results[+b.dataset.i];
+						b.classList.add('busy');
+						info = await api('covers:pick', inst.id, r.name);
+						toast('Images enregistrées');
+					}
+					if (b.dataset.cov === 'import') { const r = await api('covers:import', inst.id, k); if (r) info = r; }
+					if (b.dataset.cov === 'restore') info = await api('covers:restore', inst.id, k);
+					if (b.dataset.cov === 'remove') info = await api('covers:remove', inst.id, k);
+					await refreshInstances();
+					draw();
+					renderNav();
+				} catch (error) { toastError(error); b.classList.remove('busy'); }
+			});
+		},
+	});
+	if (state.route.name === 'instance' || state.route.name === 'library') render();
 };
 
 // ---------- Jeu à distance ----------

@@ -19,6 +19,7 @@ const systems = require('./systems');
 const emulators = require('./emulators');
 const external = require('./external');
 const remote = require('./remote');
+const covers = require('./covers');
 const soundtrack = require('./soundtrack');
 const controls = require('./controls');
 const switchkeys = require('./switchkeys');
@@ -256,6 +257,22 @@ const handlers = {
 	},
 	'remote:join': (code) => { remote.openGuest(typeof code === 'string' ? code.trim() : ''); return true; },
 	'remote:recent': () => remote.recent(),
+	// Jaquettes et images (libretro-thumbnails ou fichiers de l'utilisateur).
+	'covers:search': async (id) => {
+		const inst = store.getInstance(id);
+		if (!inst) throw new Error('Jeu introuvable.');
+		const info = (inst.rom && inst.rom.info) || {};
+		const queries = [info.known, info.title, inst.rom && inst.rom.file && inst.rom.file.replace(/\.[a-z0-9]+$/i, ''), inst.name].filter(Boolean);
+		return { system: games.systemOf(inst), queries, results: await covers.search(games.systemOf(inst), queries) };
+	},
+	'covers:info': id => covers.info(id),
+	'covers:pick': (id, name) => covers.download(id, games.systemOf(store.getInstance(id)), String(name)),
+	'covers:import': async (id, kind) => {
+		const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] });
+		return r.canceled ? null : covers.importFile(id, kind, r.filePaths[0]);
+	},
+	'covers:restore': (id, kind) => covers.restore(id, kind),
+	'covers:remove': (id, kind) => covers.remove(id, kind),
 	'run:status': () => runner.status(),
 	'run:logs': (id) => runner.getLogs(id),
 
