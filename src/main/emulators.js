@@ -43,7 +43,8 @@ const EXTERNAL = {
 			'-C', 'Dolphin.Interface.SkipNKitWarning=True',
 			'-C', 'Dolphin.Interface.ConfirmStop=False',
 			'-C', `Dolphin.Display.Fullscreen=${o.embed ? 'False' : 'True'}`,
-			...(o.embed ? ['-C', 'Dolphin.Display.RenderToMain=False', '-C', 'Dolphin.Input.BackgroundInput=True', '-C', 'Dolphin.General.HotkeysRequireFocus=False', '-C', 'Dolphin.Interface.HideCursor=True'] : []),
+			// Incrusté dans Smash Emu : rendu Vulkan (Direct3D 11 reste noir dans certains jeux une fois la fenêtre déplacée).
+			...(o.embed ? ['-C', 'Dolphin.Core.GFXBackend=Vulkan', '-C', 'Dolphin.Display.RenderToMain=False','-C', 'Dolphin.Input.BackgroundInput=True', '-C', 'Dolphin.General.HotkeysRequireFocus=False', '-C', 'Dolphin.Interface.HideCursor=True'] : []),
 			'-e', f,
 		],
 		render: w => w.title.includes('|'),
