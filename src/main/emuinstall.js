@@ -40,7 +40,7 @@ const findUrl = (value) => {
 
 const resolveQuery = async (src) => {
 	let res;
-	try { res = await net.fetch(src.query, { signal: AbortSignal.timeout(20000), redirect: 'follow' }); } catch { throw new Error('Le serveur officiel est injoignable pour le moment. Réessaie plus tard ou télécharge-le depuis le site.'); }
+	try { res = await net.fetch(src.query, { signal: AbortSignal.timeout(20000), redirect: 'follow' }); } catch { throw new Error('le serveur officiel est injoignable pour le moment'); }
 	if (!res.ok) throw new Error(`Le serveur officiel a répondu ${res.status}.`);
 	const finalUrl = res.url || '';
 	if (/\.zip(\?|$)/i.test(finalUrl)) return { url: finalUrl, name: 'archive.zip', version: (decodeURIComponent(finalUrl).match(/(\d+\.\d+\.\d+(?:\.\d+)?)/) || [])[1] || '' };

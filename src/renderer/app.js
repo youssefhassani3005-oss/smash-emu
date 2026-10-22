@@ -2483,6 +2483,14 @@ window.launcher.on('opera:download', (file) => {
 
 window.launcher.on('window:state', () => {});
 
+// Switch installée d'office (Ryujinx en arrière-plan au démarrage).
+window.launcher.on('switch:auto', async (r) => {
+	if (r.ok) {
+		state.emulators = await api('emulators:status').catch(() => state.emulators);
+		toast('🎮 <b>Switch prête</b> : Ryujinx est installé. Importe les clés de ta console dans Paramètres → Émulateurs pour jouer.', { type: 'success', timeout: 10000 });
+	} else toast(`Switch : Ryujinx n’a pas pu s’installer pour l’instant (${esc(r.error)}). Smash Emu réessaiera au prochain démarrage.`, { type: 'info', timeout: 9000 });
+});
+
 window.launcher.on('emuinstall', (p) => {
 	state.emuInstall = { ...(state.emuInstall || {}), [p.id]: p };
 	const box = $('#emu-list');

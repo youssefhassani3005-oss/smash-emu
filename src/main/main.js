@@ -540,6 +540,18 @@ app.whenReady().then(() => {
 	startOperaWatch();
 	updatePresence();
 	community.get().then(() => updatePresence()).catch(() => {});
+	// Switch installée d'office : Ryujinx s'installe en arrière-plan s'il manque ; en cas d'échec (serveurs
+	// officiels injoignables), nouvel essai au démarrage suivant, au plus toutes les 6 h.
+	setTimeout(async () => {
+		const s = store.getSettings();
+		if (s.autoInstallSwitch === false || emulators.pathFor('ryujinx')) return;
+		if (s.switchInstallTry && Date.now() - s.switchInstallTry < 6 * 3600000) return;
+		store.setSettings({ switchInstallTry: Date.now() });
+		try {
+			await emuinstall.install('ryujinx', p => send('emuinstall', { id: 'ryujinx', auto: true, ...p }));
+			send('switch:auto', { ok: true });
+		} catch (error) { send('switch:auto', { ok: false, error: error.message }); }
+	}, 15000);
 });
 
 app.on('window-all-closed', () => {
