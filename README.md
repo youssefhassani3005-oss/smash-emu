@@ -80,6 +80,8 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 
 GPL-3.0-or-later (see `LICENSE`).
 
+The installer also ships **Citron Neo** (Nintendo Switch emulator, GPL-3.0), unmodified, from its official release `2026-04-27` (commit `0237a9b88`): source code at <https://github.com/citron-neo/emulator>. It is installed in `resources\emulators\citron`. Smash Emu ships no Switch keys, firmware or games.
+
 ## Known limits
 
 - The built-in emulator runs in the browser engine (WebAssembly): very demanding games may be smoother with Project64 (selectable per instance).
