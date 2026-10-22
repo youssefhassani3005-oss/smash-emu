@@ -544,7 +544,7 @@ app.whenReady().then(() => {
 	// officiels injoignables), nouvel essai au démarrage suivant, au plus toutes les 6 h.
 	setTimeout(async () => {
 		const s = store.getSettings();
-		if (s.autoInstallSwitch === false || emulators.pathFor('ryujinx')) return;
+		if (s.autoInstallSwitch === false || emulators.pathFor('ryujinx') || emulators.pathFor('citron')) return;
 		if (s.switchInstallTry && Date.now() - s.switchInstallTry < 6 * 3600000) return;
 		store.setSettings({ switchInstallTry: Date.now() });
 		try {

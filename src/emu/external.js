@@ -108,8 +108,8 @@ const tabTools = () => `
 const dirty = () => JSON.stringify(st.opts) !== JSON.stringify(st.cfg.opts) || (st.ext && st.ext !== st.cfg.extension);
 
 const renderPanel = () => {
-	if (!st.cfg.can.states && st.tab === 'states') st.tab = st.cfg.emulatorId === 'ryujinx' ? 'switch' : 'tools';
-	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(st.cfg.emulatorId === 'ryujinx' ? [['switch', 'Clés', 'keyboard']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
+	if (!st.cfg.can.states && st.tab === 'states') st.tab = ['ryujinx', 'citron'].includes(st.cfg.emulatorId) ? 'switch' : 'tools';
+	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(['ryujinx', 'citron'].includes(st.cfg.emulatorId) ? [['switch', 'Clés', 'keyboard']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
 	const body = { states: tabStates, image: tabImage, game: tabGame, tools: tabTools, switch: tabSwitch }[st.tab]();
 	$('#panel').innerHTML = `<div class="pn">
 		<div class="pn-head"><span class="ttl">SMASH EMU</span>${tabs.map(([k, l, ic]) => `<button class="pn-tab ${st.tab === k ? 'on' : ''}" data-tab="${k}">${icon(ic)}${l}</button>`).join('')}
@@ -126,7 +126,7 @@ const renderPanel = () => {
 };
 
 const openPanel = async () => {
-	if (st.cfg.emulatorId === 'ryujinx') smashExt.switchStatus().then((k) => { st.sw = k; if (st.panel) renderPanel(); }).catch(() => {});
+	if (['ryujinx', 'citron'].includes(st.cfg.emulatorId)) smashExt.switchStatus().then((k) => { st.sw = k; if (st.panel) renderPanel(); }).catch(() => {});
 	if (st.panel || !st.attached) return;
 	st.panel = true;
 	st.opts = { ...st.cfg.opts };

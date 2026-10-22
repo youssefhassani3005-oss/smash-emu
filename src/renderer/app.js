@@ -1929,7 +1929,7 @@ const renderEmuList = () => {
 			<button class="btn sm" data-action="emu-browse" data-id="${id}">${icon('folder-open')}Parcourir</button>
 			${cur.installable ? (cur.path ? updateBtn(id) : installBtn(id)) : ''}
 			${cur.path ? '' : `<button class="btn sm ${cur.installable ? '' : 'primary'}" data-action="external" data-url="${esc(e.site)}">${icon(cur.installable ? 'globe' : 'download')}${cur.installable ? 'Site' : 'Télécharger'}</button>`}
-		</div>${id === 'ryujinx' ? renderSwitchKeys() : ''}`;
+		</div>${id === 'citron' ? renderSwitchKeys() : ''}`;
 	}).join('');
 };
 

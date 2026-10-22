@@ -62,6 +62,7 @@ const EXTERNAL = {
 	rpcs3: { label: 'RPCS3', systems: ['ps3'], exe: ['rpcs3.exe'], hotkeys: { pause: 'CTRL+P' }, keysHint: 'pause avec le bouton de la barre, <b>Alt+Entrée</b> plein écran', args: f => ['--no-gui', f], site: 'https://rpcs3.net/download', note: 'Nécessite le firmware PS3 officiel (téléchargeable chez Sony).' },
 	xemu: { label: 'xemu', systems: ['xbox'], exe: ['xemu.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-full-screen']), '-dvd_path', f], site: 'https://xemu.app/', note: 'Nécessite le BIOS et le disque dur de ta Xbox.' },
 	shadps4: { label: 'shadPS4', systems: ['ps4'], exe: ['shadPS4.exe', 'shadps4.exe'], args: f => ['-g', f], site: 'https://shadps4.net/', note: 'Choisis le eboot.bin d’un jeu PS4 copié depuis ta console (dossier CUSA…). Compatibilité encore limitée.' },
+	citron: { label: 'Citron', systems: ['switch'], exe: ['citron.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['-f']), '-g', f], hotkeys: { pause: 'F4', turboDown: 'CTRL+U', turboUp: 'CTRL+U' }, keysHint: '<b>F4</b> pause, <b>Ctrl+U</b> vitesse illimitée, <b>F10</b> mode TV / portable', site: 'https://github.com/citron-neo/emulator/releases', note: 'Fourni avec Smash Emu. Nécessite les clés (prod.keys) et le firmware de ta propre Switch : importe les clés ci-dessous.' },
 	xenia: { label: 'Xenia', systems: ['x360'], exe: ['xenia_canary.exe', 'xenia.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen=true']), f], site: 'https://xenia.jp/download/' },
 };
 
@@ -101,11 +102,19 @@ const detectAll = (refresh = false) => {
 };
 
 // Chemin utilisé : réglage manuel s'il existe, sinon détection automatique.
+// Émulateur livré dans l'installateur de Smash Emu (resources\emulators\<id>), utilisé s'il n'y en a pas d'autre.
+const bundled = (id) => {
+	if (!process.resourcesPath || !EXTERNAL[id]) return null;
+	const p = path.join(process.resourcesPath, 'emulators', id, EXTERNAL[id].exe[0]);
+	return fs.existsSync(p) ? p : null;
+};
+
 const pathFor = (id) => {
 	const manual = (store.getSettings().emulators || {})[id];
 	if (manual && fs.existsSync(manual)) return manual;
 	const auto = detectAll()[id];
-	return auto && fs.existsSync(auto) ? auto : null;
+	if (auto && fs.existsSync(auto)) return auto;
+	return bundled(id);
 };
 
 const status = (refresh = false) => {

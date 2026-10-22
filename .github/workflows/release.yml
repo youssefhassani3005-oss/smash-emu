@@ -34,6 +34,7 @@ jobs:
       - name: Installateur (non signé)
         run: |
           npm run prepare-assets
+          node scripts/fetch-bundled.js
           node scripts/make-installer-art.js
           npx electron-builder --win nsis --x64 --publish never
         env:

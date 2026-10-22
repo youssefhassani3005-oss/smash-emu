@@ -240,7 +240,8 @@ const engineFor = (inst, settings = store.getSettings()) => {
 	const wanted = (inst.options || {}).engine;
 	if (wanted && available.includes(wanted)) return wanted;
 	if (systemOf(inst) === 'n64' && available.includes(settings.defaultEngine)) return settings.defaultEngine;
-	return available[0] || 'smash';
+	// Premier moteur réellement disponible (intégré, ou émulateur installé / fourni), sinon le premier de la liste.
+	return available.find(e => e === 'smash' || emulators.pathFor(e)) || available[0] || 'smash';
 };
 
 const splitArgs = s => (s.match(/"[^"]*"|\S+/g) || []).map(a => a.replace(/^"|"$/g, ''));

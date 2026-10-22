@@ -21,6 +21,7 @@ const SOURCES = {
 	rpcs3: { github: 'RPCS3/rpcs3-binaries-win', asset: /_win64[^/]*\.7z$/i, versionFromAsset: true },
 	xemu: { github: 'xemu-project/xemu', asset: /^xemu-win-x86_64-release\.zip$/i },
 	shadps4: { github: 'shadps4-emu/shadPS4', asset: /win64[^/]*\.zip$/i },
+	citron: { github: 'citron-neo/emulator', asset: /windows[^/]*x64-msvc\.zip$/i },
 	xenia: { github: 'xenia-canary/xenia-canary-releases', asset: /windows[^/]*\.zip$/i },
 	duckstation: { github: 'stenzek/duckstation', asset: /^duckstation-windows-x64-release\.zip$/i, portable: { file: 'portable.txt' } },
 	azahar: { github: 'azahar-emu/azahar', asset: /^azahar-windows-msvc-[\d.]+\.zip$/i },

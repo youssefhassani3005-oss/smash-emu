@@ -19,7 +19,14 @@ const systemDir = () => {
 	return path.join(APPDATA, 'Ryujinx', 'system');
 };
 
-const KEY_LINE = /^[A-Za-z0-9_]+\s*=\s*[0-9A-Fa-f]{16,}\s*$/;
+// Dossier des clés de Citron : « user\keys » à côté de l'exécutable (version portable), sinon %APPDATA%\citron\keys.
+const citronKeysDir = () => {
+	const exe = emulators.pathFor('citron');
+	if (exe && fs.existsSync(path.join(path.dirname(exe), 'user'))) return path.join(path.dirname(exe), 'user', 'keys');
+	return path.join(APPDATA, 'citron', 'keys');
+};
+
+const KEY_LINE =/^[A-Za-z0-9_]+\s*=\s*[0-9A-Fa-f]{16,}\s*$/;
 
 // Reconnaît le type du fichier d'après son contenu : prod.keys (clés de la console) ou title.keys (clés de jeux).
 const classify = (text) => {
@@ -34,7 +41,9 @@ const classify = (text) => {
 const status = () => {
 	const dir = systemDir();
 	const has = name => fs.existsSync(path.join(dir, name));
-	return { dir, prod: has('prod.keys'), title: has('title.keys'), installed: !!emulators.pathFor('ryujinx') };
+	const cdir = citronKeysDir();
+	const both = name => has(name) || fs.existsSync(path.join(cdir, name));
+	return { dir, prod: both('prod.keys'), title: both('title.keys'), installed: !!(emulators.pathFor('ryujinx') || emulators.pathFor('citron')) };
 };
 
 const importKeys = (files) => {
@@ -48,6 +57,10 @@ const importKeys = (files) => {
 		const kind = classify(fs.readFileSync(file, 'utf8'));
 		if (!kind) throw new Error(`« ${path.basename(file)} » ne ressemble pas à un fichier prod.keys ou title.keys.`);
 		fs.copyFileSync(file, path.join(dir, kind));
+		// Les mêmes clés servent à Citron (émulateur Switch fourni avec Smash Emu).
+		const cdir = citronKeysDir();
+		fs.mkdirSync(cdir, { recursive: true });
+		fs.copyFileSync(file, path.join(cdir, kind));
 		done.push(kind);
 	}
 	return { imported: done, ...status() };
@@ -57,8 +70,8 @@ const openFolder = () => { const dir = systemDir(); fs.mkdirSync(dir, { recursiv
 
 // Ouvre Ryujinx normalement (pour installer le firmware : Outils → Installer le firmware).
 const openEmulator = () => {
-	const exe = emulators.pathFor('ryujinx');
-	if (!exe) throw new Error('Ryujinx n’est pas installé.');
+	const exe = emulators.pathFor('ryujinx') || emulators.pathFor('citron');
+	if (!exe) throw new Error('Aucun émulateur Switch installé.');
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
