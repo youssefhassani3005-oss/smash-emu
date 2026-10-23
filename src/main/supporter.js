@@ -61,4 +61,11 @@ const generate = (name, tier = 'supporter') => {
 	return { code, list };
 };
 
-module.exports = { verify, status, activate, deactivate, generate, issued, isAdmin, TIERS };
+// Signature de l'administrateur (résumé de la communauté publié pour toutes les copies).
+const sign = (data) => {
+	if (!isAdmin()) throw new Error('Clé administrateur absente.');
+	return crypto.sign(null, data, crypto.createPrivateKey(fs.readFileSync(PRIVATE_FILE)));
+};
+const signedByAdmin = (data, sig) => { try { return crypto.verify(null, data, PUBLIC_KEY, sig); } catch { return false; } };
+
+module.exports = { verify, status, activate, deactivate, generate, issued, isAdmin, sign, signedByAdmin, b64u, unb64u, TIERS };

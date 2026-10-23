@@ -216,7 +216,7 @@ test('consoles : détection des images disque par signature', () => {
 	fs.writeFileSync(path.join(HOME, 'jeu.cue'), 'FILE "jeu-ps1.bin" BINARY\n  TRACK 01 MODE2/2352\n');
 	assert.strictEqual(systems.detect(path.join(HOME, 'jeu.cue')).system, 'psx');
 	assert.deepStrictEqual(systems.enginesFor('psx'), ['smash', 'duckstation']);
-	assert.deepStrictEqual(systems.enginesFor('switch'), ['citron', 'ryujinx']);
+	assert.deepStrictEqual(systems.enginesFor('switch'), ['eden', 'citron', 'ryujinx']);
 });
 
 test('consoles : cartouches validées, jeu NES lancé dans l’émulateur intégré', () => {

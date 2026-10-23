@@ -89,13 +89,14 @@ const toastError = error => toast(esc(error.message || String(error)), { type: '
 let tipEl = null;
 document.addEventListener('mouseover', (e) => {
 	const t = e.target.closest('[data-tip]');
-	if (!t) { if (tipEl) { tipEl.remove(); tipEl = null; } return; }
+	if (!t || !t.dataset.tip) { if (tipEl) { tipEl.remove(); tipEl = null; } return; }
 	if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tooltip'; document.body.appendChild(tipEl); }
 	tipEl.textContent = t.dataset.tip;
 	const r = t.getBoundingClientRect();
-	const right = t.dataset.tipPos !== 'bottom';
-	tipEl.style.left = `${right ? r.right + 10 : r.left + r.width / 2 - tipEl.offsetWidth / 2}px`;
-	tipEl.style.top = `${right ? r.top + r.height / 2 - tipEl.offsetHeight / 2 : r.bottom + 8}px`;
+	const pos = t.dataset.tipPos || 'right';
+	const right = pos === 'right';
+	tipEl.style.left = `${right ? r.right + 10 : Math.max(6, Math.min(window.innerWidth - tipEl.offsetWidth - 6, r.left + r.width / 2 - tipEl.offsetWidth / 2))}px`;
+	tipEl.style.top = `${right ? r.top + r.height / 2 - tipEl.offsetHeight / 2 : pos === 'top' ? r.top - tipEl.offsetHeight - 8 : r.bottom + 8}px`;
 });
 
 // ---------- Menus contextuels ----------

@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.7.0
+
+Toutes les idées et leurs références : [docs/IDEES.md](docs/IDEES.md).
+
+### Nouvelle interface « Console »
+
+- Interface par défaut, comme une console de salon : boutons ronds et pastille d'état (réseau, heure, profil) en
+  haut, barre d'icônes colorées en bas sur toutes les pages, transitions entre les menus, écran de démarrage.
+- Accueil en trois dispositions : **Rangée** (grandes tuiles, pastilles d'infos, aides de boutons A / X / Y),
+  **Grille** (5 × 3 par pages) et **Chaînes** (4 × 3 avec barre du bas et date). Navigation à la manette et au clavier,
+  lancement animé, recherche rapide (Ctrl+K).
+- Styles **Mon thème** (les thèmes, y compris les thèmes perso avec image, s'appliquent), **Clair** et **Sombre** ;
+  décors Bulles, Feuilles, Rayures, Console du jeu. La sélection prend les couleurs de la jaquette ; chaque console a sa
+  couleur et son motif.
+- Paramètres en deux colonnes, bibliothèque en grandes tuiles avec filtre par console.
+- Jaquettes manquantes trouvées en un clic (correspondances sûres seulement).
+- L'interface classique reste disponible (Paramètres → Apparence).
+
+### Amis et communauté
+
+- **Amis** (désactivé par défaut) : code ami, statut en direct, jeu en cours, statistiques et demandes d'ami, chiffrés
+  de bout en bout (AES-256-GCM) via le relais public ntfy.sh.
+- **Chiffres de la communauté** (avec accord) : rapport anonyme chiffré pour l'administrateur, résumé signé (joueurs,
+  heures, jeux et consoles populaires) dans le tableau de bord de chacun.
+
+### Nintendo Switch
+
+- Jeux récents (firmware 22+) : leur exécutable compressé en ZBIC est décompressé pour Citron, qui ne lit pas encore
+  ce format.
+- **Eden** installable en un clic (version de la nuit officielle) et utilisé en priorité une fois installé.
+- Citron et Eden s'ouvrent cachés : seule l'image du jeu apparaît, dans la fenêtre Smash Emu.
+- Clés et firmware partagés entre Citron, Eden et Ryujinx ; message clair quand un jeu est trop récent pour les
+  émulateurs actuels.
+
 ## 2.3.0
 
 Le détail demande par demande est dans [docs/STATUT.md](docs/STATUT.md).

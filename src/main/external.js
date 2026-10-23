@@ -133,7 +133,7 @@ const REQUIREMENTS = {
 	duckstation: 'DuckStation a besoin du BIOS de ta PlayStation : ouvre DuckStation, puis Paramètres → BIOS.',
 	ppsspp: 'Vérifie que le fichier est bien un jeu PSP (.iso, .cso).',
 };
-const requirement = h => REQUIREMENTS[h.plan.emulator] || (emulators.EXTERNAL[h.plan.emulator] || {}).note || '';
+const requirement = h => [h.plan.notice, REQUIREMENTS[h.plan.emulator] || (emulators.EXTERNAL[h.plan.emulator] || {}).note || ''].filter(Boolean).join(' ');
 
 // Dernières lignes utiles du journal (erreurs de l'émulateur), pour expliquer un échec.
 const lastLines = (h, n = 4) => {
@@ -144,7 +144,9 @@ const lastLines = (h, n = 4) => {
 
 const spawnEmu = (h) => {
 	const { id, plan } = h;
-	const proc = spawn(plan.exe, plan.args, { cwd: plan.cwd, windowsHide: false });
+	// Émulateur qui affiche le jeu dans une fenêtre à part : lancé caché, sa fenêtre principale ne se montre jamais.
+	const hide = !!(emulators.EXTERNAL[plan.emulator] || {}).hideMain && plan.embed !== false;
+	const proc = spawn(plan.exe, plan.args, { cwd: plan.cwd, windowsHide: hide });
 	h.proc = proc;
 	h.spawnedAt = Date.now();
 	h.slowSent = false;
@@ -321,7 +323,7 @@ const relaunch = async (h) => {
 	killProc(old);
 	await new Promise(r => setTimeout(r, 900));
 	h.plan = games.prepareLaunch(h.id);
-	send(h, 'ext:state', { waiting: true });
+	send(h, 'ext:state', { waiting: true, notice: h.plan.notice });
 	spawnEmu(h);
 	attach(h);
 };
@@ -342,6 +344,8 @@ const ACTIONS = {
 			playerName: store.getSettings().playerName || 'Hôte',
 			systemLabel: (systems.SYSTEMS[h.plan.system] || {}).label || '',
 			requirement: requirement(h),
+			// Jeu connu pour être trop récent pour l'émulateur : affiché dès l'écran d'attente.
+			notice: h.plan.notice || null,
 			shaders: ext.shaders || [],
 			opts: { ...(o.dolphin || {}), shader: (o.dolphin || {}).shader || o.externalShader || 'FXAA' },
 			extension: ext.tunable && h.plan.system === 'wii' ? currentExtension() : null,
@@ -406,7 +410,7 @@ const ACTIONS = {
 		if (extension) { if (!['None', 'Nunchuk', 'Classic'].includes(extension)) throw new Error('Extension inconnue.'); setExtension(extension); }
 		await relaunch(h);
 	},
-	// Clés Switch (Ryujinx) : état et import depuis le panneau.
+	// Clés Switch : état et import depuis le panneau.
 	switchStatus: () => switchkeys.status(),
 	switchImport: async (h) => {
 		const r = await dialog.showOpenDialog(h.win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'Clés Switch', extensions: ['keys'] }] });

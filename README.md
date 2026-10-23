@@ -20,7 +20,7 @@ npm start
 
 | Area | What Smash Emu does |
 |---|---|
-| **Consoles** | Built in (Smash Emu window): NES, Super Nintendo, Nintendo 64, Game Boy / Color / Advance, Virtual Boy, DS, PlayStation, PSP, Master System, Mega Drive, Game Gear, Mega-CD, 32X, Saturn, PC Engine, Atari 2600 / 7800 / Lynx / Jaguar, 3DO. Through an external emulator detected on the PC: GameCube and Wii (Dolphin), 3DS (Azahar), Wii U (Cemu), Switch (Ryujinx), PS1 (DuckStation, optional), PS2 (PCSX2), PSP (PPSSPP, optional), PS3 (RPCS3), Xbox (xemu), Xbox 360 (Xenia) |
+| **Consoles** | Built in (Smash Emu window): NES, Super Nintendo, Nintendo 64, Game Boy / Color / Advance, Virtual Boy, DS, PlayStation, PSP, Master System, Mega Drive, Game Gear, Mega-CD, 32X, Saturn, PC Engine, Atari 2600 / 7800 / Lynx / Jaguar, 3DO. Through an external emulator detected on the PC: GameCube and Wii (Dolphin), 3DS (Azahar), Wii U (Cemu), Switch (Citron bundled, Eden or Ryujinx), PS1 (DuckStation, optional), PS2 (PCSX2), PSP (PPSSPP, optional), PS3 (RPCS3), Xbox (xemu), Xbox 360 (Xenia) |
 | **ROMs** | Library of games: import of `.z64/.v64/.n64` files and zips (auto-extracted), drag-and-drop, detection in Downloads and Opera downloads, identification (title, region, MD5), conversion to `.z64`, duplicate detection, generated cover, one-click "Jouer" |
 | **Built-in emulator** | Game window based on EmulatorJS cores: pause menu, speed ×0.25 to ×8, turbo (hold Space), 8 save-state slots with thumbnails, screenshots, video recording, reset, volume, fullscreen, keyboard/gamepad remapping per console (Manettes page) |
 | **In-game saves** | The copy on disk (`instances\<id>\saves\game.srm`) is the reference: written every 30 s and on close, put back into the game when it differs, rotating backups (10 by default), import/export, restore, optional mirror in a cloud folder (Dropbox, Drive, OneDrive, Syncthing) where the most recent version wins |
@@ -37,6 +37,10 @@ npm start
 | **Trophies** | Per-game play-time tiers (10 min to 100 h) and global trophies, unlocked live |
 | **Music** | Game soundtracks in a persistent player (queue, shuffle, repeat, favourites), paused automatically while playing |
 | **Discord** | Rich Presence ("Playing Smash Emu" with the game, console, cover and timer) and a "Join the Discord" button driven by `community.json` (see `docs/DISCORD.md`) |
+| **Console interface** | Default look: round buttons and a status pill on top, a coloured icon dock at the bottom, menu-to-menu transitions, gamepad navigation. Home in three layouts: **Row** (large tiles with play time, trophies and button hints), **Grid** (5 × 3 pages) and **Channels** (4 × 3 with a bottom bar). Uses the colours and decor of the chosen theme, or a light / dark style with bubbles, leaves, stripes or console-coloured decors; the selection takes the colours of the game's cover. Original design, no console-maker assets. The classic sidebar interface is still available |
+| **Friends** (opt-in) | Friend codes, live status (online, in game, away), current game and stats of your friends, friend requests; end-to-end encrypted through the public ntfy.sh relay |
+| **Community** (opt-in) | Anonymous reports encrypted for the admin, and a signed community summary (players, hours, popular games and consoles) shown in every copy's dashboard |
+| **Recent Switch games** | Executables compressed with ZBIC (Switch firmware 22+) are decompressed for Citron; Eden can be installed in one click; Citron runs hidden and only its game image is shown; a clear message when a game is newer than the emulators can run |
 
 ### Game window shortcuts
 
@@ -75,6 +79,10 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 - Only installers built by GitHub Actions from this public repository (`.github/workflows/release.yml`) are signed.
 
 **Privacy policy:** at startup Smash Emu only reads public files from this GitHub repository (update check, `community.json`). It sends no personal data. Other network features (cover art, emulator downloads, remote play, Archipelago, Discord presence) only run when the user turns them on or uses them.
+
+**Friends (off by default).** When you turn it on, Smash Emu publishes your nickname, status (online, away, in game), the game you play (can be hidden) and a summary of your stats (can be hidden) to the public relay ntfy.sh, encrypted with AES-256-GCM using a key that only exists in your friend code. The relay only sees unreadable data; only people you gave your code to can read it. Turning it off publishes "offline" and stops all sending; "New code" cuts off everyone who had the old one.
+
+**Community statistics (off by default, asked once).** When you agree, Smash Emu sends at most every 6 hours an anonymous report (a random identifier, the app version, the Windows version, play time, consoles, your 5 most played games, installed emulators, which features are on), encrypted (X25519 + AES-256-GCM) so that only the Smash Emu administrator can read it, through ntfy.sh. The administrator publishes a signed summary (totals only) that every copy shows in its dashboard. You can stop at any time in the dashboard.
 
 ## License
 

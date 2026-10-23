@@ -17,7 +17,7 @@ const SYSTEMS = {
 	wii: { label: 'Wii', maker: 'Nintendo', year: 2006, ext: ['wbfs', 'wad', 'wia'], external: ['dolphin'] },
 	'3ds': { label: 'Nintendo 3DS', maker: 'Nintendo', year: 2011, ext: ['3ds', 'cci', 'cia', 'cxi', '3dsx'], external: ['azahar'] },
 	wiiu: { label: 'Wii U', maker: 'Nintendo', year: 2012, ext: ['wua', 'wud', 'wux', 'rpx'], external: ['cemu'] },
-	switch: { label: 'Nintendo Switch', maker: 'Nintendo', year: 2017, ext: ['nsp', 'xci', 'nca', 'nro'], external: ['citron', 'ryujinx'] },
+	switch: { label: 'Nintendo Switch', maker: 'Nintendo', year: 2017, ext: ['nsp', 'xci', 'nca', 'nro'], external: ['eden', 'citron', 'ryujinx'] },
 
 	psx: { label: 'PlayStation', maker: 'Sony', year: 1994, ext: ['cue', 'chd', 'pbp', 'ccd', 'm3u', 'ecm'], ejs: 'psx', core: 'pcsx_rearmed', external: ['duckstation'] },
 	ps2: { label: 'PlayStation 2', maker: 'Sony', year: 2000, ext: [], external: ['pcsx2'] },

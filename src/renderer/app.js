@@ -77,6 +77,11 @@ const currentTheme = () => {
 // Logo choisi : gardé aussi en local pour l'écran de démarrage, affiché avant la lecture des réglages.
 const applyLogo = (v) => { SmashLogo.setVariant(v); try { localStorage.setItem('smash-logo', SmashLogo.variant()); } catch { /* */ } };
 try { SmashLogo.setVariant(localStorage.getItem('smash-logo') || 'classic'); } catch { /* */ }
+// Interface (Console ou classique) connue dès l'écran de démarrage.
+try {
+	document.documentElement.dataset.ui = localStorage.getItem('smash-ui') || 'console';
+	document.documentElement.dataset.uiStyle = localStorage.getItem('smash-ui-style') || 'theme';
+} catch { document.documentElement.dataset.ui = 'console'; }
 
 const TYPE_ICON = { coopdx: 'users', rom: 'joystick' };
 
@@ -151,22 +156,91 @@ const TITLES = {
 	instance: p => [{ label: 'Bibliothèque', to: ['library', {}] }, { label: (instById(p.id) || {}).name || 'Instance' }],
 };
 
+// Transitions entre les menus (interface Console) : la page glisse dans le sens de la barre d'icônes, zoome en
+// entrant dans un jeu et recule en revenant ; la barre du haut et la barre d'icônes restent en place.
+const DEEP = new Set(['instance', 'project', 'suggest']);
+const navDir = (from, to) => {
+	if (DEEP.has(to) && !DEEP.has(from)) return 'in';
+	if (DEEP.has(from) && !DEEP.has(to)) return 'out';
+	const order = (typeof CONSOLE_DOCK !== 'undefined' ? CONSOLE_DOCK : []).map(d => d[0]);
+	const a = order.indexOf(from);
+	const b = order.indexOf(to);
+	return a < 0 || b < 0 || a === b ? 'fade' : b > a ? 'left' : 'right';
+};
+const transition = (dir, update) => {
+	if (!consoleUi() || !document.startViewTransition || state.settings.consoleAnim === false) { update(); return; }
+	document.documentElement.dataset.navDir = dir;
+	if (typeof chBlip === 'function') chBlip(dir === 'in' ? 640 : dir === 'out' ? 480 : 560, 0.05, 0.025);
+	document.startViewTransition(update);
+};
+
 const go = (name, params = {}, { push = true } = {}) => {
+	const from = state.route.name;
 	if (push) { state.back.push(state.route); state.forward = []; }
 	state.route = { name, params };
-	render();
-	const page = $('#page');
-	if (page) page.scrollTop = 0;
+	transition(navDir(from, name), () => {
+		render();
+		const page = $('#page');
+		if (page) page.scrollTop = 0;
+	});
 };
-const goBack = () => { if (!state.back.length) return; state.forward.push(state.route); state.route = state.back.pop(); render(); };
-const goForward = () => { if (!state.forward.length) return; state.back.push(state.route); state.route = state.forward.pop(); render(); };
+const goBack = () => { if (!state.back.length) return; const from = state.route.name; state.forward.push(state.route); state.route = state.back.pop(); transition(navDir(from, state.route.name), render); };
+const goForward = () => { if (!state.forward.length) return; const from = state.route.name; state.back.push(state.route); state.route = state.forward.pop(); transition(navDir(from, state.route.name), render); };
 
 // ---------- Barre du haut ----------
+
+// Interface « Console » (par défaut) : boutons ronds et pastille d'état en haut, barre d'icônes en bas, cartes
+// claires sur un décor au choix ; « Classique » garde le menu latéral.
+const consoleUi = () => !state.settings || state.settings.uiStyle !== 'classic';
+const clockText = () => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+setInterval(() => { const c = document.getElementById('ct-clock'); if (c) c.textContent = clockText(); }, 15000);
+
+const renderConsoleTopbar = (crumbs, active, n) => {
+	const online = typeof friendsOnline === 'function' ? friendsOnline() : 0;
+	const name = state.settings.playerName || 'Joueur';
+	const round = (action, ic, tip, extra = '', attrs = '') => `<button class="ct-round" data-action="${action}" ${attrs} data-tip="${tip}" data-tip-pos="bottom">${icon(ic)}${extra}</button>`;
+	$('#topbar').innerHTML = `
+		<div class="ct-left">
+			${round('nav', 'house', 'Accueil', '', 'data-to="home"')}
+			${round('back', 'chevron-left', 'Retour', '', state.back.length ? '' : 'disabled')}
+			${round('ct-search', 'search', 'Rechercher un jeu (Ctrl+K)')}
+			${round('nav', 'users', 'Amis', online ? `<b class="ct-badge">${online}</b>` : '', 'data-to="friends"')}
+			${round('downloads', 'download', 'Téléchargements', active ? `<b class="ct-badge">${active}</b>` : '')}
+		</div>
+		<div class="ct-title">${crumbs.map((c, i) => (i ? `<span class="sep">${icon('chevron-right', 'sm')}</span>` : '') + (c.to ? `<a data-action="crumb" data-i="${i}">${esc(c.label)}</a>` : `<span>${esc(c.label)}</span>`)).join('')}</div>
+		<div class="ct-right">
+			${n ? `<button class="ct-running" data-action="running"><i></i>${n} en cours</button>` : ''}
+			<div class="ct-status">${icon(navigator.onLine ? 'wifi' : 'wifi-off')}<span id="ct-clock">${clockText()}</span><span class="ct-av" style="--av:${colorFor(name)}" data-action="nav" data-to="friends">${esc((name.trim()[0] || '?').toUpperCase())}</span></div>
+			<div class="ct-win">
+				<button data-action="win-min">${icon('minus')}</button>
+				<button data-action="win-max">${icon('square', 'sm')}</button>
+				<button class="close" data-action="win-close">${icon('x')}</button>
+			</div>
+		</div>`;
+};
+
+// Barre d'icônes du bas, présente sur toutes les pages en interface Console.
+const CONSOLE_DOCK = [
+	['home', 'house', 'Accueil', '#e60012'], ['roms', 'disc-3', 'Jeux', '#ff8a00'], ['library', 'library', 'Bibliothèque', '#21a85a'],
+	['friends', 'users', 'Amis', '#e5397a'], ['remote', 'wifi', 'À distance', '#1e88e5'], ['trophies', 'trophy', 'Trophées', '#e6a700'],
+	['dashboard', 'gauge', 'Statistiques', '#00a3a3'], ['multiworld', 'shuffle', 'Multiworld', '#8e5be8'], ['controls', 'gamepad-2', 'Manettes', '#5d6672'],
+	['discover', 'compass', 'Mods', '#16a596'], ['settings', 'settings', 'Réglages', '#5d6672'],
+];
+const renderConsoleNav = () => {
+	const r = state.route;
+	const online = typeof friendsOnline === 'function' ? friendsOnline() : 0;
+	const btn = ([to, ic, label, color]) => `<button class="cd-btn ${r.name === to || (to === 'library' && r.name === 'instance') ? 'active' : ''}" data-action="nav" data-to="${to}" data-tip="${label}" data-tip-pos="top" style="--c:${color}">${icon(ic)}${to === 'friends' && online ? `<b class="ct-badge">${online}</b>` : ''}</button>`;
+	$('#nav').innerHTML = `<div class="cd-bar">${CONSOLE_DOCK.map(btn).join('')}<span class="cd-sep"></span>
+		<button class="cd-btn" data-action="music-dock" data-tip="Musique" data-tip-pos="top" style="--c:#8e5be8">${icon('music')}</button>
+		${typeof COMMUNITY !== 'undefined' && COMMUNITY.discord ? `<button class="cd-btn" data-action="join-discord" data-tip="Rejoindre le Discord" data-tip-pos="top" style="--c:#5865f2">${icon('message-circle')}</button>` : ''}
+		<button class="cd-btn" data-action="ui-fullscreen" data-tip="Plein écran (F11)" data-tip-pos="top" style="--c:#5d6672">${icon('maximize')}</button></div>`;
+};
 
 const renderTopbar = () => {
 	const crumbs = (TITLES[state.route.name] || (() => []))(state.route.params);
 	const active = state.downloads.size ? [...state.downloads.values()].filter(d => d.state === 'downloading' || d.state === 'installing').length : 0;
 	const n = state.running.length;
+	if (consoleUi()) { renderConsoleTopbar(crumbs, active, n); return; }
 	$('#topbar').innerHTML = `
 		<div class="logo" data-action="nav" data-to="home">${SmashLogo.svg(26)}${SmashLogo.wordmark()}</div>
 		<button class="circle-btn" data-action="back" ${state.back.length ? '' : 'disabled'} data-tip="Retour" data-tip-pos="bottom">${icon('chevron-left')}</button>
@@ -188,10 +262,11 @@ const renderTopbar = () => {
 const navCollapsed = () => { try { return localStorage.getItem('smash-nav') === 'collapsed'; } catch { return false; } };
 
 const renderNav = () => {
+	if (consoleUi()) { $('#nav').classList.remove('collapsed'); $('#app').classList.remove('nav-collapsed'); renderConsoleNav(); return; }
 	const r = state.route;
 	const collapsed = navCollapsed();
 	$('#app').classList.toggle('nav-collapsed', collapsed);
-	const navBtn = (name, ic, tip) => `<button class="nav-btn ${r.name === name ? 'active' : ''}" data-action="nav" data-to="${name}" data-tip="${collapsed ? tip : ''}">${icon(ic)}<span class="nav-label">${tip}</span></button>`;
+	const navBtn = (name, ic, tip, badge = 0) => `<button class="nav-btn ${r.name === name ? 'active' : ''}" data-action="nav" data-to="${name}" data-tip="${collapsed ? tip : ''}">${icon(ic)}<span class="nav-label">${tip}</span>${badge ? `<span class="nav-badge">${badge}</span>` : ''}</button>`;
 	const recent = [...state.instances].sort((a, b) => (b.lastPlayed || b.createdAt) - (a.lastPlayed || a.createdAt)).slice(0, 8);
 	$('#nav').classList.toggle('collapsed', collapsed);
 	$('#nav').innerHTML = `
@@ -201,6 +276,7 @@ const renderNav = () => {
 		${navBtn('library', 'library', 'Bibliothèque')}
 		${navBtn('controls', 'gamepad-2', 'Manettes')}
 		${navBtn('remote', 'wifi', 'À distance')}
+		${navBtn('friends', 'users', 'Amis', typeof friendsOnline === 'function' ? friendsOnline() : 0)}
 		${navBtn('trophies', 'trophy', 'Trophées')}
 		${navBtn('dashboard', 'gauge', 'Tableau de bord')}
 		${navBtn('multiworld', 'shuffle', 'Multiworld')}
@@ -217,9 +293,26 @@ const renderNav = () => {
 };
 
 const render = () => {
-	if (state.settings) { applyTheme(currentTheme()); document.documentElement.dataset.font = state.settings.fontMode || 'titles'; }
+	if (state.settings) {
+		applyTheme(currentTheme());
+		const root = document.documentElement;
+		root.dataset.font = state.settings.fontMode || 'titles';
+		root.dataset.ui = consoleUi() ? 'console' : 'classic';
+		try { localStorage.setItem('smash-ui', root.dataset.ui); } catch { /* */ }
+		root.dataset.decorUi = state.settings.consoleBg || 'bulles';
+		// Style de l'interface Console : couleurs du thème choisi (par défaut), clair ou sombre.
+		root.dataset.uiStyle = ['light', 'dark'].includes(state.settings.consoleStyle) ? state.settings.consoleStyle : 'theme';
+		root.toggleAttribute('data-ui-dark', state.settings.consoleStyle === 'dark');
+		if (!consoleUi() && typeof uiTint === 'function') uiTint(null);
+		// Fond d'écran du jeu : seulement sur l'accueil (jeu sélectionné) et sur la page du jeu.
+		if (typeof uiWall === 'function' && !['home', 'instance'].includes(state.route.name)) uiWall(null);
+		if (root.dataset.uiStyle === 'theme') for (const v of ['--brand', '--brand-rgb', '--brand-hover']) root.style.removeProperty(v);
+		try { localStorage.setItem('smash-ui-style', root.dataset.uiStyle); } catch { /* */ }
+	}
 	renderTopbar();
 	renderNav();
+	state.prevRendered = state.rendered;
+	state.rendered = state.route.name;
 	const page = PAGES[state.route.name] || PAGES.home;
 	page(state.route.params);
 };
@@ -249,6 +342,7 @@ const playButton = (inst, cls = '') => isRunning(inst.id)
 const instanceMenu = (anchor, inst) => menu(anchor, [
 	isRunning(inst.id) ? { icon: 'square', label: 'Arrêter', run: () => stopInstance(inst.id) } : { icon: 'play', label: 'Jouer', run: () => launchInstance(inst.id) },
 	{ icon: 'music', label: 'Bande-son', run: () => openSoundtrack(instGameName(inst), sysOf(inst)) },
+	...(typeof openBackgrounds === 'function' ? [{ icon: 'image', label: 'Fond d’écran…', run: () => openBackgrounds(inst) }] : []),
 	...(['wii', 'gc'].includes(sysOf(inst)) ? [{ icon: 'users', label: 'Multijoueur en ligne (NetPlay)…', run: () => openNetplay(inst) }] : []),
 	...(inst.type === 'rom' ? [{ icon: 'image', label: 'Jaquette et images…', run: () => openCovers(inst) }] : []),
 	...(inst.type === 'rom' && instEngine(inst) === 'smash' ? [{ icon: 'gamepad-2', label: 'Manettes de ce jeu', run: () => go('controls', { system: sysOf(inst), instance: inst.id }) }] : []),
@@ -1732,6 +1826,12 @@ PAGES.settings = () => {
 		<div class="narrow col" style="gap:18px">
 			<h1>Paramètres</h1>
 			<div class="card col"><h3>Apparence</h3>
+				<div class="field"><span class="label">Interface</span>
+					<div class="chips">${[['console', 'Console', 'layout-dashboard'], ['classic', 'Classique', 'layout-grid']].map(([v, l, ic]) => `<button class="chip ${(consoleUi() ? 'console' : 'classic') === v ? 'active' : ''}" data-action="set-ui" data-v="${v}">${icon(ic)}${l}</button>`).join('')}
+						${consoleUi() ? `<button class="chip" data-action="ch-options">${icon('palette')}Accueil, décor, couleurs…</button>` : ''}</div>
+					<span class="hint">Console : accueil en tuiles (rangée, grille ou chaînes), barre d’icônes en bas, transitions entre les menus, manette. Classique : menu latéral.</span>
+				</div>
+				${consoleUi() ? `<div class="row" style="gap:12px"><div class="grow"><div class="bold">Animations et transitions</div><div class="small muted">Glissements entre les menus, apparition des tuiles, lancement des jeux</div></div><button class="switch ${s.consoleAnim !== false ? 'on' : ''}" data-action="toggle-anim"></button></div>` : ''}
 				<div class="field"><span class="label">Logo</span>
 					<div class="logo-pick">${[['classic', 'Classique'], ['manette', 'Manette']].map(([v, l]) => `<button class="logo-card ${(s.logo || 'classic') === v ? 'active' : ''}" data-action="set-logo" data-v="${v}">${SmashLogo.svg(56, v)}<span>${l}</span></button>`).join('')}</div>
 					<span class="hint">Le logo change dans toute l’application et sur l’icône des fenêtres (l’icône du raccourci reste la classique).</span>
@@ -1907,11 +2007,11 @@ const renderSwitchKeys = () => {
 		<div class="avatar">${icon('keyboard')}</div>
 		<div class="grow">
 			<div class="row wrap" style="gap:8px"><span class="bold">Clés Nintendo Switch</span>${tag(k.prod, 'prod.keys')}${tag(k.title, 'title.keys')}</div>
-			<div class="small muted">Importe les clés extraites de <b>ta propre</b> console (Lockpick_RCM). Smash Emu les copie dans ${esc(k.dir)}. Le firmware s’installe dans Ryujinx (Outils → Installer le firmware).</div>
+			<div class="small muted">Importe les clés extraites de <b>ta propre</b> console (Lockpick_RCM). Smash Emu les copie pour Citron, Eden et Ryujinx, et partage entre eux le firmware déjà installé. Pour installer le firmware : ouvre l’émulateur, puis Outils → Installer le firmware.</div>
 		</div>
 		<button class="btn sm primary" data-action="switch-import">${icon('upload')}Importer les clés</button>
 		<button class="btn sm" data-action="switch-folder">${icon('folder-open')}Dossier</button>
-		${k.installed ? `<button class="btn sm" data-action="switch-open">${icon('cpu')}Ouvrir Ryujinx</button>` : ''}
+		${k.installed ? `<button class="btn sm" data-action="switch-open">${icon('cpu')}Ouvrir l’émulateur Switch</button>` : ''}
 	</div>`;
 };
 
@@ -2304,6 +2404,8 @@ const ACTIONS = {
 	'set-decor': async (el) => { state.settings = await api('settings:set', { decor: el.dataset.v }); render(); },
 	'set-fontmode': async (el) => { state.settings = await api('settings:set', { fontMode: el.dataset.v }); render(); },
 	'set-autotheme': async () => { state.settings = await api('settings:set', { autoTheme: state.settings.autoTheme === false }); render(); },
+	'set-ui': async (el) => { state.settings = await api('settings:set', { uiStyle: el.dataset.v }); render(); },
+	'toggle-anim': async () => { state.settings = await api('settings:set', { consoleAnim: state.settings.consoleAnim === false }); render(); },
 	'set-logo': async (el) => {
 		state.settings = await api('settings:set', { logo: el.dataset.v });
 		applyLogo(state.settings.logo);
@@ -2483,12 +2585,12 @@ window.launcher.on('opera:download', (file) => {
 
 window.launcher.on('window:state', () => {});
 
-// Switch installée d'office (Ryujinx en arrière-plan au démarrage).
+// Switch installée d'office (Eden en arrière-plan au démarrage s'il n'y a aucun émulateur Switch).
 window.launcher.on('switch:auto', async (r) => {
 	if (r.ok) {
 		state.emulators = await api('emulators:status').catch(() => state.emulators);
-		toast('🎮 <b>Switch prête</b> : Ryujinx est installé. Importe les clés de ta console dans Paramètres → Émulateurs pour jouer.', { type: 'success', timeout: 10000 });
-	} else toast(`Switch : Ryujinx n’a pas pu s’installer pour l’instant (${esc(r.error)}). Smash Emu réessaiera au prochain démarrage.`, { type: 'info', timeout: 9000 });
+		toast('🎮 <b>Switch prête</b> : Eden est installé. Importe les clés de ta console dans Paramètres → Émulateurs pour jouer.', { type: 'success', timeout: 10000 });
+	} else toast(`Switch : Eden n’a pas pu s’installer pour l’instant (${esc(r.error)}). Smash Emu réessaiera au prochain démarrage.`, { type: 'info', timeout: 9000 });
 });
 
 window.launcher.on('emuinstall', (p) => {

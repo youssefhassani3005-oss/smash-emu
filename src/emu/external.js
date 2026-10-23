@@ -89,7 +89,7 @@ const tabSwitch = () => {
 	return `<div class="grp"><div class="lbl">Clés Nintendo Switch <span>extraites de ta propre console</span></div>
 		${k ? `<div class="chips">${tag(k.prod, 'prod.keys')}${tag(k.title, 'title.keys')}</div>` : '<div class="note">Chargement…</div>'}
 		<div style="margin-top:12px"><button class="btn primary" data-act="swimport">${icon('upload')}Importer des clés (.keys)</button></div></div>
-		<div class="note">Les clés sont copiées dans le dossier de Ryujinx. Le firmware s’installe dans Ryujinx : menu Outils → Installer le firmware (depuis un fichier ZIP ou un dossier). Si le jeu ne démarre pas après l’import, ferme et relance le jeu.</div>`;
+		<div class="note">Les clés sont copiées pour Citron, Eden et Ryujinx. Le firmware s’installe depuis l’émulateur : menu Outils → Installer le firmware (depuis un fichier ZIP ou un dossier) ; Smash Emu le partage ensuite entre eux. Si le jeu ne démarre pas après l’import, ferme et relance le jeu.</div>`;
 };
 
 const tabTools = () => `
@@ -108,8 +108,8 @@ const tabTools = () => `
 const dirty = () => JSON.stringify(st.opts) !== JSON.stringify(st.cfg.opts) || (st.ext && st.ext !== st.cfg.extension);
 
 const renderPanel = () => {
-	if (!st.cfg.can.states && st.tab === 'states') st.tab = ['ryujinx', 'citron'].includes(st.cfg.emulatorId) ? 'switch' : 'tools';
-	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(['ryujinx', 'citron'].includes(st.cfg.emulatorId) ? [['switch', 'Clés', 'keyboard']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
+	if (!st.cfg.can.states && st.tab === 'states') st.tab = ['ryujinx', 'citron', 'eden'].includes(st.cfg.emulatorId) ? 'switch' : 'tools';
+	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(['ryujinx', 'citron', 'eden'].includes(st.cfg.emulatorId) ? [['switch', 'Clés', 'keyboard']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
 	const body = { states: tabStates, image: tabImage, game: tabGame, tools: tabTools, switch: tabSwitch }[st.tab]();
 	$('#panel').innerHTML = `<div class="pn">
 		<div class="pn-head"><span class="ttl">SMASH EMU</span>${tabs.map(([k, l, ic]) => `<button class="pn-tab ${st.tab === k ? 'on' : ''}" data-tab="${k}">${icon(ic)}${l}</button>`).join('')}
@@ -126,7 +126,7 @@ const renderPanel = () => {
 };
 
 const openPanel = async () => {
-	if (['ryujinx', 'citron'].includes(st.cfg.emulatorId)) smashExt.switchStatus().then((k) => { st.sw = k; if (st.panel) renderPanel(); }).catch(() => {});
+	if (['ryujinx', 'citron', 'eden'].includes(st.cfg.emulatorId)) smashExt.switchStatus().then((k) => { st.sw = k; if (st.panel) renderPanel(); }).catch(() => {});
 	if (st.panel || !st.attached) return;
 	st.panel = true;
 	st.opts = { ...st.cfg.opts };
@@ -285,7 +285,7 @@ smashExt.onState((s) => {
 		$('#wait-msg').style.color = '';
 		st.turbo = false; st.paused = false; st.attached = false;
 		$('#btn-turbo').classList.remove('on'); $('#btn-pause').classList.remove('on');
-		showHelp(s.dialog ? { dialog: s.dialog } : {});
+		showHelp(s.dialog ? { dialog: s.dialog } : s.notice ? { hint: s.notice } : {});
 		return;
 	}
 	if (s.slow) { showHelp({ hint: `Ça prend du temps… ${s.hint || ''}` }); return; }
@@ -329,6 +329,7 @@ const tick = () => {
 	$('#game-name').textContent = st.cfg.name;
 	$('#game-sub').textContent = `${st.cfg.system} · ${st.cfg.emulator}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 	$('#wait-msg').textContent = `DEMARRAGE DE ${st.cfg.emulator.toUpperCase()}…`;
+	if (st.cfg.notice && !st.attached) showHelp({ hint: st.cfg.notice });
 	// Les boutons que l'émulateur ne sait pas gérer sont masqués.
 	for (const el of document.querySelectorAll('[data-need]')) if (!st.cfg.can[el.dataset.need]) el.classList.add('hidden');
 	setInterval(tick, 1000);

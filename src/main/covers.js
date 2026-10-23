@@ -196,6 +196,59 @@ const remove = (id, kind) => {
 	return info(id);
 };
 
+// ---------- Fond d'écran d'un jeu ----------
+// Six images au choix : écrans titres, captures et boîtes des versions du jeu les plus proches (régions, éditions).
+
+const backgrounds = async (system, queries, limit = 6) => {
+	const found = await search(system, queries, 8);
+	const out = [];
+	const seen = new Set();
+	for (const kind of ['title', 'snap', 'boxart']) {
+		for (const r of found.filter(x => x.score >= 55)) {
+			const url = r.media[kind];
+			if (!url || seen.has(url)) continue;
+			seen.add(url);
+			out.push({ url, kind, label: KIND_LABEL[kind], name: r.name });
+		}
+	}
+	// Une image de chaque sorte d'abord, puis le reste.
+	const order = [...out.filter((x, i) => out.findIndex(y => y.kind === x.kind) === i), ...out.filter((x, i) => out.findIndex(y => y.kind === x.kind) !== i)];
+	return order.slice(0, limit);
+};
+
+const setBackground = async (id, url) => {
+	if (!/^https:\/\/raw\.githubusercontent\.com\/libretro-thumbnails\//.test(String(url))) throw new Error('Adresse d’image inattendue.');
+	const res = await fetch(url, { headers: { 'User-Agent': HEADERS['User-Agent'] }, signal: AbortSignal.timeout(30000) });
+	if (!res.ok) throw new Error(`Image indisponible (${res.status}).`);
+	return saveBackground(id, Buffer.from(await res.arrayBuffer()));
+};
+
+const saveBackground = (id, buf) => {
+	const type = imageType(buf);
+	if (!type) throw new Error('Ce fichier n’est pas une image PNG, JPEG ou WebP valide.');
+	if (buf.length > MAX_IMAGE) throw new Error('Image trop lourde (15 Mo maximum).');
+	const dir = mediaDir(id);
+	fs.mkdirSync(dir, { recursive: true });
+	for (const f of fs.readdirSync(dir)) if (/^background\./.test(f)) fs.rmSync(path.join(dir, f), { force: true });
+	const file = path.join(dir, `background.${type}`);
+	fs.writeFileSync(file, buf);
+	store.updateInstance(id, { bgFile: file, bgAt: Date.now() });
+	return { bgFile: file };
+};
+
+const importBackground = (id, file) => {
+	const st = fs.statSync(file);
+	if (!st.isFile() || st.size > MAX_IMAGE) throw new Error('Fichier invalide ou trop lourd (15 Mo maximum).');
+	return saveBackground(id, fs.readFileSync(file));
+};
+
+const removeBackground = (id) => {
+	const inst = store.getInstance(id);
+	if (inst && inst.bgFile) fs.rmSync(inst.bgFile, { force: true });
+	store.updateInstance(id, { bgFile: null, bgAt: null });
+	return { bgFile: null };
+};
+
 const info = (id) => {
 	const meta = readMeta(id);
 	const out = {};
@@ -207,4 +260,4 @@ const info = (id) => {
 	return out;
 };
 
-module.exports = { REPOS, KINDS, KIND_LABEL, listing, search, score, differences, download, importFile, restore, remove, info, imageType };
+module.exports = { REPOS, KINDS, KIND_LABEL, listing, search, score, differences, download, importFile, restore, remove, info, imageType, backgrounds, setBackground, importBackground, removeBackground };

@@ -1,6 +1,6 @@
-// Installation en un clic d'émulateurs externes depuis leur source officielle : Ryujinx (update.ryujinx.app) et
-// les versions publiées par les projets eux-mêmes sur GitHub (PCSX2, RPCS3, xemu, shadPS4, Xenia Canary,
-// DuckStation, Azahar, Cemu, PPSSPP). Les fichiers vont dans Documents\Smash Emu\emulators\<id> ; rien n'est
+// Installation en un clic d'émulateurs externes depuis leur source officielle : Ryujinx (update.ryujinx.app), Eden
+// (sa forge, version de la nuit) et les versions publiées par les projets eux-mêmes sur GitHub (PCSX2, RPCS3, xemu,
+// shadPS4, Xenia Canary, DuckStation, Azahar, Cemu, PPSSPP). Les fichiers vont dans Documents\Smash Emu\emulators\<id> ; rien n'est
 // installé ailleurs sur le PC. Aucun BIOS, firmware, clé ni jeu n'est téléchargé.
 const fs = require('fs');
 const path = require('path');
@@ -22,6 +22,8 @@ const SOURCES = {
 	xemu: { github: 'xemu-project/xemu', asset: /^xemu-win-x86_64-release\.zip$/i },
 	shadps4: { github: 'shadps4-emu/shadPS4', asset: /win64[^/]*\.zip$/i },
 	citron: { github: 'citron-neo/emulator', asset: /windows[^/]*x64-msvc\.zip$/i },
+	// Eden publie chaque nuit sur sa propre forge ; les liens des fichiers sont dans la note de version.
+	eden: { forgejo: 'https://git.eden-emu.dev/api/v1/repos/eden-ci/nightly/releases?limit=1', hosts: ['eden-emu.dev'], asset: /^https:\/\/nightly\.eden-emu\.dev\/[\w.-]+\/Eden-Windows-([0-9a-f]+)-amd64-msvc-standard\.zip$/i },
 	xenia: { github: 'xenia-canary/xenia-canary-releases', asset: /windows[^/]*\.zip$/i },
 	duckstation: { github: 'stenzek/duckstation', asset: /^duckstation-windows-x64-release\.zip$/i, portable: { file: 'portable.txt' } },
 	azahar: { github: 'azahar-emu/azahar', asset: /^azahar-windows-msvc-[\d.]+\.zip$/i },
@@ -71,6 +73,24 @@ const resolveGithub = async (src) => {
 	const version = src.versionFromAsset ? ((asset.name.match(/v(\d+\.\d+\.\d+(?:-\d+)?)/) || [])[1] || rel.tag_name) : (rel.tag_name || rel.name || '');
 	return { url, name: asset.name, version, size: asset.size };
 };
+
+// Dernière version publiée sur une forge Forgejo (Eden) : le fichier Windows est cherché dans les pièces jointes
+// puis dans les liens de la note de version ; il doit venir du domaine du projet.
+const resolveForgejo = async (src) => {
+	let res;
+	try { res = await net.fetch(src.forgejo, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(20000) }); } catch { throw new Error('le serveur officiel est injoignable pour le moment'); }
+	if (!res.ok) throw new Error(`Le serveur officiel a répondu ${res.status}.`);
+	const rel = (await res.json())[0];
+	if (!rel) throw new Error('Aucune version publiée.');
+	const links = [...(rel.assets || []).map(a => a.browser_download_url), ...(String(rel.body || '').match(/https:\/\/[^\s)\]"'<>]+/g) || [])];
+	const url = links.find(u => src.asset.test(u));
+	if (!url) throw new Error('La dernière version ne contient pas de fichier pour Windows 64 bits.');
+	const host = new URL(url).hostname;
+	if (!src.hosts.some(h => host === h || host.endsWith(`.${h}`))) throw new Error(`Adresse de téléchargement inattendue (${host}) : installation annulée par sécurité.`);
+	return { url, name: path.basename(new URL(url).pathname), version: url.match(src.asset)[1] || rel.tag_name };
+};
+
+const resolve = src => (src.github ? resolveGithub(src) : src.forgejo ? resolveForgejo(src) : resolveQuery(src));
 
 const download = async (url, file, progress) => {
 	const res = await net.fetch(url, { redirect: 'follow' });
@@ -123,7 +143,7 @@ const install = async (id, progress) => {
 	let tmp = null;
 	try {
 		progress({ state: 'resolving' });
-		const rel = src.github ? await resolveGithub(src) : await resolveQuery(src);
+		const rel = await resolve(src);
 		fs.mkdirSync(store.CACHE_DIR, { recursive: true });
 		tmp = path.join(store.CACHE_DIR, `${id}-download${/\.7z$/i.test(rel.name) ? '.7z' : '.zip'}`);
 		await download(rel.url, tmp, progress);
@@ -191,7 +211,7 @@ const checkUpdates = async (force = false) => {
 		if (!cur) continue;
 		try {
 			const src = SOURCES[id];
-			const rel = src.github ? await resolveGithub(src) : await resolveQuery(src);
+			const rel = await resolve(src);
 			result[id] = { installed: cur.version, latest: rel.version, update: newer(rel.version, cur.version) };
 		} catch (error) { result[id] = { installed: cur.version, error: error.message }; }
 	}

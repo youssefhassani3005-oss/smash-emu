@@ -34,6 +34,8 @@ const switchkeys = require('./switchkeys');
 const updater = require('./updater');
 const emuinstall = require('./emuinstall');
 const saves = require('./saves');
+const friends = require('./friends');
+const census = require('./census');
 emu.registerScheme();
 Menu.setApplicationMenu(null);
 const games = require('./games');
@@ -45,7 +47,17 @@ const rom = require('./rom');
 
 let win = null;
 const send = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
-runner.setEmitter((type, payload) => { send(`run:${type}`, payload); if (type === 'status') updatePresence(); });
+runner.setEmitter((type, payload) => { send(`run:${type}`, payload); if (type === 'status') { updatePresence(); friends.publish(); } });
+
+// Jeu affiché aux amis : le plus récemment lancé.
+const currentGame = () => {
+	const st = runner.status();
+	if (!st.length) return null;
+	const r = st.reduce((a, b) => (b.startedAt > a.startedAt ? b : a));
+	const inst = store.getInstance(r.id) || { name: 'Jeu' };
+	const sys = systems.SYSTEMS[games.systemOf(inst)];
+	return { name: inst.name, system: inst.type === 'coopdx' ? 'Coop DX' : (sys && sys.label) || '', since: r.startedAt };
+};
 
 // Présence Discord : jeu en cours (le plus récent), console, jaquette libretro et chrono ; « Dans le menu » sinon.
 const REPO_URL = 'https://github.com/youssefhassani3005-oss/smash-emu';
@@ -255,8 +267,22 @@ const handlers = {
 		if ('logo' in patch && win && !win.isDestroyed()) win.setIcon(store.windowIcon());
 		if ('watchOperaDownloads' in patch) startOperaWatch();
 		if (['richPresence', 'discordAppId', 'presenceShowGame', 'presenceIdle'].some(k => k in patch)) updatePresence();
+		if ('playerName' in patch) friends.publish();
 		return s;
 	},
+	'friends:state': () => friends.state(),
+	'friends:enable': on => friends.enable(on),
+	'friends:options': o => friends.setOptions(o),
+	'friends:add': code => friends.add(code),
+	'friends:accept': code => friends.accept(code),
+	'friends:decline': code => friends.decline(code),
+	'friends:remove': code => friends.remove(code),
+	'friends:regenerate': () => friends.regenerate(),
+	'census:state': () => census.publicState(),
+	'census:set': on => census.setEnabled(on),
+	'census:summary': () => census.fetchSummary(),
+	'census:admin': () => { if (!census.publicState().admin) throw new Error('Réservé au PC administrateur.'); return census.adminState(); },
+	'census:publish': () => census.publishSummary(),
 
 	'dialog:open': async (opts = {}) => {
 		const r = await dialog.showOpenDialog(win, { properties: opts.multi ? ['openFile', 'multiSelections'] : ['openFile'], filters: opts.filters || [] });
@@ -358,7 +384,59 @@ const handlers = {
 		return { system: games.systemOf(inst), queries, results: await covers.search(games.systemOf(inst), queries) };
 	},
 	'covers:info': id => covers.info(id),
+	// Fond d'écran d'un jeu : 6 images proposées (écrans titres, captures, boîtes), ou une image du PC.
+	'bg:candidates': async (id) => {
+		const inst = store.getInstance(id);
+		if (!inst) throw new Error('Jeu introuvable.');
+		const info = (inst.rom && inst.rom.info) || {};
+		const queries = inst.type === 'coopdx' ? ['Super Mario 64 (USA)'] : [info.known, info.title, inst.rom && inst.rom.file && inst.rom.file.replace(/\.[a-z0-9]+$/i, ''), inst.name].filter(Boolean);
+		return covers.backgrounds(inst.type === 'coopdx' ? 'n64' : games.systemOf(inst), queries);
+	},
+	'bg:set': (id, url) => covers.setBackground(id, url),
+	'bg:import': async (id) => {
+		const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] });
+		return r.canceled ? null : covers.importBackground(id, r.filePaths[0]);
+	},
+	'bg:remove': id => covers.removeBackground(id),
+	// Pastilles de l'accueil console : temps de jeu, 2 dernières semaines, trophées du jeu.
+	'console:gameInfo': (id) => {
+		const inst = store.getInstance(id);
+		if (!inst) return null;
+		const since = Date.now() - 14 * 86400000;
+		const log = stats.readLog().filter(x => x.id === id);
+		const twoWeeks = log.reduce((a, x) => a + Math.max(0, x.e - Math.max(x.s, since)), 0);
+		const g = trophies.list(runner.status()).perGame.find(x => x.id === id);
+		const got = g ? g.tiers.filter(t => t.at).sort((a, b) => b.at - a.at) : [];
+		return { ms: inst.playTimeMs || 0, last: inst.lastPlayed || null, twoWeeks, sessions: log.length, trophies: { count: got.length, total: trophies.TIERS.length, latest: got[0] ? { name: got[0].name, at: got[0].at } : null } };
+	},
+	'window:fullscreen': () => { win.setFullScreen(!win.isFullScreen()); return win.isFullScreen(); },
+	// Couleurs des jaquettes (accueil console) : { id: { main, accent, avg, light } }.
+	'covers:palettes': ids => Object.fromEntries((ids || []).map((id) => {
+		const inst = store.getInstance(id);
+		let p = null;
+		try { p = inst && inst.coverFile ? require('./palette').fromFile(inst.coverFile) : null; } catch { /* image illisible */ }
+		return [id, p];
+	})),
 	'covers:pick': (id, name) => covers.download(id, games.systemOf(store.getInstance(id)), String(name)),
+	// Jaquettes manquantes, à la demande du joueur : seule la boîte d'une correspondance très sûre (score ≥ 80) est
+	// téléchargée ; les autres jeux restent à choisir à la main.
+	'covers:autoMissing': async () => {
+		const todo = store.listInstances().filter(i => !i.coverFile && (i.type === 'rom' || i.type === 'coopdx'));
+		const found = [];
+		const unsure = [];
+		for (const [n, inst] of todo.entries()) {
+			send('covers:auto', { done: n, total: todo.length, name: inst.name });
+			const sys = inst.type === 'coopdx' ? 'n64' : games.systemOf(inst);
+			const info = (inst.rom && inst.rom.info) || {};
+			const queries = inst.type === 'coopdx' ? ['Super Mario 64 (USA)'] : [info.known, info.title, inst.rom && inst.rom.file && inst.rom.file.replace(/\.[a-z0-9]+$/i, ''), inst.name].filter(Boolean);
+			try {
+				const best = (await covers.search(sys, queries, 3)).find(r => r.media.boxart);
+				if (best && best.score >= 80) { await covers.download(inst.id, sys, best.name, ['boxart']); found.push(inst.name); } else unsure.push(inst.name);
+			} catch { unsure.push(inst.name); }
+		}
+		send('covers:auto', { done: todo.length, total: todo.length });
+		return { found, unsure };
+	},
 	'covers:import': async (id, kind) => {
 		const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] });
 		return r.canceled ? null : covers.importFile(id, kind, r.filePaths[0]);
@@ -540,15 +618,17 @@ app.whenReady().then(() => {
 	startOperaWatch();
 	updatePresence();
 	community.get().then(() => updatePresence()).catch(() => {});
-	// Switch installée d'office : Ryujinx s'installe en arrière-plan s'il manque ; en cas d'échec (serveurs
-	// officiels injoignables), nouvel essai au démarrage suivant, au plus toutes les 6 h.
+	friends.init({ send, current: currentGame, version: app.getVersion() });
+	census.init({ send, version: app.getVersion(), emulators: () => Object.values(emulators.status()).filter(e => e.path).map(e => e.id) });
+	// Switch installée d'office : sans émulateur Switch (Citron est normalement fourni), Eden s'installe en
+	// arrière-plan ; en cas d'échec (serveur injoignable), nouvel essai au démarrage suivant, au plus toutes les 6 h.
 	setTimeout(async () => {
 		const s = store.getSettings();
-		if (s.autoInstallSwitch === false || emulators.pathFor('ryujinx') || emulators.pathFor('citron')) return;
+		if (s.autoInstallSwitch === false || ['ryujinx', 'citron', 'eden'].some(e => emulators.pathFor(e))) return;
 		if (s.switchInstallTry && Date.now() - s.switchInstallTry < 6 * 3600000) return;
 		store.setSettings({ switchInstallTry: Date.now() });
 		try {
-			await emuinstall.install('ryujinx', p => send('emuinstall', { id: 'ryujinx', auto: true, ...p }));
+			await emuinstall.install('eden', p => send('emuinstall', { id: 'eden', auto: true, ...p }));
 			send('switch:auto', { ok: true });
 		} catch (error) { send('switch:auto', { ok: false, error: error.message }); }
 	}, 15000);
@@ -557,4 +637,13 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
 	opera.unwatch();
 	app.quit();
+});
+
+// Amis : « hors ligne » envoyé avant de quitter (2 s au plus).
+let leaving = false;
+app.on('before-quit', (e) => {
+	if (leaving || !(store.getSettings().friends || {}).on) return;
+	e.preventDefault();
+	leaving = true;
+	friends.goOffline().finally(() => app.quit());
 });

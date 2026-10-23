@@ -92,6 +92,8 @@ PAGES.dashboard = async () => {
 			${kpi('wifi', d.remote.hosted + d.remote.joined, 'Parties à distance', `${d.remote.hosted} hébergées · ${d.remote.joined} rejointes`)}
 		</div>
 
+		<div id="census-card"></div>
+
 		<div class="dash-grid">
 			<div class="card col dash-wide"><div class="row"><h3 class="grow">${icon('calendar')}Activité des 30 derniers jours</h3><span class="small muted">${t.historySince ? `historique depuis le ${dateFr(t.historySince)}` : 'l’historique commence à ta prochaine partie'}</span></div>
 				${barChart(days, { labelEvery: 5 })}</div>
@@ -142,7 +144,61 @@ PAGES.dashboard = async () => {
 			<div class="card col dash-wide" id="sup-card">${supporterCard(sup)}</div>
 		</div>`);
 	if (sup.admin) loadIssued();
+	loadCensus();
 };
+
+// ---------- Communauté : chiffres de tous les joueurs qui participent ----------
+
+const censusCard = (st, s, admin) => {
+	const optIn = !st.asked
+		? `<div class="census-ask">${icon('users')}<div class="grow"><b>Participer aux chiffres de la communauté ?</b><span>Smash Emu enverrait, chiffré et sans ton nom, ton temps de jeu, tes consoles et tes jeux les plus joués. Seul l’administrateur peut lire les rapports ; tout le monde voit le total.</span></div><button class="btn primary sm" data-action="census-set" data-on="1">Oui, participer</button><button class="btn sm" data-action="census-set" data-on="0">Non merci</button></div>`
+		: `<div class="row census-opt"><div class="grow"><div class="bold">Je participe (anonyme)</div><div class="small muted">Rapport chiffré pour l’administrateur, au plus toutes les 6 h</div></div><button class="switch ${st.on ? 'on' : ''}" data-action="census-set" data-on="${st.on ? 0 : 1}"></button></div>`;
+	if (!s || !s.players) {
+		return `<div class="card census"><div class="row"><h3 class="grow">${icon('globe')}Communauté Smash Emu</h3></div>
+			<div class="small muted">Les chiffres de la communauté apparaîtront ici dès que des joueurs participent.</div>${optIn}${admin ? censusAdmin(admin) : ''}</div>`;
+	}
+	const gMax = Math.max(1, ...s.games.map(g => g.m));
+	const sTotal = s.systems.reduce((a, x) => a + x.m, 0) || 1;
+	return `<div class="card census">
+		<div class="row"><h3 class="grow">${icon('globe')}Communauté Smash Emu</h3><span class="small muted">mis à jour ${ago(s.at)}</span></div>
+		<div class="dash-kpis census-kpis">
+			<div class="dash-kpi">${icon('users')}<div><b>${s.players}</b><span>joueurs</span><small>${s.newWeek} nouveau${s.newWeek > 1 ? 'x' : ''} cette semaine</small></div></div>
+			<div class="dash-kpi">${icon('radio')}<div><b>${s.active1}</b><span>actifs aujourd’hui</span><small>${s.active7} cette semaine</small></div></div>
+			<div class="dash-kpi">${icon('clock')}<div><b>${s.hours.toLocaleString('fr-FR')} h</b><span>jouées au total</span><small>${s.weekHours} h cette semaine</small></div></div>
+		</div>
+		<div class="census-grid">
+			<div><div class="fr-label">Joueurs actifs par jour</div>${barChart(s.days.map(([k, n]) => ({ value: n, label: k.slice(8), tip: `${k} : ${n} joueur${n > 1 ? 's' : ''}` })), { h: 80, labelEvery: 5 })}</div>
+			<div><div class="fr-label">Jeux les plus joués</div>${s.games.slice(0, 8).map((g, i) => `<div class="fr-bar"><span>${i + 1}. ${esc(g.n)} <small class="muted">${esc(g.sys)}</small></span><i><em style="width:${Math.max(4, Math.round((g.m / gMax) * 100))}%"></em></i><b>${hoursLabel(g.m * 60000)} · ${g.p} 👤</b></div>`).join('') || '<div class="small muted">—</div>'}</div>
+			<div><div class="fr-label">Consoles</div><div class="dash-legend">${s.systems.slice(0, 8).map((x, i) => `<div><i style="background:${PALETTE[i % PALETTE.length]}"></i><span class="grow">${esc(x.label)}</span><b>${Math.round((x.m / sTotal) * 100)} %</b></div>`).join('')}</div></div>
+		</div>
+		${optIn}
+		${admin ? censusAdmin(admin) : ''}
+	</div>`;
+};
+
+const censusAdmin = (a) => {
+	const s = a.summary;
+	return `<div class="admin-box">
+		<div class="row"><h3 class="grow">${icon('shield-check')}Administration · rapports reçus</h3><button class="btn sm primary" data-action="census-publish">${icon('upload')}Publier le résumé</button></div>
+		<div class="small muted">Ce PC a la clé privée de la communauté (Documents\\Smash Emu\\admin\\community-private.pem) : il lit les rapports chiffrés et publie le résumé signé toutes les 6 h tant qu’il est ouvert.${a.lastPublished ? ` Dernière publication ${ago(a.lastPublished)}.` : ''}</div>
+		<div class="census-grid">
+			<div><div class="fr-label">Versions</div><div class="dash-lines">${s.versions.map(([v, n]) => `<div><span>${esc(v)}</span><b>${n}</b></div>`).join('') || '<div><span>—</span></div>'}</div></div>
+			<div><div class="fr-label">Émulateurs installés</div><div class="dash-lines">${s.emulators.map(([v, n]) => `<div><span>${esc(v)}</span><b>${n}</b></div>`).join('') || '<div><span>—</span></div>'}</div></div>
+			<div><div class="fr-label">Fonctions</div><div class="dash-lines"><div><span>Amis activés</span><b>${s.features.amis}</b></div><div><span>Supporters</span><b>${s.features.supporters}</b></div><div><span>Thèmes perso</span><b>${s.features.themes}</b></div><div><span>Jeu à distance</span><b>${s.features.remote}</b></div></div></div>
+		</div>
+		<div class="fr-label" style="margin-top:12px">Derniers joueurs (${a.players.length})</div>
+		<div class="census-table">${a.players.slice(0, 40).map(p => `<div><code>${esc(p.id)}</code><span>${esc(p.ver || '?')}</span><span>${ago(p.at)}</span><span>${hoursLabel(p.m * 60000)}</span><span class="ellipsis">${p.top ? esc(p.top[0]) : '—'}</span></div>`).join('') || '<div class="small muted">Aucun rapport pour l’instant.</div>'}</div>
+	</div>`;
+};
+
+const loadCensus = async () => {
+	if (!document.getElementById('census-card')) return;
+	const [st, sum] = await Promise.all([api('census:state').catch(() => null), api('census:summary').catch(() => null)]);
+	const admin = st && st.admin ? await api('census:admin').catch(() => null) : null;
+	const box = document.getElementById('census-card');
+	if (st && box) box.innerHTML = censusCard(st, (admin && admin.summary && admin.summary.players ? admin.summary : sum), admin);
+};
+window.launcher.on('census:update', () => { if (state.route.name === 'dashboard') loadCensus(); });
 
 // ---------- Supporter et administration ----------
 
@@ -178,6 +234,13 @@ const loadIssued = async () => {
 
 Object.assign(ACTIONS, {
 	'dash-refresh': () => PAGES.dashboard(),
+	'census-set': async (el) => {
+		const on = el.dataset.on === '1';
+		await api('census:set', on).catch(toastError);
+		toast(on ? 'Merci ! Ton rapport anonyme aide toute la communauté.' : 'C’est noté : rien n’est envoyé.');
+		loadCensus();
+	},
+	'census-publish': async () => { try { await api('census:publish'); toast('Résumé de la communauté publié.'); loadCensus(); } catch (error) { toastError(error); } },
 	'nav-inst': el => go('instance', { id: el.dataset.id }),
 	'sup-activate': async () => {
 		const code = (document.getElementById('sup-code') || {}).value || '';
