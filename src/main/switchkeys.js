@@ -66,6 +66,34 @@ const importKeys = (files) => {
 	return { imported: done, ...status() };
 };
 
+// Citron : reprend les clés et le firmware déjà installés pour Ryujinx s'ils lui manquent (sans firmware, la
+// plupart des jeux restent sur un écran noir). Le firmware de Ryujinx range chaque .nca dans un dossier « x.nca\00 ».
+const syncCitron = () => {
+	const done = { keys: 0, firmware: 0 };
+	const rdir = systemDir();
+	const cdir = citronKeysDir();
+	for (const k of ['prod.keys', 'title.keys']) {
+		if (fs.existsSync(path.join(rdir, k)) && !fs.existsSync(path.join(cdir, k))) {
+			fs.mkdirSync(cdir, { recursive: true });
+			fs.copyFileSync(path.join(rdir, k), path.join(cdir, k));
+			done.keys++;
+		}
+	}
+	const rfw = path.join(path.dirname(rdir), 'bis', 'system', 'Contents', 'registered');
+	const cfw = path.join(path.dirname(cdir), 'nand', 'system', 'Contents', 'registered');
+	let have = [];
+	try { have = fs.readdirSync(cfw); } catch { /* pas encore de firmware */ }
+	if (!have.length && fs.existsSync(rfw)) {
+		fs.mkdirSync(cfw, { recursive: true });
+		for (const name of fs.readdirSync(rfw)) {
+			const src = path.join(rfw, name);
+			const file = fs.statSync(src).isDirectory() ? path.join(src, '00') : src;
+			if (fs.existsSync(file)) { fs.copyFileSync(file, path.join(cfw, name)); done.firmware++; }
+		}
+	}
+	return done;
+};
+
 const openFolder = () => { const dir = systemDir(); fs.mkdirSync(dir, { recursive: true }); return shell.openPath(dir); };
 
 // Ouvre Ryujinx normalement (pour installer le firmware : Outils → Installer le firmware).
@@ -75,4 +103,4 @@ const openEmulator = () => {
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
-module.exports = { status, importKeys, openFolder, openEmulator, classify };
+module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron };

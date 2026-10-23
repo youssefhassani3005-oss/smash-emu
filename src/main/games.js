@@ -324,6 +324,8 @@ const prepareGame = (inst, engine, system) => {
 		const bios = biosFor(system);
 		return { kind: 'emu', rom: file, name: inst.name, system, ejs: sys.ejs, core: sys.core, threads: !!sys.threads, bios };
 	}
+	// Citron : clés et firmware repris de Ryujinx s'ils lui manquent (sinon écran noir).
+	if (engine === 'citron') { try { require('./switchkeys').syncCitron(); } catch { /* rien à reprendre */ } }
 	const ext = emulators.EXTERNAL[engine];
 	if (!ext) throw new Error(`Émulateur inconnu : ${engine}`);
 	const exe = emulators.pathFor(engine);
