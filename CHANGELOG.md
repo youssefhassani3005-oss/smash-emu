@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.1
+
+- **Écran de chargement** pendant le démarrage d'un jeu : mascotte en pixel art qui avance le long de la barre,
+  phrases et astuces, jaquette floutée en fond.
+- **Switch** : la mémoire émulée revient à 4 Go (comme une vraie Switch) sur les PC de moins de 24 Go ; le réglage
+  8 Go faisait échouer la réservation de mémoire et planter les jeux.
+
 ## 2.7.0
 
 Toutes les idées et leurs références : [docs/IDEES.md](docs/IDEES.md).

@@ -132,6 +132,18 @@ const setQtIni = (file, section, values) => {
 // avec ses menus et la liste de jeux, reste cachée). Interface d'origine : fenêtre unique, comme à l'installation.
 const yuzuWindowMode = (id, embed) => setQtIni(path.join(yuzuUserDir(id), 'config', 'qt-config.ini'), 'UI', { singleWindowMode: !embed });
 
+// Mémoire émulée : une Switch a 4 Go. Les réglages 6 à 12 Go (pour les jeux moddés) réservent d'un coup toute cette
+// mémoire sur le PC ; sans assez de RAM la réservation échoue et le jeu plante après quelques secondes. Sur un PC de
+// moins de 24 Go, Smash Emu revient à 4 Go. Renvoie un message si le réglage a été changé.
+const yuzuMemory = (id) => {
+	const file = path.join(yuzuUserDir(id), 'config', 'qt-config.ini');
+	let mode = 0;
+	try { mode = Number((fs.readFileSync(file, 'utf8').match(/^memory_layout_mode=(\d+)/m) || [])[1] || 0); } catch { return null; }
+	if (!mode || os.totalmem() >= 24 * 1024 ** 3) return null;
+	setQtIni(file, 'Core', { memory_layout_mode: 0 });
+	return `Mémoire émulée remise à 4 Go (comme une vraie Switch) : le réglage de ${[4, 6, 8, 10, 12][mode] || 8} Go demande trop de RAM sur ce PC et faisait planter les jeux.`;
+};
+
 const openFolder = () => { const dir = systemDir(); fs.mkdirSync(dir, { recursive: true }); return shell.openPath(dir); };
 
 // Ouvre un émulateur Switch normalement (pour installer le firmware : Outils → Installer le firmware).
@@ -141,4 +153,4 @@ const openEmulator = () => {
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
-module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, keyFiles, setQtIni };
+module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, keyFiles, setQtIni };

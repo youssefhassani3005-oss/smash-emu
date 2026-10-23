@@ -346,6 +346,8 @@ const ACTIONS = {
 			requirement: requirement(h),
 			// Jeu connu pour être trop récent pour l'émulateur : affiché dès l'écran d'attente.
 			notice: h.plan.notice || null,
+			// Écran de chargement : jaquette (ou fond d'écran choisi) du jeu en fond.
+			cover: (() => { const i = store.getInstance(h.id) || {}; const f = i.bgFile || i.coverFile; return f ? dataUrl(f, /\.png$/i.test(f) ? 'image/png' : /\.webp$/i.test(f) ? 'image/webp' : 'image/jpeg') : null; })(),
 			shaders: ext.shaders || [],
 			opts: { ...(o.dolphin || {}), shader: (o.dolphin || {}).shader || o.externalShader || 'FXAA' },
 			extension: ext.tunable && h.plan.system === 'wii' ? currentExtension() : null,

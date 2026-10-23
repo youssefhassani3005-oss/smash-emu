@@ -277,7 +277,50 @@ $('#wait-help').addEventListener('click', async (e) => {
 	} catch (err) { toast(err.message, true); }
 });
 
+// ---------- Écran de chargement ----------
+// Mascotte (petite manette en pixel art) qui avance le long de la barre pendant le démarrage, avec des phrases
+// et des astuces ; la barre progresse doucement jusqu'à l'affichage du jeu.
+const MASCOT = `<svg viewBox="0 0 24 18" shape-rendering="crispEdges" aria-hidden="true">
+	<rect x="19" y="0" width="1" height="3" fill="var(--brand)"/><rect x="18" y="1" width="3" height="1" fill="var(--brand)"/>
+	<rect x="3" y="4" width="18" height="9" fill="var(--brand)"/><rect x="1" y="6" width="22" height="6" fill="var(--brand)"/>
+	<rect x="2" y="12" width="20" height="1" fill="rgba(0,0,0,.25)"/><rect x="3" y="4" width="18" height="1" fill="rgba(255,255,255,.3)"/>
+	<g class="eyes"><rect x="7" y="5" width="3" height="4" fill="#fff"/><rect x="14" y="5" width="3" height="4" fill="#fff"/>
+	<g class="pupil"><rect x="8" y="6" width="1" height="2" fill="#111"/><rect x="15" y="6" width="1" height="2" fill="#111"/></g></g>
+	<rect x="11" y="10" width="2" height="1" fill="#111"/><rect x="6" y="10" width="2" height="1" fill="rgba(255,120,150,.8)"/><rect x="16" y="10" width="2" height="1" fill="rgba(255,120,150,.8)"/>
+	<rect x="2" y="8" width="3" height="1" fill="rgba(0,0,0,.45)"/><rect x="3" y="7" width="1" height="3" fill="rgba(0,0,0,.45)"/>
+	<rect x="20" y="7" width="1" height="1" fill="#ffd54f"/><rect x="21" y="8" width="1" height="1" fill="#4fc3f7"/><rect x="19" y="8" width="1" height="1" fill="#81c784"/><rect x="20" y="9" width="1" height="1" fill="#fff"/>
+	<g class="fa"><rect x="5" y="13" width="3" height="3" fill="#2a2a30"/><rect x="16" y="13" width="3" height="2" fill="#2a2a30"/></g>
+	<g class="fb"><rect x="5" y="13" width="3" height="2" fill="#2a2a30"/><rect x="16" y="13" width="3" height="3" fill="#2a2a30"/></g>
+</svg>`;
+const LD_LINES = ['On y va !', 'Je souffle dans la cartouche…', 'Chargement des pixels…', 'J’allume la console…', 'Je réchauffe les textures…', 'Presque prêt !', 'Ça prend un peu de temps… je tiens bon !', 'Encore quelques secondes…'];
+const LD_TIPS = ['<b>Ctrl+P</b> ouvre le menu Smash Emu pendant le jeu.', '<b>F11</b> passe en plein écran.', '<b>Ctrl+J</b> invite un ami à jouer à distance.', '<b>Ctrl+Maj+S</b> fait une capture d’écran.', 'Le premier lancement d’un jeu est souvent plus long : l’émulateur prépare ses graphismes.', 'Ton temps de jeu compte pour les trophées.'];
+const loader = { t: null, start: 0, line: 0, tip: 0 };
+const loaderStart = () => {
+	clearInterval(loader.t);
+	loader.start = Date.now();
+	loader.line = 0;
+	$('#ld-mascot').innerHTML = MASCOT;
+	$('#ld-scene').classList.remove('hidden');
+	const step = () => {
+		const s = (Date.now() - loader.start) / 1000;
+		// Avance vite au début puis ralentit, sans jamais atteindre la fin avant l'affichage du jeu.
+		const pct = Math.min(94, 100 * (1 - Math.exp(-s / 14)));
+		$('#loading-progress').style.width = `${Math.max(4, pct)}%`;
+		$('#ld-mascot').style.left = `${Math.max(6, pct)}%`;
+		const line = Math.min(LD_LINES.length - 1, Math.floor(s / 4));
+		if (line !== loader.line) { loader.line = line; const b = $('#ld-bubble'); b.textContent = LD_LINES[line]; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; }
+		const tip = Math.floor(s / 5) % LD_TIPS.length;
+		if (tip !== loader.tip || !$('#ld-tip').innerHTML) { loader.tip = tip; $('#ld-tip').innerHTML = LD_TIPS[tip]; }
+	};
+	step();
+	loader.t = setInterval(step, 400);
+};
+const loaderStop = () => { clearInterval(loader.t); $('#ld-scene').classList.add('hidden'); };
+
 smashExt.onState((s) => {
+	if (s.waiting) loaderStart();
+	else loaderStop();
+	$('#ld-bg').classList.toggle('on', !!(s.waiting && st.cfg && st.cfg.cover));
 	if (s.waiting) {
 		$('#waiting').classList.remove('hidden');
 		$('#loading-bar').classList.remove('hidden');
@@ -330,6 +373,10 @@ const tick = () => {
 	$('#game-sub').textContent = `${st.cfg.system} · ${st.cfg.emulator}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 	$('#wait-msg').textContent = `DEMARRAGE DE ${st.cfg.emulator.toUpperCase()}…`;
 	if (st.cfg.notice && !st.attached) showHelp({ hint: st.cfg.notice });
+	if (!st.attached) {
+		if (st.cfg.cover) { $('#ld-bg').style.backgroundImage = `url("${st.cfg.cover}")`; $('#ld-bg').classList.add('on'); }
+		loaderStart();
+	}
 	// Les boutons que l'émulateur ne sait pas gérer sont masqués.
 	for (const el of document.querySelectorAll('[data-need]')) if (!st.cfg.can[el.dataset.need]) el.classList.add('hidden');
 	setInterval(tick, 1000);
