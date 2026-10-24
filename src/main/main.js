@@ -625,6 +625,8 @@ app.whenReady().then(() => {
 	updatePresence();
 	community.get().then(() => updatePresence()).catch(() => {});
 	friends.init({ send, current: currentGame, version: app.getVersion() });
+	// Carte graphique dédiée (NVIDIA, AMD) : les jeux Switch sont affichés en 2×.
+	app.getGPUInfo('basic').then(i => switchkeys.setGpu(i.gpuDevice)).catch(() => {});
 	census.init({ send, version: app.getVersion(), emulators: () => Object.values(emulators.status()).filter(e => e.path).map(e => e.id) });
 	// Switch installée d'office : sans émulateur Switch (Citron est normalement fourni), Eden s'installe en
 	// arrière-plan ; en cas d'échec (serveur injoignable), nouvel essai au démarrage suivant, au plus toutes les 6 h.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.7.4
+
+- **Jeux Switch plus nets** : tant que tu n'as pas changé ces réglages, Citron et Eden affichent les jeux avec
+  l'agrandissement FSR et l'anti-crénelage SMAA (au lieu du plus proche voisin, très pixelisé), et en résolution 2×
+  avec une carte graphique NVIDIA ou AMD.
+
 ## 2.7.3
 
 - **Manettes Switch** : bouton **Manettes** dans la barre du jeu ; il ouvre les réglages des commandes de Citron ou

@@ -156,6 +156,30 @@ const yuzuDocked = (id) => {
 	return true;
 };
 
+// Qualité d'image : les réglages d'origine affichent le jeu en 1× agrandi au plus proche voisin (très pixelisé).
+// Tant que le joueur ne les a pas changés, Smash Emu choisit l'agrandissement FSR et l'anti-crénelage SMAA, et la
+// résolution 2× avec une carte graphique dédiée. Les numéros des réglages diffèrent entre Citron et Eden.
+const QUALITY = {
+	eden: { res2x: 6, fsr: 6, smaa: 2 },
+	citron: { res2x: 5, fsr: 7, smaa: 2 },
+};
+let strongGpu = false;
+const setGpu = (devices) => { strongGpu = (devices || []).some(d => [0x10de, 0x1002].includes(d.vendorId)); };
+const yuzuQuality = (id) => {
+	const q = QUALITY[id];
+	const file = path.join(yuzuUserDir(id), 'config', 'qt-config.ini');
+	let text = '';
+	try { text = fs.readFileSync(file, 'utf8'); } catch { return false; }
+	const untouched = key => !new RegExp(`^${key}\\\\default=false$`, 'm').test(text);
+	const values = {};
+	if (untouched('scaling_filter')) values.scaling_filter = q.fsr;
+	if (untouched('anti_aliasing')) values.anti_aliasing = q.smaa;
+	if (strongGpu && untouched('resolution_setup')) values.resolution_setup = q.res2x;
+	if (!Object.keys(values).length) return false;
+	setQtIni(file, 'Renderer', values);
+	return true;
+};
+
 const openFolder = () => { const dir = systemDir(); fs.mkdirSync(dir, { recursive: true }); return shell.openPath(dir); };
 
 // Ouvre un émulateur Switch normalement (pour installer le firmware : Outils → Installer le firmware).
@@ -165,4 +189,4 @@ const openEmulator = () => {
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
-module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, keyFiles, setQtIni };
+module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, yuzuQuality, setGpu, keyFiles, setQtIni };

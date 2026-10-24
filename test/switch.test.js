@@ -98,6 +98,13 @@ test('Citron, Eden : mode TV et mémoire de 4 Go réglés automatiquement', () =
 	assert.strictEqual(sk.yuzuDocked('eden'), true);
 	assert.match(fs.readFileSync(ini, 'utf8'), /^use_docked_mode=1$/m);
 	assert.strictEqual(sk.yuzuDocked('eden'), false);
+	sk.setGpu([{ vendorId: 0x8086 }, { vendorId: 0x10de }]);
+	assert.strictEqual(sk.yuzuQuality('eden'), true);
+	const r = fs.readFileSync(ini, 'utf8');
+	assert.match(r, /^resolution_setup=6$/m);
+	assert.match(r, /^scaling_filter=6$/m);
+	assert.match(r, /^anti_aliasing=2$/m);
+	assert.strictEqual(sk.yuzuQuality('eden'), false, 'réglages déjà choisis : rien n’est changé');
 	const msg = sk.yuzuMemory('eden');
 	if (require('os').totalmem() < 24 * 1024 ** 3) { assert.match(msg, /4 Go/); assert.match(fs.readFileSync(ini, 'utf8'), /^memory_layout_mode=0$/m); }
 });
