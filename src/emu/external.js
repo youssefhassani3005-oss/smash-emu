@@ -292,6 +292,16 @@ st.sr = SmashSpeedrun.create({
 	el: $('#sr'),
 	toast: text => toast(text),
 	onToggle: on => smashExt.speedrunKeys(on).catch(() => {}),
+	onChange: () => { if (st.panel && st.tab === 'speedrun') renderPanel(); },
+	// Course contre un ami : les touches du chrono doivent alors arriver même si le chrono n'est pas activé.
+	race: {
+		get: () => smashExt.raceGet(),
+		ready: () => smashExt.raceReady(),
+		finish: ms => smashExt.raceFinish(ms),
+		forfeit: () => smashExt.raceForfeit(),
+		onRace: (fn) => smashExt.onRace((v) => { smashExt.speedrunKeys(st.sr.on || !!(v && ['accepted', 'countdown', 'running'].includes(v.state))).catch(() => {}); fn(v); }),
+	},
+	frameSig: () => smashExt.frameSig(),
 });
 
 const speedModes = () => ['normal', ...['turbo', 'unlimited', 'slow'].filter(m => st.cfg.speeds.includes(m))];
@@ -446,6 +456,7 @@ const loaderStart = () => {
 	Object.assign(loader, { start: Date.now(), line: 0, pct: 0, stage: null, pending: null });
 	if (pending) setStage(pending);
 	$('#ld-mascot').innerHTML = MASCOT;
+	if (st.cfg && st.cfg.mascot) $('#ld-mascot').style.setProperty('--brand', st.cfg.mascot);
 	$('#ld-scene').classList.remove('hidden');
 	bubble(loader.stage ? `${loader.stage.label}…` : LD_LINES[0]);
 	const step = () => {
@@ -547,7 +558,7 @@ const tick = () => {
 	// Les boutons que l'émulateur ne sait pas gérer sont masqués.
 	for (const el of document.querySelectorAll('[data-need]')) if (!st.cfg.can[el.dataset.need]) el.classList.add('hidden');
 	renderSpeedBtn();
-	st.sr.init();
+	st.sr.init().then(() => smashExt.raceGet()).then((v) => { if (v) smashExt.speedrunKeys(true).catch(() => {}); }).catch(() => {});
 	setInterval(tick, 1000);
 	tick();
 })();
@@ -622,19 +633,26 @@ window.smashRemoteAdapter = {
 			const sy = Math.round((rect.y + top) * scale);
 			const w = Math.max(2, Math.round((rect.w - side) * scale));
 			const h = Math.max(2, Math.round((rect.h - top) * scale));
-			if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+			// Image réduite à la largeur de la qualité choisie (1280 px en « Équilibré ») : moins à copier et à encoder.
+			const k = Math.min(1, (window.smashRemoteAdapter.maxWidth || 1280) / w);
+			const cw = Math.max(2, Math.round(w * k) & ~1);
+			const ch = Math.max(2, Math.round(h * k) & ~1);
+			if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
 			if (!front || !rect.front) {
 				ctx.fillStyle = '#000';
-				ctx.fillRect(0, 0, w, h);
+				ctx.fillRect(0, 0, cw, ch);
 				ctx.fillStyle = '#fff';
-				ctx.font = `bold ${Math.round(h / 22)}px sans-serif`;
+				ctx.font = `bold ${Math.round(ch / 22)}px sans-serif`;
 				ctx.textAlign = 'center';
-				ctx.fillText('L’hôte a quitté la fenêtre du jeu : image en pause', w / 2, h / 2);
-			} else ctx.drawImage(video, sx, sy, w, h, 0, 0, w, h);
+				ctx.fillText('L’hôte a quitté la fenêtre du jeu : image en pause', cw / 2, ch / 2);
+			} else ctx.drawImage(video, sx, sy, w, h, 0, 0, cw, ch);
+			// Image envoyée dès qu'elle est dessinée (et non au prochain tour d'une horloge à 60 i/s).
+			track.requestFrame();
 			video.requestVideoFrameCallback(draw);
 		};
+		const track = canvas.captureStream(0).getVideoTracks()[0];
 		video.requestVideoFrameCallback(draw);
-		return { video: canvas.captureStream(60).getVideoTracks()[0], audio: s.getAudioTracks()[0] || null };
+		return { video: track, audio: s.getAudioTracks()[0] || null };
 	},
 	onPanel: (open) => {
 		window.smashRemoteAdapter.side = open;

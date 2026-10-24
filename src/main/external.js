@@ -366,6 +366,8 @@ const ACTIONS = {
 			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable, remote: true },
 			// Vitesses de Citron et Eden (lent, rapide, illimité) et leurs pourcentages.
 			speeds: Object.keys(k.speeds || {}),
+			// Mascotte de l'écran de chargement achetée dans la Boutique.
+			mascot: (require('./coins').equipped('mascot') || {}).color || null,
 			speedPct: switchkeys.YUZU.includes(h.plan.emulator) ? switchkeys.yuzuSpeedPct(h.plan.emulator, o.switchSpeed) : null,
 			slots: k.slots || 1,
 			keysHint: ext.keysHint || '',
@@ -521,6 +523,25 @@ const ACTIONS = {
 		return p.title || p.titleId;
 	},
 	randoProfiles: () => { const d = require('./randomizer/switch').PROFILES_DIR; fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+	// Course de speedrun entre amis : état, prêt, temps final, abandon.
+	raceGet: h => { const r = require('./race').forInstance(h.id); return r ? require('./race').view(r) : null; },
+	raceReady: h => require('./race').ready(h.id),
+	raceFinish: (h, ms) => require('./race').finish(h.id, ms),
+	raceForfeit: h => require('./race').forfeit(h.id),
+	// Signature de l'image actuelle du jeu (écran de fin du speedrun) : image figée du panneau, sinon capture.
+	frameSig: async (h) => {
+		const { nativeImage } = require('electron');
+		let file = h.panel && h.frame && fs.existsSync(h.frame) ? h.frame : null;
+		if (!file) {
+			if (!h.child || h.panel) return null;
+			file = path.join(os.tmpdir(), `smash-sig-${h.id}.png`);
+			await shotTo(h, file, 64);
+		}
+		const img = nativeImage.createFromPath(file);
+		if (img.isEmpty()) return null;
+		const sig = speedrun.sigFromBgra(img.resize({ width: speedrun.SIG_W, height: speedrun.SIG_H, quality: 'good' }).toBitmap());
+		return { sig, spread: speedrun.sigSpread(sig) };
+	},
 	// Mode speedrun : données du jeu, et ses touches prises à l'émulateur quand il est activé.
 	speedrunGet: h => speedrun.get(h.id),
 	speedrunSave: (h, data) => speedrun.save(h.id, data),

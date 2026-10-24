@@ -5,8 +5,11 @@
 // navigation à la souris, au clavier et à la manette.
 
 const CH = { page: 0, sel: 0, palettes: {}, info: {}, pad: { at: 0, held: '' }, loop: false, coverBusy: false };
-const GEOM = { row: { cols: 0, per: 0 }, grid: { cols: 5, per: 15 }, wii: { cols: 4, per: 12 } };
+// Accueils achetés dans la Boutique : dash, wave, cosmos (rangée), manor (liste), case (grille de mallette).
+const GEOM = { row: { cols: 0, per: 0 }, grid: { cols: 5, per: 15 }, wii: { cols: 4, per: 12 }, dash: { cols: 0, per: 0 }, wave: { cols: 0, per: 0 }, cosmos: { cols: 0, per: 0 }, manor: { cols: 0, per: 0 }, case: { cols: 6, per: 18 } };
+const LINEAR = new Set(['row', 'dash', 'wave', 'cosmos', 'manor']);
 const chLayout = () => (GEOM[state.settings.consoleLayout] ? state.settings.consoleLayout : 'row');
+const chLinear = () => LINEAR.has(chLayout());
 
 // Couleur d'identité et motif de fond de chaque console.
 const SYS_LOOK = {
@@ -129,7 +132,11 @@ const chBlip = (f = 760, d = 0.035, vol = 0.04, delay = 0) => {
 		const t = chAudio.currentTime + delay;
 		const o = chAudio.createOscillator();
 		const g = chAudio.createGain();
-		o.type = 'sine';
+		// Sons achetés dans la Boutique : arcade (ondes carrées), cristal (une octave plus haut, plus longs).
+		const pack = document.documentElement.dataset.soundPack;
+		o.type = pack === 'arcade' ? 'square' : pack === 'crystal' ? 'triangle' : 'sine';
+		if (pack === 'arcade') vol *= 0.45;
+		if (pack === 'crystal') { f *= 2; d *= 2.2; }
 		o.frequency.setValueAtTime(f, t);
 		g.gain.setValueAtTime(vol, t);
 		g.gain.exponentialRampToValueAtTime(0.0001, t + d);
@@ -145,7 +152,7 @@ const chList = () => sortInstances(state.instances, state.settings.consoleSort |
 // Ordre d'apparition des tuiles à l'arrivée sur l'accueil (les tuiles visibles d'abord).
 const chDelay = (idx) => {
 	const layout = chLayout();
-	if (layout === 'row') return Math.max(0, Math.min(8, idx - CH.sel + 1));
+	if (LINEAR.has(layout)) return Math.max(0, Math.min(8, idx - CH.sel + 1));
 	return Math.min(14, idx % GEOM[layout].per);
 };
 
@@ -201,15 +208,26 @@ const consoleHome = () => {
 		? `<span class="ch-hint busy" id="ch-cover-progress">${icon('refresh-cw')}Recherche des jaquettes…</span>`
 		: missing ? `<button class="ch-hint" data-action="ch-covers">${icon('image')}${missing} jeu${missing > 1 ? 'x' : ''} sans jaquette · <b>Les trouver</b></button>` : '';
 	let body;
-	if (layout === 'row') {
+	// Raccourcis en grandes cartes (accueils Tableau de bord et Cosmos).
+	const cards = [['library', 'library', 'Parcourir tes jeux', 'Bibliothèque'], ['friends', 'users', 'Défier un ami', 'Course de speedrun'], ['mods', 'puzzle', 'Mods', 'GameBanana'], ['shop', 'store', 'Boutique', 'Dépense tes pièces']]
+		.map(([to, ic, t, s]) => `<button class="ch-card" data-action="nav" data-to="${to}">${icon(ic)}<b>${t}</b><small>${s}</small></button>`).join('');
+	if (layout === 'manor') {
+		body = `<div class="ch-manor"><div class="ch-mhead">${icon('chevron-left')}<b>JEUX</b></div>
+			<div class="ch-mlist-wrap"><div class="ch-mlist" id="ch-mlist">${list.map((i, idx) => `<button class="ch-tile ch-mi ${idx === CH.sel ? 'sel' : ''} ${isRunning(i.id) ? 'running' : ''}" data-action="ch-tile" data-i="${idx}">${esc(i.name)}</button>`).join('')}<button class="ch-tile ch-mi ${list.length === CH.sel ? 'sel' : ''}" data-action="ch-tile" data-i="${list.length}">Ajouter des jeux</button></div></div></div>
+			<div class="ch-info" id="ch-info"></div>
+			<footer class="ch-foot"><div class="ch-lbrb">${coverHint}</div>${chHints()}</footer>`;
+	} else if (LINEAR.has(layout)) {
 		const groups = Math.max(1, Math.ceil((list.length + 1) / 6));
 		const slots = Math.max(0, 6 - ((list.length + 1) % 6 || 6)) + 2;
-		body = `<div class="ch-row-wrap"><div class="ch-row" id="ch-row">${list.map(chTile).join('')}${chAddTile(list.length)}${'<div class="ch-slot"></div>'.repeat(slots)}</div></div>
-			<div class="ch-info" id="ch-info"></div>
-			<footer class="ch-foot">
+		const row = `<div class="ch-row-wrap"><div class="ch-row" id="ch-row">${list.map(chTile).join('')}${chAddTile(list.length)}${'<div class="ch-slot"></div>'.repeat(slots)}</div></div>`;
+		const foot = `<footer class="ch-foot">
 				<div class="ch-lbrb"><b>LB</b>${Array.from({ length: groups }, (_, p) => `<i class="${p === Math.floor(CH.sel / 6) ? 'on' : ''}"></i>`).join('')}<b>RB</b>${coverHint}</div>
 				${chHints()}
 			</footer>`;
+		if (layout === 'dash') body = `<div class="ch-hero" id="ch-info"></div>${row}<div class="ch-cards">${cards}</div>${foot}`;
+		else if (layout === 'cosmos') body = `<div class="ch-tabs"><b>Jeux</b><span>Médias</span></div>${row}<div class="ch-hero" id="ch-info"></div><div class="ch-cards-lbl">À voir</div><div class="ch-cards">${cards}</div>${foot}`;
+		else if (layout === 'wave') body = `<svg class="ch-waves" viewBox="0 0 1200 400" preserveAspectRatio="none"><path d="M0 220 C200 140 400 300 600 210 S1000 120 1200 200" /><path d="M0 260 C250 200 450 330 700 250 S1050 170 1200 240" /><path d="M0 300 C300 250 500 360 800 290 S1100 230 1200 280" /></svg>${row}<div class="ch-info" id="ch-info"></div>${foot}`;
+		else body = `${row}<div class="ch-info" id="ch-info"></div>${foot}`;
 	} else {
 		const pages = Math.max(1, Math.ceil((list.length + 1) / g.per));
 		CH.page = Math.max(0, Math.min(Math.floor(CH.sel / g.per), pages - 1));
@@ -220,7 +238,7 @@ const consoleHome = () => {
 			return `<div class="ch-slot">${layout === 'wii' ? '<span>SMASH</span>' : ''}</div>`;
 		}).join('')}</div></div>`).join('');
 		const d = new Date();
-		body = `${layout === 'grid' ? '<div class="ch-balloon" id="ch-info"></div>' : ''}
+		body = `${layout === 'grid' ? '<div class="ch-balloon" id="ch-info"></div>' : ''}${layout === 'case' ? `<div class="ch-case-top">${icon('briefcase')}<b>OBJETS</b><span>${list.length} jeu${list.length > 1 ? 'x' : ''}</span></div>` : ''}
 			<div class="ch-stage">
 				<button class="ch-arrow" data-action="ch-page" data-d="-1" ${CH.page ? '' : 'disabled'}>${icon('chevron-left')}</button>
 				<div class="ch-viewport"><div class="ch-pages" id="ch-pages" style="transform:translateX(${-CH.page * 100}%)">${pagesHtml}</div></div>
@@ -233,6 +251,7 @@ const consoleHome = () => {
 				<div class="ch-wiidate"><span id="ch-wii-info"></span><b>${esc(d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' }))}</b></div>
 				<button class="ch-wiiround" data-action="nav" data-to="friends" data-tip="Amis" data-tip-pos="top">${icon('mail')}</button>
 			</div>` : `<div class="ch-dots">${Array.from({ length: pages }, (_, p) => `<button class="${p === CH.page ? 'on' : ''}" data-action="ch-goto" data-p="${p}"></button>`).join('')}${coverHint}</div>`}
+			${layout === 'case' ? `<div class="ch-case-desc" id="ch-info"></div><div class="ch-case-hints"><span><b class="pad-a">A</b>Jouer</span><span><b class="pad-x">X</b>Détails</span><span><b class="pad-y">Y</b>Options</span></div>` : ''}
 `;
 	}
 	setMain(`<div class="ch ch-l-${layout} ${state.prevRendered !== 'home' ? 'ch-intro' : ''}" id="ch">${body}</div>`);
@@ -273,7 +292,12 @@ const chSelect = (idx, { silent = false } = {}) => {
 	const layout = chLayout();
 	CH.sel = Math.max(0, Math.min(idx, list.length));
 	for (const t of $$('.ch-tile', root)) t.classList.toggle('sel', +t.dataset.i === CH.sel);
-	if (layout === 'row') {
+	if (layout === 'manor') {
+		// Liste du Manoir : la ligne choisie reste vers le haut de la liste.
+		const list2 = $('#ch-mlist');
+		const tile = $('.ch-tile.sel', root);
+		if (list2 && tile) list2.style.transform = `translateY(${-Math.max(0, tile.offsetTop - list2.parentElement.clientHeight * 0.3)}px)`;
+	} else if (LINEAR.has(layout)) {
 		const row = $('#ch-row');
 		const tile = $('.ch-tile.sel', root);
 		if (row && tile) {
@@ -300,14 +324,14 @@ const chSelect = (idx, { silent = false } = {}) => {
 	if (wiiInfo) wiiInfo.textContent = inst.name;
 	if (info) {
 		const head = `<b class="ch-name">${esc(inst.name)}</b>`;
-		info.innerHTML = layout === 'grid'
+		info.innerHTML = layout === 'grid' || layout === 'case'
 			? `${head}<span class="ch-sub">${esc(inst.type === 'coopdx' ? 'Coop DX' : sysInfo(chSys(inst)).label)} · ${inst.playTimeMs ? `${esc(playTime(inst.playTimeMs))} de jeu` : 'jamais lancé'}${inst.lastPlayed ? ` · ${esc(ago(inst.lastPlayed))}` : ''}</span>`
-			: `${head}<div class="ch-pills">${chPills(inst, CH.info[inst.id])}</div>`;
-		if (layout === 'row' && !CH.info[inst.id]) {
+			: `${head}<div class="ch-pills">${chPills(inst, CH.info[inst.id])}</div>${layout === 'cosmos' ? '<button class="btn primary lg ch-hero-play" data-action="ch-play">Jouer</button>' : ''}`;
+		if (LINEAR.has(layout) && !CH.info[inst.id]) {
 			api('console:gameInfo', inst.id).then((x) => {
 				CH.info[inst.id] = x;
 				const cur = chList()[CH.sel];
-				if (cur && cur.id === inst.id && $('#ch-info')) $('#ch-info').innerHTML = `${head}<div class="ch-pills">${chPills(inst, x)}</div>`;
+				if (cur && cur.id === inst.id && $('#ch-info')) $('#ch-info').innerHTML = `${head}<div class="ch-pills">${chPills(inst, x)}</div>${chLayout() === 'cosmos' ? '<button class="btn primary lg ch-hero-play" data-action="ch-play">Jouer</button>' : ''}`;
 			}).catch(() => {});
 		}
 	}
@@ -331,7 +355,10 @@ const chMove = (dx, dy) => {
 	const count = chList().length + 1;
 	const layout = chLayout();
 	let i = CH.sel;
-	if (layout === 'row') {
+	if (layout === 'manor') {
+		if (!dx && !dy) return;
+		i += dy || dx;
+	} else if (LINEAR.has(layout)) {
 		if (!dx) return;
 		i += dx;
 	} else {
@@ -352,7 +379,7 @@ const chMove = (dx, dy) => {
 // LB / RB : saut d'une page (6 jeux dans la rangée).
 const chJump = (d) => {
 	const layout = chLayout();
-	const per = layout === 'row' ? 6 : GEOM[layout].per;
+	const per = LINEAR.has(layout) ? 6 : GEOM[layout].per;
 	const count = chList().length + 1;
 	const next = Math.max(0, Math.min(count - 1, (Math.floor(CH.sel / per) + d) * per));
 	if (next !== CH.sel) { chSelect(next, { silent: true }); chSound.page(); }
@@ -430,10 +457,10 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('wheel', (e) => {
 	if (!e.target.closest || !e.target.closest('.ch') || Math.abs(e.deltaY) + Math.abs(e.deltaX) < 30) return;
 	const now = performance.now();
-	if (now - (CH.wheelAt || 0) < (chLayout() === 'row' ? 110 : 450)) return;
+	if (now - (CH.wheelAt || 0) < (chLinear() ? 110 : 450)) return;
 	CH.wheelAt = now;
 	const d = (Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX) > 0 ? 1 : -1;
-	if (chLayout() === 'row') chMove(d, 0);
+	if (chLinear()) chMove(d, 0);
 	else chGoto(CH.page + d);
 }, { passive: true });
 
@@ -454,6 +481,9 @@ const LAYOUTS = [['row', 'Rangée', 'Grandes tuiles sur une ligne'], ['grid', 'G
 const STYLES = [['theme', 'Mon thème', 'Couleurs et décor du thème choisi'], ['light', 'Clair', 'Blanc, comme les consoles récentes'], ['dark', 'Sombre', 'Fond sombre, décor au choix']];
 const DECORS = [['bulles', 'Bulles', 'Clair et doux'], ['feuilles', 'Feuilles', 'Vert à fleurs'], ['rayures', 'Rayures', 'Gris rayé'], ['auto', 'Console du jeu', 'Motif et couleur de la console'], ['uni', 'Uni', 'Sans motif']];
 
+// Accueils achetés dans la Boutique (shop.js), proposés avec les dispositions de base.
+const boughtLayouts = () => (typeof SHOP !== 'undefined' && SHOP.st ? SHOP.st.catalog.filter(i => i.kind === 'home' && SHOP.st.owned.includes(i.id)).map(i => [i.id.slice(5), i.name, i.desc]) : []);
+
 const chOptions = async () => {
 	const s = state.settings;
 	const sw = (key, label, hint, on) => `<div class="row" style="gap:12px;padding:6px 0"><div class="grow"><div class="bold">${label}</div><div class="small muted">${hint}</div></div><button class="switch ${on ? 'on' : ''}" data-ch-opt="${key}"></button></div>`;
@@ -461,7 +491,8 @@ const chOptions = async () => {
 	await modal({
 		title: 'Interface Console',
 		width: 640,
-		body: `<div class="fr-label">Disposition de l’accueil</div>${pick('consoleLayout', LAYOUTS, chLayout())}
+		body: `<div class="fr-label">Disposition de l’accueil</div>${pick('consoleLayout', [...LAYOUTS, ...boughtLayouts()], chLayout())}
+			<div class="small muted" style="margin-top:6px">D’autres accueils s’achètent avec les pièces gagnées en speedrun : Boutique dans la barre d’icônes.</div>
 			<div class="fr-label" style="margin-top:14px">Style</div>${pick('consoleStyle', STYLES, ['light', 'dark'].includes(s.consoleStyle) ? s.consoleStyle : 'theme')}
 			<div class="fr-label" style="margin-top:14px">Décor <span class="muted" style="text-transform:none;letter-spacing:0">(styles Clair et Sombre ; « Mon thème » garde le décor du thème)</span></div>${pick('consoleBg', DECORS, s.consoleBg || 'bulles')}
 			<div style="margin-top:10px">

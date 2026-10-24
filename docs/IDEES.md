@@ -81,3 +81,19 @@ Toutes les idées en cours, avec les références dont elles s'inspirent. ✅ fa
 - ✅ Décodeur zstd / ZBIC testé contre zlib et contre les empreintes du jeu
 - ✅ Tests des amis (codes, chiffrement) et de la communauté (chiffrement pour l'administrateur, totaux)
 - 🛠️ Tests d'interface automatiques (navigation, transitions)
+
+## Boutique : autres articles à acheter avec les pièces de speedrun
+
+Idées de disposition seulement (noms et dessins originaux, aucun logo ni nom de console) :
+
+- **Ruban** : catégories en ligne horizontale, jeux en colonne verticale sous la catégorie choisie, vague animée en fond.
+- **Lames** : pages en panneaux qui glissent les uns sur les autres, comme des onglets épais.
+- **Cube** : animation de démarrage avec un cube qui roule et assemble le logo Smash Emu, menu en plateau tournant.
+- **Spirale** : écran de démarrage tourbillonnant, menu en quatre grands boutons ronds.
+- **Grand écran** : interface pensée pour la télé et la manette, très grandes tuiles, texte lisible à 3 mètres.
+- **Double écran** : jaquette et infos en haut, liste des jeux tactile en bas.
+- **Comic** : menus penchés aux couleurs vives, textes découpés façon bande dessinée, transitions qui claquent.
+- **Fenêtres bleues** : cadres bleus dégradés à bord blanc, curseur en main pointée, menus de jeu de rôle classiques.
+- **Boîtes** : bibliothèque rangée en boîtes de 30 cases à faire défiler, comme une réserve de créatures.
+- Autres articles : écrans de démarrage animés, curseurs, traînées de sélection, fonds d'écran animés, packs de sons,
+  chapeaux pour la mascotte, cadres de profil animés, titres rares (récompenses de courses seulement).

@@ -251,6 +251,10 @@ const HANDLERS = {
 		};
 	},
 	'emu:listStates': s => listStates(s.id),
+	'emu:raceGet': (s) => { const r = require('./race').forInstance(s.id); return r ? require('./race').view(r) : null; },
+	'emu:raceReady': s => require('./race').ready(s.id),
+	'emu:raceFinish': (s, ms) => require('./race').finish(s.id, ms),
+	'emu:raceForfeit': s => require('./race').forfeit(s.id),
 	'emu:speedrunGet': s => require('./speedrun').get(s.id),
 	'emu:speedrunSave': (s, data) => require('./speedrun').save(s.id, data),
 	'emu:controls': s => require('./controls').forPlayer(s.plan.system || 'n64', s.id),

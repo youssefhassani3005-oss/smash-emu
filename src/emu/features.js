@@ -123,11 +123,31 @@ const renderHud = () => {
 live.keys = new Set();
 
 // Chrono speedrun avec segments, record et meilleurs segments (commun avec les émulateurs externes).
+// Signature 32×18 en niveaux de gris de l'image du jeu (fin automatique du chrono).
+const frameSig = async () => {
+	const blob = await shotBlob();
+	if (!blob) return null;
+	const bmp = await createImageBitmap(blob);
+	const c = document.createElement('canvas');
+	c.width = 32; c.height = 18;
+	const g = c.getContext('2d');
+	g.imageSmoothingQuality = 'high';
+	g.drawImage(bmp, 0, 0, 32, 18);
+	const px = g.getImageData(0, 0, 32, 18).data;
+	const gray = new Uint8Array(32 * 18);
+	for (let i = 0; i < gray.length; i++) gray[i] = Math.round(0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]);
+	const mean = gray.reduce((a, x) => a + x, 0) / gray.length;
+	const spread = Math.sqrt(gray.reduce((a, x) => a + (x - mean) ** 2, 0) / gray.length);
+	return { sig: btoa(String.fromCharCode(...gray)), spread };
+};
 const SR = window.SmashSpeedrun.create({
 	load: () => smashEmu.speedrunGet(),
 	save: data => smashEmu.speedrunSave(data),
 	el: $('#sr'),
 	toast: text => toast(text),
+	onChange: () => { if (panel.open) renderPanel(); },
+	race: { get: () => smashEmu.raceGet(), ready: () => smashEmu.raceReady(), finish: ms => smashEmu.raceFinish(ms), forfeit: () => smashEmu.raceForfeit(), onRace: fn => smashEmu.onRace(fn) },
+	frameSig,
 });
 SR.init();
 
@@ -532,10 +552,9 @@ window.smashKey = (e) => {
 	// Speedrun : F10 ou Ctrl+Espace (départ, segment suivant), Ctrl+Retour arrière (annuler), Maj+F10 ou Ctrl+Maj+Espace (zéro).
 	if (k === 'F10' || (e.ctrlKey && (k === ' ' || k === 'Backspace'))) {
 		e.preventDefault();
-		if (!SR.on) { toast('Active le chrono speedrun dans le panneau (F2 → Speedrun).'); return true; }
 		if (k === 'Backspace') SR.undo();
 		else if (e.shiftKey) SR.reset();
-		else if (!e.repeat) SR.split();
+		else if (!e.repeat && !SR.split()) toast('Active le chrono speedrun dans le panneau (F2 → Speedrun).');
 		return true;
 	}
 	if (k === 'F11' && e.shiftKey) { e.preventDefault(); toggleMash(); return true; }

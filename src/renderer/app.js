@@ -206,11 +206,13 @@ const renderConsoleTopbar = (crumbs, active, n) => {
 			${round('ct-search', 'search', 'Rechercher un jeu (Ctrl+K)')}
 			${round('nav', 'users', 'Amis', online ? `<b class="ct-badge">${online}</b>` : '', 'data-to="friends"')}
 			${round('downloads', 'download', 'Téléchargements', active ? `<b class="ct-badge">${active}</b>` : '')}
+			${typeof notifBell === 'function' ? notifBell() : ''}
 		</div>
 		<div class="ct-title">${crumbs.map((c, i) => (i ? `<span class="sep">${icon('chevron-right', 'sm')}</span>` : '') + (c.to ? `<a data-action="crumb" data-i="${i}">${esc(c.label)}</a>` : `<span>${esc(c.label)}</span>`)).join('')}</div>
 		<div class="ct-right">
 			${n ? `<button class="ct-running" data-action="running"><i></i>${n} en cours</button>` : ''}
-			<div class="ct-status">${icon(navigator.onLine ? 'wifi' : 'wifi-off')}<span id="ct-clock">${clockText()}</span><span class="ct-av" style="--av:${colorFor(name)}" data-action="nav" data-to="friends">${esc((name.trim()[0] || '?').toUpperCase())}</span></div>
+			${typeof coinPill === 'function' ? coinPill() : ''}
+			<div class="ct-status">${icon(navigator.onLine ? 'wifi' : 'wifi-off')}<span id="ct-clock">${clockText()}</span>${typeof playerTitle === 'function' ? playerTitle() : ''}<span class="ct-av" style="--av:${colorFor(name)}" data-action="nav" data-to="friends">${esc((name.trim()[0] || '?').toUpperCase())}</span></div>
 			<div class="ct-win">
 				<button data-action="win-min">${icon('minus')}</button>
 				<button data-action="win-max">${icon('square', 'sm')}</button>
@@ -224,7 +226,7 @@ const CONSOLE_DOCK = [
 	['home', 'house', 'Accueil', '#e60012'], ['roms', 'disc-3', 'Jeux', '#ff8a00'], ['library', 'library', 'Bibliothèque', '#21a85a'],
 	['friends', 'users', 'Amis', '#e5397a'], ['remote', 'wifi', 'À distance', '#1e88e5'], ['trophies', 'trophy', 'Trophées', '#e6a700'],
 	['dashboard', 'gauge', 'Statistiques', '#00a3a3'], ['multiworld', 'shuffle', 'Multiworld', '#8e5be8'], ['controls', 'gamepad-2', 'Manettes', '#5d6672'],
-	['mods', 'puzzle', 'Mods', '#16a596'], ['settings', 'settings', 'Réglages', '#5d6672'],
+	['mods', 'puzzle', 'Mods', '#16a596'], ['shop', 'store', 'Boutique', '#f4b400'], ['settings', 'settings', 'Réglages', '#5d6672'],
 ];
 const renderConsoleNav = () => {
 	const r = state.route;
@@ -280,6 +282,7 @@ const renderNav = () => {
 		${navBtn('trophies', 'trophy', 'Trophées')}
 		${navBtn('dashboard', 'gauge', 'Tableau de bord')}
 		${navBtn('multiworld', 'shuffle', 'Multiworld')}
+		${navBtn('shop', 'store', 'Boutique')}
 		<div class="nav-group">Mods</div>
 		${navBtn('mods', 'puzzle', 'Mods GameBanana')}
 		${navBtn('discover', 'compass', 'Découvrir')}
