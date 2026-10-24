@@ -17,8 +17,10 @@ const init = (emit) => {
 	send = emit;
 	if (!app.isPackaged) { set({ state: 'dev' }); return; }
 	try { ({ autoUpdater } = require('electron-updater')); } catch (error) { set({ state: 'error', error: error.message }); return; }
-	autoUpdater.autoDownload = false;
-	autoUpdater.autoInstallOnAppQuit = false;
+	// Mise à jour sans installateur : téléchargée en arrière-plan dès qu'elle paraît, installée en silence au
+	// redémarrage demandé ou à la fermeture de Smash Emu.
+	autoUpdater.autoDownload = true;
+	autoUpdater.autoInstallOnAppQuit = true;
 	autoUpdater.allowPrerelease = false;
 	autoUpdater.logger = null;
 	autoUpdater.on('checking-for-update', () => set({ state: 'checking', error: null }));
@@ -29,7 +31,7 @@ const init = (emit) => {
 	autoUpdater.on('error', error => set({ state: 'error', error: (error && error.message ? error.message : String(error)).split('\n')[0].slice(0, 200) }));
 	// Vérification discrète au démarrage, puis toutes les six heures.
 	setTimeout(() => check().catch(() => {}), 8000);
-	timer = setInterval(() => { if (!['downloading', 'ready'].includes(state.state)) check().catch(() => {}); }, 6 * 3600 * 1000);
+	timer = setInterval(() => { if (!['downloading', 'ready'].includes(state.state)) check().catch(() => {}); }, 30 * 60 * 1000);
 };
 
 const check = async () => {
@@ -40,7 +42,7 @@ const check = async () => {
 };
 
 const download = async () => {
-	if (!autoUpdater || state.state !== 'available') return state;
+	if (!autoUpdater || !['available', 'error'].includes(state.state)) return state;
 	set({ state: 'downloading', percent: 0 });
 	await autoUpdater.downloadUpdate();
 	return state;

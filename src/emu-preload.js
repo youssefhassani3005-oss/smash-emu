@@ -9,6 +9,8 @@ const call = async (channel, ...args) => {
 contextBridge.exposeInMainWorld('smashEmu', {
 	config: () => call('emu:config'),
 	listStates: () => call('emu:listStates'),
+	speedrunGet: () => call('emu:speedrunGet'),
+	speedrunSave: data => call('emu:speedrunSave', data),
 	controls: () => call('emu:controls'),
 	saveState: (slot, state, png) => call('emu:saveState', slot, state, png),
 	loadState: slot => call('emu:loadState', slot),

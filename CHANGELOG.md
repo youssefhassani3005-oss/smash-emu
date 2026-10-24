@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.8.0
+
+- **Randomizer Switch** (Citron, Eden), dans Menu → Randomizer pendant le jeu : graine (ou au hasard), code à partager
+  `SMASH-GRAINE-MODES`, intensité Doux / Moyen / Chaos. Appliqué à chaque lancement, le fichier du jeu n'est jamais
+  modifié.
+  - **Couleurs** (Eden) : teinte, saturation et canaux de l'image tirés de la graine (effet d'image original).
+  - **Valeurs** : argent, vies, objets… écrits en codes de triche à partir d'un profil du jeu (format documenté,
+    importable).
+  - **Mods randomizer** : installe en un clic le mod produit par un randomizer communautaire (dossier ou archive) ;
+    rangé automatiquement quand le randomizer est coupé.
+- **Vitesse sur Switch** : le bouton de la barre passe de 100 % à rapide, illimité et lent (Eden), et l'onglet Switch
+  du menu règle les pourcentages.
+- **Mode speedrun** (tous les jeux) : chrono avec segments dans la barre, comparaison au record (en avance, en retard,
+  meilleur segment en or), somme des meilleurs, essais et historique. Ctrl+Espace départ / segment suivant,
+  Ctrl+Retour arrière annuler, Ctrl+Maj+Espace remise à zéro (F10 aussi dans le lecteur intégré).
+- **Mises à jour automatiques** : plus besoin de l'installateur. La nouvelle version se télécharge en arrière-plan
+  (vérification toutes les 30 min) et s'installe en silence à la fermeture, ou tout de suite avec « Redémarrer
+  maintenant ».
+
 ## 2.7.6
 
 - **Moins de gels sur Switch** : Citron et Eden préparent les graphismes (shaders) en arrière-plan, au lieu de bloquer

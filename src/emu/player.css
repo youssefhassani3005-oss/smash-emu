@@ -469,3 +469,42 @@ body.recording .bar::after { content: '● REC'; position: absolute; right: 230p
 .coreopts label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #cfcfd5; }
 .coreopts label span { flex: 1; }
 .coreopts select { max-width: 170px; height: 28px; border-radius: 7px; border: 1px solid #2a2a2f; background: #111; color: #fff; font: inherit; font-size: 12px; padding: 0 6px; }
+
+/* ---------- Speedrun : chrono dans la barre et panneau (lecteur intégré et émulateurs externes) ---------- */
+.sr { display: flex; align-items: center; gap: 8px; height: 34px; margin: 0 8px; padding: 0 12px; border-radius: 10px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.08); white-space: nowrap; }
+.sr.hidden { display: none; }
+.sr-name { font-size: 12px; font-weight: 700; color: #c9c9d0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.sr-name small { color: #7d7d86; font-weight: 600; }
+.sr-time { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #e8e8ec; min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+.sr-time.run { color: #7dff9b; }
+.sr-time.behind { color: #ff7b7b; }
+.sr-time.done { color: #ffd54f; }
+.sr i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8.5px; }
+.sr .ahead, .srp .ahead { color: #7dff9b; }
+.sr .behind, .srp .behind { color: #ff7b7b; }
+.sr .gold, .srp .gold { color: #ffd54f; }
+.srp { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; color: #d5d5da; font-size: 13px; }
+.srp .chip { border: 1.5px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.04); color: #d5d5da; border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+.srp .chip.on { border-color: var(--brand); background: rgba(var(--brand-rgb), 0.18); color: var(--brand); }
+.srp .btn { border: none; border-radius: 10px; padding: 8px 12px; font-weight: 800; font-size: 12.5px; cursor: pointer; background: rgba(255, 255, 255, 0.08); color: #fff; }
+.srp .btn.primary { background: var(--brand); color: #fff; }
+.srp .btn:disabled { opacity: 0.4; cursor: default; }
+.srp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.srp-keys { font-size: 11.5px; color: #8d8d96; line-height: 1.5; }
+.srp-keys b { color: #d5d5da; }
+.srp-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.srp-stats div { background: rgba(255, 255, 255, 0.04); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.srp-stats span { font-size: 11px; color: #8d8d96; }
+.srp-stats b { font-family: 'Press Start 2P', monospace; font-size: 10px; }
+.srp-cols { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; }
+.srp-lbl { font-size: 12px; font-weight: 800; margin: 2px 0 6px; }
+.srp-lbl small { font-weight: 500; color: #8d8d96; }
+.srp textarea { width: 100%; box-sizing: border-box; resize: vertical; background: rgba(0, 0, 0, 0.35); color: #e8e8ec; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; padding: 8px 10px; font: 13px/1.5 'Inter', sans-serif; }
+.srp-acts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.srp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.srp-table th { text-align: left; font-size: 11px; color: #8d8d96; font-weight: 700; padding: 4px 6px; }
+.srp-table td { padding: 5px 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); font-variant-numeric: tabular-nums; }
+.srp-runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.srp-runs li { display: flex; justify-content: space-between; gap: 10px; color: #a9a9b0; }
+.srp-runs b { color: #e8e8ec; font-weight: 700; }
+@media (max-width: 720px) { .srp-cols, .srp-stats { grid-template-columns: 1fr 1fr; } .srp-cols { grid-template-columns: 1fr; } }

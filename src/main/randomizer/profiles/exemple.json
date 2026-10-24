@@ -1,0 +1,16 @@
+{
+  "example": true,
+  "format": 1,
+  "title": "Exemple (adresses fictives, à remplacer)",
+  "titleId": "0100000000010000",
+  "builds": {
+    "0123456789ABCDEF0123456789ABCDEF": {
+      "version": "1.0.0",
+      "values": [
+        { "name": "Argent de départ", "region": "main", "offset": "0x1A2B3C", "width": 4, "min": 100, "max": 9999 },
+        { "name": "Vies", "region": "heap", "offset": "0x40", "width": 1, "min": 1, "max": 9, "intensity": "medium" },
+        { "name": "Objet de départ", "region": "main", "offset": "0x2000", "width": 2, "choices": [3, 7, 12], "intensity": "chaos" }
+      ]
+    }
+  }
+}

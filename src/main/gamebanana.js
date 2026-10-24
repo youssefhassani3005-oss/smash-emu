@@ -174,4 +174,4 @@ const install = async (instanceId, modId, fileId, progress = () => {}) => {
 	}
 };
 
-module.exports = { findGames, listMods, profile, install, modRoots, SORTS };
+module.exports = { findGames, listMods, profile, install, modRoots, copyDir, SORTS };

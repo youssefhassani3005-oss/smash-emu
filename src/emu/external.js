@@ -1,4 +1,4 @@
-/* global smashExt, ICONS, SmashLogo */
+/* global smashExt, ICONS, SmashLogo, SmashSpeedrun */
 // Barre et panneau Smash Emu autour d'un émulateur externe (Dolphin…) : raccourcis envoyés à l'émulateur incrusté.
 
 const $ = s => document.querySelector(s);
@@ -86,10 +86,73 @@ const tabGame = () => {
 const tabSwitch = () => {
 	const k = st.sw;
 	const tag = (ok, l) => `<span class="chip ${ok ? 'on' : ''}">${ok ? '✓ ' : ''}${l}</span>`;
-	return `<div class="grp"><div class="lbl">Clés Nintendo Switch <span>extraites de ta propre console</span></div>
+	const pct = st.cfg.speedPct;
+	const speedGrp = st.cfg.speeds.length ? `<div class="grp"><div class="lbl">Vitesse du jeu <span>aussi avec le bouton de la barre</span></div>
+		<div class="chips">${speedModes().map(m => `<button class="chip ${(st.pendingSpeed || st.speedMode) === m ? 'on' : ''}" data-speedmode="${m}">${esc(speedName(m))}</button>`).join('')}</div></div>
+		${st.cfg.speeds.includes('turbo') ? `<div class="row2">
+			<div class="grp"><div class="lbl">Vitesse rapide <span>au prochain lancement</span></div><div class="chips">${[150, 200, 300, 400].map(v => `<button class="chip ${pct.turbo === v ? 'on' : ''}" data-swspeed="turbo" data-v="${v}">${v} %</button>`).join('')}</div></div>
+			<div class="grp"><div class="lbl">Vitesse lente <span>au prochain lancement</span></div><div class="chips">${[25, 50, 75].map(v => `<button class="chip ${pct.slow === v ? 'on' : ''}" data-swspeed="slow" data-v="${v}">${v} %</button>`).join('')}</div></div>
+		</div>` : ''}` : '';
+	return `${speedGrp}<div class="grp"><div class="lbl">Clés Nintendo Switch <span>extraites de ta propre console</span></div>
 		${k ? `<div class="chips">${tag(k.prod, 'prod.keys')}${tag(k.title, 'title.keys')}</div>` : '<div class="note">Chargement…</div>'}
 		<div style="margin-top:12px"><button class="btn primary" data-act="swimport">${icon('upload')}Importer des clés (.keys)</button></div></div>
 		<div class="note">Les clés sont copiées pour Citron, Eden et Ryujinx. Le firmware s’installe depuis l’émulateur : menu Outils → Installer le firmware (depuis un fichier ZIP ou un dossier) ; Smash Emu le partage ensuite entre eux. Si le jeu ne démarre pas après l’import, ferme et relance le jeu.</div>`;
+};
+
+// ---------- Randomizer (Citron, Eden) ----------
+const RD_INT = [['soft', 'Doux'], ['medium', 'Moyen'], ['chaos', 'Chaos']];
+const rdCode = (o) => {
+	const flags = [['colors', 'C'], ['values', 'V'], ['mods', 'M']].filter(([k]) => o.modes[k]).map(([, c]) => c).join('');
+	return `SMASH-${String(o.seed).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40) || 'X'}-${flags}${RD_INT.findIndex(([k]) => k === o.intensity) + 1}`;
+};
+const tabRando = () => {
+	const r = st.rando;
+	if (!r) return '<div class="note">Chargement…</div>';
+	const o = st.rdo;
+	const mode = (k, label, desc, extra = '') => `<div class="grp"><div class="lbl"><button class="chip ${o.modes[k] ? 'on' : ''}" data-rd-mode="${k}">${label} : ${o.modes[k] ? 'oui' : 'non'}</button> <span>${desc}</span></div>${extra}</div>`;
+	const prof = r.profile
+		? `<div class="note">Profil « ${esc(r.profile.title)} » : ${r.profile.values} valeur(s)${r.profile.known ? '' : ' · cette version du jeu n’est pas dans le profil'}.</div>`
+		: `<div class="note">Aucun profil pour ce jeu${r.tid ? ` (${esc(r.tid)}${r.buildId ? `, build ${esc(r.buildId.slice(0, 16))}` : ''})` : ''} : sans profil, les valeurs ne changent pas.</div>`;
+	const mods = `${r.mods.length ? `<div class="chips">${r.mods.map(m => `<span class="chip on">${esc(m)} <a data-rd-del="${esc(m)}" style="cursor:pointer">✕</a></span>`).join('')}</div>` : '<div class="note">Aucun mod randomizer installé.</div>'}
+		<div class="chips" style="margin-top:8px"><button class="btn" data-rd="modzip">${icon('upload')}Installer une archive…</button><button class="btn" data-rd="moddir">${icon('folder-open')}Installer un dossier…</button></div>`;
+	return `<div class="grp"><div class="lbl"><button class="chip ${o.on ? 'on' : ''}" data-rd="on">Randomizer : ${o.on ? 'activé' : 'désactivé'}</button> <span>appliqué au lancement, le fichier du jeu n’est jamais modifié</span></div></div>
+	<div class="row2">
+		<div class="grp"><div class="lbl">Graine</div><div class="chips"><input id="rd-seed" value="${esc(o.seed)}" maxlength="40" style="flex:1;min-width:140px;background:rgba(0,0,0,.35);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 10px"><button class="btn" data-rd="dice">${icon('dices')}Au hasard</button></div></div>
+		<div class="grp"><div class="lbl">Code à partager</div><div class="chips"><b id="rd-code" style="font-family:'Press Start 2P',monospace;font-size:10px;align-self:center">${esc(rdCode(o))}</b><button class="btn" data-rd="copy">${icon('copy')}Copier</button><button class="btn" data-rd="paste">${icon('clipboard')}Coller un code</button></div></div>
+	</div>
+	<div class="grp"><div class="lbl">Intensité</div>${RD_INT.map(([k, l]) => `<button class="chip ${o.intensity === k ? 'on' : ''}" data-rd-int="${k}">${l}</button>`).join(' ')}</div>
+	${mode('colors', 'Couleurs', r.colors ? 'teinte, saturation et canaux de l’image tirés de la graine' : 'avec Eden seulement')}
+	${mode('values', 'Valeurs', 'argent, vies, objets… via un profil du jeu (codes de triche)', `${prof}<div class="chips" style="margin-top:8px"><button class="btn" data-rd="profile">${icon('upload')}Importer un profil…</button><button class="btn" data-rd="profiles">${icon('folder-open')}Dossier des profils</button></div>`)}
+	${mode('mods', 'Mods randomizer', 'produits par un randomizer communautaire pour ce jeu', mods)}
+	<div class="chips" style="margin-top:14px"><button class="btn" data-rd="save">Enregistrer</button><button class="btn primary" data-rd="apply">${icon('refresh-cw')}Appliquer et redémarrer</button></div>`;
+};
+const loadRando = async () => { st.rando = await smashExt.randoGet(); st.rdo = JSON.parse(JSON.stringify(st.rando.opts)); if (st.panel && st.tab === 'rando') renderPanel(); };
+const randoClick = async (t) => {
+	const b = t.closest('[data-rd],[data-rd-mode],[data-rd-int],[data-rd-del]');
+	if (!b || !st.rdo) return false;
+	const o = st.rdo;
+	if (b.dataset.rdMode) o.modes[b.dataset.rdMode] = !o.modes[b.dataset.rdMode];
+	else if (b.dataset.rdInt) o.intensity = b.dataset.rdInt;
+	else if (b.dataset.rdDel) { await smashExt.randoRemoveMod(b.dataset.rdDel); await loadRando(); toast('Mod retiré'); }
+	else switch (b.dataset.rd) {
+		case 'on': o.on = !o.on; break;
+		case 'dice': o.seed = await smashExt.randoSeed(); break;
+		case 'copy': await navigator.clipboard.writeText(rdCode(o)); toast('Code copié'); break;
+		case 'paste': { const c = prompt('Code du randomizer (SMASH-…)'); if (c) { Object.assign(o, await smashExt.randoParse(c), { on: true }); toast('Code chargé'); } break; }
+		case 'profile': { const n = await smashExt.randoImportProfile(); if (n) { toast(`Profil importé : ${esc(n)}`); await loadRando(); } break; }
+		case 'profiles': await smashExt.randoProfiles(); break;
+		case 'modzip': case 'moddir': { const n = await smashExt.randoInstallMod(b.dataset.rd === 'moddir' ? 'folder' : 'archive'); if (n) { toast(`Mod installé : ${esc(n)}`); await loadRando(); } break; }
+		case 'save': st.rando = await smashExt.randoSave(o, false); toast('Enregistré : appliqué au prochain lancement'); break;
+		case 'apply':
+			if (!confirm('L’émulateur va redémarrer : la partie en cours sera perdue si elle n’est pas sauvegardée dans le jeu. Continuer ?')) break;
+			st.panel = false;
+			$('#panel').classList.add('hidden');
+			await smashExt.randoSave(o, true);
+			st.attached = false;
+			return true;
+		default: return false;
+	}
+	return true;
 };
 
 const tabTools = () => `
@@ -109,8 +172,10 @@ const dirty = () => JSON.stringify(st.opts) !== JSON.stringify(st.cfg.opts) || (
 
 const renderPanel = () => {
 	if (!st.cfg.can.states && st.tab === 'states') st.tab = ['ryujinx', 'citron', 'eden'].includes(st.cfg.emulatorId) ? 'switch' : 'tools';
-	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(['ryujinx', 'citron', 'eden'].includes(st.cfg.emulatorId) ? [['switch', 'Clés', 'keyboard']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
-	const body = { states: tabStates, image: tabImage, game: tabGame, tools: tabTools, switch: tabSwitch }[st.tab]();
+	const tabs = [...(st.cfg.can.states ? [['states', 'États', 'save']] : []), ...(['ryujinx', 'citron', 'eden'].includes(st.cfg.emulatorId) ? [['switch', 'Switch', 'gauge']] : []), ...(st.cfg.can.tune ? [['image', 'Image', 'eye'], ['game', 'Jeu', 'gamepad-2']] : []), ['tools', 'Outils', 'wrench']];
+	tabs.splice(tabs.length - 1, 0, ...(['citron', 'eden'].includes(st.cfg.emulatorId) ? [['rando', 'Randomizer', 'dices']] : []), ['speedrun', 'Speedrun', 'timer']);
+	if (st.tab === 'rando' && !st.rando) loadRando().catch(err => toast(err.message, true));
+	const body = { states: tabStates, image: tabImage, game: tabGame, tools: tabTools, switch: tabSwitch, speedrun: () => st.sr.panelHtml(), rando: tabRando }[st.tab]();
 	$('#panel').innerHTML = `<div class="pn">
 		<div class="pn-head"><span class="ttl">SMASH EMU</span>${tabs.map(([k, l, ic]) => `<button class="pn-tab ${st.tab === k ? 'on' : ''}" data-tab="${k}">${icon(ic)}${l}</button>`).join('')}
 			<span class="grow"></span><button class="btn primary" data-act="resume">${icon('play')}Reprendre</button></div>
@@ -121,6 +186,8 @@ const renderPanel = () => {
 			<button class="btn primary" data-act="apply" ${dirty() ? '' : 'disabled'}>${icon('refresh-cw')}Appliquer et redémarrer</button>
 		</div>` : ''}
 	</div>`;
+	const seed = $('#rd-seed');
+	if (seed) seed.oninput = () => { st.rdo.seed = seed.value; $('#rd-code').textContent = rdCode(st.rdo); };
 	const vol = $('#vol');
 	if (vol) vol.oninput = () => { st.opts.volume = +vol.value; $('#volv').textContent = `${vol.value}%`; const b = $('[data-act="apply"]'); if (b) b.disabled = !dirty(); };
 };
@@ -145,11 +212,29 @@ const closePanel = async () => {
 	$('#panel').classList.add('hidden');
 	await smashExt.panelClose();
 	backToGame();
+	if (st.pendingSpeed) {
+		const mode = st.pendingSpeed;
+		st.pendingSpeed = null;
+		setTimeout(() => setSpeedMode(mode).then(() => toast(`Vitesse : ${speedName(mode)}`)).catch(err => toast(err.message, true)), 300);
+	}
 };
 
 $('#panel').addEventListener('click', async (e) => {
 	const tab = e.target.closest('[data-tab]');
 	if (tab) { st.tab = tab.dataset.tab; renderPanel(); return; }
+	if (st.sr.click(e.target, $('#panel'))) { renderPanel(); return; }
+	if (st.tab === 'rando') {
+		try { if (await randoClick(e.target)) { if (st.panel) renderPanel(); return; } } catch (err) { toast(err.message, true); return; }
+	}
+	// Vitesse choisie dans le panneau : appliquée au retour dans le jeu (l'émulateur doit avoir le clavier).
+	const sm = e.target.closest('[data-speedmode]');
+	if (sm) { st.pendingSpeed = sm.dataset.speedmode; renderPanel(); return; }
+	const sw = e.target.closest('[data-swspeed]');
+	if (sw) {
+		try { st.cfg.speedPct = await smashExt.switchSpeed(sw.dataset.swspeed, +sw.dataset.v); toast('Enregistré : appliqué au prochain lancement du jeu'); } catch (err) { toast(err.message, true); }
+		renderPanel();
+		return;
+	}
 	const set = e.target.closest('[data-set]');
 	if (set) {
 		const v = set.dataset.v;
@@ -195,11 +280,52 @@ $('#panel').addEventListener('click', async (e) => {
 	} catch (err) { toast(err.message, true); }
 });
 
+// ---------- Vitesse (Citron, Eden) ----------
+// Les raccourcis de l'émulateur basculent un mode : pour passer de l'un à l'autre, l'ancien est d'abord coupé.
+
+st.speedMode = 'normal';
+
+// Chrono speedrun (touches globales prises à l'émulateur seulement quand il est activé).
+st.sr = SmashSpeedrun.create({
+	load: () => smashExt.speedrunGet(),
+	save: data => smashExt.speedrunSave(data),
+	el: $('#sr'),
+	toast: text => toast(text),
+	onToggle: on => smashExt.speedrunKeys(on).catch(() => {}),
+});
+
+const speedModes = () => ['normal', ...['turbo', 'unlimited', 'slow'].filter(m => st.cfg.speeds.includes(m))];
+const speedShort = m => ({ normal: '100 %', slow: `${st.cfg.speedPct.slow} %`, turbo: `${st.cfg.speedPct.turbo} %`, unlimited: '∞' }[m]);
+const speedName = m => ({ normal: 'normale (100 %)', slow: `lente (${st.cfg.speedPct.slow} %)`, turbo: `rapide (${st.cfg.speedPct.turbo} %)`, unlimited: 'illimitée' }[m]);
+const renderSpeedBtn = () => {
+	if (!st.cfg || !st.cfg.speeds.length) return;
+	const b = $('#btn-turbo');
+	b.classList.add('wide');
+	b.classList.toggle('on', st.speedMode !== 'normal');
+	b.dataset.tip = `Vitesse ${speedName(st.speedMode)} · clic : vitesse suivante`;
+	b.innerHTML = `${icon(st.speedMode === 'slow' ? 'rewind' : 'fast-forward')}<span>${speedShort(st.speedMode)}</span>`;
+};
+const setSpeedMode = async (mode) => {
+	if (mode === st.speedMode) return;
+	if (st.speedMode !== 'normal') await smashExt.key('speed', st.speedMode);
+	st.speedMode = 'normal';
+	if (mode !== 'normal') await smashExt.key('speed', mode);
+	st.speedMode = mode;
+	renderSpeedBtn();
+};
+
 // ---------- Barre ----------
 
 const ACTIONS = {
 	pause: async () => { await smashExt.key('pause'); st.paused = !st.paused; $('#btn-pause').classList.toggle('on', st.paused); toast(st.paused ? 'Pause' : 'Reprise'); },
 	turbo: async () => {
+		// Citron, Eden : le bouton passe d'une vitesse à l'autre (normale, rapide, illimitée, lente).
+		if (st.cfg.speeds.length) {
+			const modes = speedModes();
+			await setSpeedMode(modes[(modes.indexOf(st.speedMode) + 1) % modes.length]);
+			toast(`Vitesse : ${speedName(st.speedMode)}`);
+			return;
+		}
 		st.turbo = !st.turbo;
 		await smashExt.key(st.turbo ? 'turboDown' : 'turboUp');
 		$('#btn-turbo').classList.toggle('on', st.turbo);
@@ -246,6 +372,9 @@ smashExt.onHotkey((name) => {
 	if (name === 'fullscreen') ACTIONS.fullscreen();
 	if (name === 'screenshot' && !st.panel) ACTIONS.screenshot().catch(err => toast(err.message, true));
 	if (name === 'remote' && ACTIONS.remote) ACTIONS.remote();
+	if (name === 'srSplit') st.sr.split();
+	if (name === 'srUndo') st.sr.undo();
+	if (name === 'srReset') st.sr.reset();
 	if (name === 'immersive') {
 		st.immersive = !st.immersive;
 		smashExt.immersive(st.immersive);
@@ -364,8 +493,9 @@ smashExt.onState((s) => {
 		$('#loading-bar').classList.remove('hidden');
 		$('#wait-msg').textContent = `DEMARRAGE DE ${st.cfg.emulator.toUpperCase()}…`;
 		$('#wait-msg').style.color = '';
-		st.turbo = false; st.paused = false; st.attached = false;
+		st.turbo = false; st.paused = false; st.attached = false; st.speedMode = 'normal';
 		$('#btn-turbo').classList.remove('on'); $('#btn-pause').classList.remove('on');
+		renderSpeedBtn();
 		showHelp(s.dialog ? { dialog: s.dialog } : s.notice ? { hint: s.notice } : {});
 		return;
 	}
@@ -416,6 +546,8 @@ const tick = () => {
 	}
 	// Les boutons que l'émulateur ne sait pas gérer sont masqués.
 	for (const el of document.querySelectorAll('[data-need]')) if (!st.cfg.can[el.dataset.need]) el.classList.add('hidden');
+	renderSpeedBtn();
+	st.sr.init();
 	setInterval(tick, 1000);
 	tick();
 })();

@@ -13,6 +13,7 @@ const systems = require('./systems');
 const games = require('./games');
 const switchkeys = require('./switchkeys');
 const netplay = require('./netplay');
+const speedrun = require('./speedrun');
 
 // Capture d'image demandée par une fenêtre hôte (jeu à distance) : uniquement sa propre fenêtre, et le son du PC.
 const allowCapture = () => {
@@ -204,8 +205,11 @@ const openExternalHost = (id, plan) => {
 
 	// Raccourcis de l'hôte actifs seulement quand la fenêtre Smash Emu (ou le jeu incrusté) a le focus.
 	const hotkeys = { 'CommandOrControl+J': 'remote', 'CommandOrControl+P': 'panel', F11: 'fullscreen', 'CommandOrControl+M': 'immersive', 'CommandOrControl+Shift+S': 'screenshot' };
-	const bind = () => { for (const [k, name] of Object.entries(hotkeys)) { try { globalShortcut.register(k, () => send(h, 'ext:hotkey', name)); } catch { /* raccourci pris */ } } };
-	const unbind = () => { for (const k of Object.keys(hotkeys)) { try { globalShortcut.unregister(k); } catch { /* ignoré */ } } };
+	// Chrono speedrun : ses touches ne sont prises à l'émulateur que lorsqu'il est activé pour ce jeu.
+	const srKeys = { 'CommandOrControl+Space': 'srSplit', 'CommandOrControl+Backspace': 'srUndo', 'CommandOrControl+Shift+Space': 'srReset' };
+	const active = () => ({ ...hotkeys, ...(h.speedrun ? srKeys : {}) });
+	const bind = () => { for (const [k, name] of Object.entries(active())) { try { globalShortcut.register(k, () => send(h, 'ext:hotkey', name)); } catch { /* raccourci pris */ } } };
+	const unbind = () => { for (const k of [...Object.keys(hotkeys), ...Object.keys(srKeys)]) { try { globalShortcut.unregister(k); } catch { /* ignoré */ } } };
 	win.on('focus', () => {
 		bind();
 		send(h, 'ext:front', true);
@@ -297,14 +301,18 @@ const dolphinP2 = (kind = 'Nunchuk') => {
 // ---------- Actions de la barre ----------
 
 const hk = h => (emulators.EXTERNAL[h.plan.emulator] || {}).hotkeys || {};
+// Dossiers utilisateur de Citron et d'Eden (les mods randomizer vont dans les deux).
+const randoDirs = () => switchkeys.YUZU.filter(id => id === 'citron' || emulators.pathFor(id)).map(id => switchkeys.yuzuUserDir(id));
 const slotsDir = h => path.join(store.instanceDir(h.id), 'ext-slots');
 const slotsIndex = (h) => { try { return JSON.parse(fs.readFileSync(path.join(slotsDir(h), 'index.json'), 'utf8')); } catch { return {}; } };
 const options = h => (store.getInstance(h.id).options || {});
 
 const press = async (h, name, arg) => {
 	const k = hk(h);
-	const spec = { pause: k.pause, turboDown: k.turboDown, turboUp: k.turboUp, undo: k.undoLoad, save: k.save && k.save(arg || 1), load: k.load && k.load(arg || 1) }[name];
+	const spec = { pause: k.pause, turboDown: k.turboDown, turboUp: k.turboUp, undo: k.undoLoad, save: k.save && k.save(arg || 1), load: k.load && k.load(arg || 1), speed: k.speeds && k.speeds[arg] }[name];
 	if (!spec) throw new Error('Action non prise en charge par cet émulateur.');
+	// Vitesse choisie dans le menu de la barre : le raccourci doit arriver au jeu, qui reprend donc le clavier.
+	if (name === 'speed' && h.child && !h.panel) { await winhelper.focus(h.child).catch(() => {}); await new Promise(r => setTimeout(r, 80)); }
 	// Raccourci de l'émulateur identique à un raccourci Smash Emu (Ctrl+P pour RPCS3) : libéré le temps de l'envoi.
 	const clash = /^CTRL\+(P|M)$/i.test(spec);
 	if (clash && h.unbind) h.unbind();
@@ -356,6 +364,9 @@ const ACTIONS = {
 			name: h.plan.name, emulator: ext.label || h.plan.emulator, emulatorId: h.plan.emulator, system: (systems.SYSTEMS[h.plan.system] || {}).label || '',
 			systemId: h.plan.system, theme: store.themeFor(store.getInstance(h.id), h.plan.system), logo: store.getSettings().logo || 'classic', fontMode: store.getSettings().fontMode || 'titles', customThemes: store.getSettings().customThemes || [],
 			can: { pause: !!k.pause, states: !!k.save, turbo: !!k.turboDown, undo: !!k.undoLoad, tune: !!ext.tunable, remote: true },
+			// Vitesses de Citron et Eden (lent, rapide, illimité) et leurs pourcentages.
+			speeds: Object.keys(k.speeds || {}),
+			speedPct: switchkeys.YUZU.includes(h.plan.emulator) ? switchkeys.yuzuSpeedPct(h.plan.emulator, o.switchSpeed) : null,
 			slots: k.slots || 1,
 			keysHint: ext.keysHint || '',
 			remote: true,
@@ -438,6 +449,84 @@ const ACTIONS = {
 		store.updateInstance(h.id, { options: { ...(inst.options || {}), dolphin: clean } });
 		if (extension) { if (!['None', 'Nunchuk', 'Classic'].includes(extension)) throw new Error('Extension inconnue.'); setExtension(extension); }
 		await relaunch(h);
+	},
+	// Pourcentages des vitesses lente et rapide de Citron et Eden : écrits dans leur configuration au prochain lancement
+	// (l'émulateur réenregistre la sienne en se fermant).
+	switchSpeed: (h, kind, pct) => {
+		const allowed = { slow: [25, 50, 75], turbo: [150, 200, 300, 400] }[kind];
+		if (!allowed || !allowed.includes(Number(pct))) throw new Error('Vitesse inconnue.');
+		const inst = store.getInstance(h.id);
+		const o = inst.options || {};
+		store.updateInstance(h.id, { options: { ...o, switchSpeed: { ...(o.switchSpeed || {}), [kind]: Number(pct) } } });
+		return switchkeys.yuzuSpeedPct(h.plan.emulator, { ...(o.switchSpeed || {}), [kind]: Number(pct) });
+	},
+	// Randomizer Switch : réglages du jeu, profil de valeurs, mods randomizer. Appliqué au lancement suivant.
+	randoGet: (h) => {
+		const rs = require('./randomizer/switch');
+		const rng = require('./randomizer/rng');
+		const inst = store.getInstance(h.id) || {};
+		if (!h.randoInfo) {
+			const file = inst.rom && inst.rom.linked;
+			let info = {};
+			try { info = (file && require('./switchgame').prepare(file, { keyFiles: switchkeys.keyFiles(), unpack: false })) || {}; } catch { /* clés manquantes */ }
+			h.randoInfo = { tid: info.tid || (String(file || '').match(/\[(0100[0-9A-Fa-f]{12})\]/) || [])[1] || null, buildId: info.buildId || null };
+		}
+		const { tid, buildId } = h.randoInfo;
+		const opts = rs.optionsOf(inst);
+		if (!opts.seed) opts.seed = rng.randomSeed();
+		const profile = tid && rs.profileFor(tid);
+		const builds = profile ? Object.keys(profile.builds) : [];
+		return {
+			opts, tid, buildId, colors: h.plan.emulator === 'eden',
+			profile: profile && { title: profile.title || profile.titleId, values: builds.reduce((n, b) => Math.max(n, profile.builds[b].values.length), 0), known: !buildId || builds.some(b => b.slice(0, 16).toUpperCase() === buildId.slice(0, 16)) },
+			mods: tid ? rs.listMods(tid, randoDirs()) : [],
+		};
+	},
+	randoSave: async (h, opts, restart) => {
+		const inst = store.getInstance(h.id);
+		const clean = require('./randomizer/switch').cleanOptions(opts);
+		store.updateInstance(h.id, { options: { ...(inst.options || {}), randomizer: clean } });
+		if (restart) await relaunch(h);
+		return ACTIONS.randoGet(h);
+	},
+	randoSeed: () => require('./randomizer/rng').randomSeed(),
+	randoParse: (h, code) => require('./randomizer/rng').parseCode(code),
+	randoInstallMod: async (h, kind) => {
+		const tid = ACTIONS.randoGet(h).tid;
+		if (!tid) throw new Error('Identifiant du jeu introuvable : importe tes clés (onglet Switch).');
+		const r = await dialog.showOpenDialog(h.win, kind === 'folder'
+			? { title: 'Dossier du mod randomizer', properties: ['openDirectory'] }
+			: { title: 'Archive du mod randomizer', properties: ['openFile'], filters: [{ name: 'Archives', extensions: ['zip', '7z', 'rar'] }] });
+		if (r.canceled || !r.filePaths[0]) return null;
+		const src = r.filePaths[0];
+		const gb = require('./gamebanana');
+		const rs = require('./randomizer/switch');
+		const name = path.basename(src).replace(/\.(zip|7z|rar)$/i, '');
+		if (kind === 'folder') return rs.installMod(tid, randoDirs(), src, name, gb);
+		const work = path.join(store.CACHE_DIR, `rando-${Date.now()}`);
+		try {
+			fs.mkdirSync(work, { recursive: true });
+			await require('./emuinstall').extract(src, work);
+			return rs.installMod(tid, randoDirs(), work, name, gb);
+		} finally { fs.rmSync(work, { recursive: true, force: true }); }
+	},
+	randoRemoveMod: (h, name) => require('./randomizer/switch').removeMod(ACTIONS.randoGet(h).tid, randoDirs(), name),
+	randoImportProfile: async (h) => {
+		const rs = require('./randomizer/switch');
+		const r = await dialog.showOpenDialog(h.win, { title: 'Profil de randomizer', properties: ['openFile'], filters: [{ name: 'Profil', extensions: ['json'] }] });
+		if (r.canceled || !r.filePaths[0]) return null;
+		const p = rs.validateProfile(JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')));
+		fs.mkdirSync(rs.PROFILES_DIR, { recursive: true });
+		fs.copyFileSync(r.filePaths[0], path.join(rs.PROFILES_DIR, `${p.titleId.toUpperCase()}.json`));
+		return p.title || p.titleId;
+	},
+	randoProfiles: () => { const d = require('./randomizer/switch').PROFILES_DIR; fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+	// Mode speedrun : données du jeu, et ses touches prises à l'émulateur quand il est activé.
+	speedrunGet: h => speedrun.get(h.id),
+	speedrunSave: (h, data) => speedrun.save(h.id, data),
+	speedrunKeys: (h, on) => {
+		h.speedrun = !!on;
+		if (h.win.isFocused() && h.bind) { h.unbind(); h.bind(); }
 	},
 	// Clés Switch : état et import depuis le panneau.
 	switchStatus: () => switchkeys.status(),

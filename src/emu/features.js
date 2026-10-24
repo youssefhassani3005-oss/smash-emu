@@ -114,7 +114,6 @@ const renderHud = () => {
 	const parts = [];
 	if (fx.fps) parts.push(`<span>${live.fps} FPS</span>`);
 	if (fx.speedHud) parts.push(`<span>×${String(effectiveSpeed()).replace('.', ',')}</span>`);
-	if (fx.timer || live.timer.running) parts.push(`<span class="timer ${live.timer.running ? 'on' : ''}">⏱ ${fmtTime(live.timer.acc + (live.timer.running ? Date.now() - live.timer.start : 0))}</span>`);
 	if (fx.clock) parts.push(`<span>${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>`);
 	if (fx.session) parts.push(`<span>Session ${fmtTime(Date.now() - (live.sessionStart || Date.now())).slice(0, 5)}</span>`);
 	if (fx.inputs) parts.push(`<span class="keys">${[...live.keys].slice(-6).map(k => `<kbd>${esc(k)}</kbd>`).join('') || '—'}</span>`);
@@ -123,12 +122,14 @@ const renderHud = () => {
 };
 live.keys = new Set();
 
-const timerToggle = () => {
-	const t = live.timer;
-	if (t.running) { t.acc += Date.now() - t.start; t.running = false; } else { t.start = Date.now(); t.running = true; }
-	renderHud();
-};
-const timerReset = () => { Object.assign(live.timer, { running: false, acc: 0, start: 0 }); renderHud(); };
+// Chrono speedrun avec segments, record et meilleurs segments (commun avec les émulateurs externes).
+const SR = window.SmashSpeedrun.create({
+	load: () => smashEmu.speedrunGet(),
+	save: data => smashEmu.speedrunSave(data),
+	el: $('#sr'),
+	toast: text => toast(text),
+});
+SR.init();
 
 const cheatsKey = () => `smash-cheats-${st.cfg.instanceId}`;
 const loadCheats = () => { try { return JSON.parse(localStorage.getItem(cheatsKey())) || []; } catch { return []; } };
@@ -396,7 +397,7 @@ const FEATURES = [
 	A('Film d’entrées : rejouer', 'Rejoue le dernier film ; une touche te rend la main', () => window.smashInputs.playMovie(), { cat: 'Outils', icon: 'play', active: () => !!(window.smashInputs && window.smashInputs.movieMode === 'play') }),
 	A('Statistiques détaillées', 'FPS, temps par image (graphe), processeur, mémoire, latence audio', () => window.smashStats && window.smashStats.toggle(), { cat: 'Outils', icon: 'gauge', keyHint: 'Maj+F2', active: () => !!(window.smashStats && window.smashStats.on) }),
 	T('speedHud', 'Vitesse à l’écran', 'Affiche la vitesse actuelle', { cat: 'Outils', icon: 'fast-forward' }),
-	T('timer', 'Chrono speedrun', 'F10 démarre / arrête, Maj+F10 remet à zéro', { cat: 'Outils', icon: 'clock', keyHint: 'F10' }),
+	{ type: 'speedrun', label: 'Speedrun', desc: 'Chrono avec segments, record perso et meilleurs segments', cat: 'Outils', icon: 'timer', keyHint: 'F10' },
 	T('clock', 'Horloge', 'L’heure, pour ne pas jouer jusqu’à 4 h', { cat: 'Outils', icon: 'clock' }),
 	T('inputs', 'Touches à l’écran', 'Montre les touches appuyées (tutos, vidéos)', { cat: 'Outils', icon: 'keyboard' }),
 	{ type: 'cheats', label: 'Codes de triche', desc: 'GameShark / Action Replay / Game Genie', cat: 'Outils', icon: 'wrench' },
@@ -427,6 +428,7 @@ const control = (f, i) => {
 		if (!opts.length) return '<div class="dim" style="margin-top:8px;font-size:12px;color:#8a8a92">Ce cœur n’a pas d’option d’amélioration : utilise les préréglages et les shaders.</div>';
 		return `<div class="coreopts">${opts.map(([k, o]) => `<label><span>${esc(HD_OPTIONS[k])}</span><select data-core="${esc(k)}">${o.choices.map(c => `<option ${c === o.value ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>`).join('')}</div>`;
 	}
+	if (f.type === 'speedrun') return SR.panelHtml();
 	if (f.type === 'cheats') {
 		const list = loadCheats();
 		return `<div class="cheats">${list.map((c, k) => `<div class="cheat"><button class="sw ${c.on ? 'on' : ''}" data-cheat="${k}"></button><span>${esc(c.name || c.code)}</span><button class="x" data-cheat-del="${k}">✕</button></div>`).join('')}
@@ -438,7 +440,7 @@ const control = (f, i) => {
 const renderPanel = () => {
 	const q = panel.q.toLowerCase();
 	const items = FEATURES.map((f, i) => [f, i]).filter(([f]) => (panel.cat === 'Tout' || f.cat === panel.cat) && (!q || `${f.label} ${f.desc || ''}`.toLowerCase().includes(q)));
-	const wide = f => ['choice', 'slider', 'cheats', 'coreopts'].includes(f.type);
+	const wide = f => ['choice', 'slider', 'cheats', 'coreopts', 'speedrun'].includes(f.type);
 	$('#panel').innerHTML = `
 		<div class="panel-head"><div class="panel-title">${FEATURES.length} FONCTIONS</div><button class="wc" data-close-panel>${icon('x')}</button></div>
 		<input class="panel-search" id="panel-q" placeholder="Rechercher une fonction…" value="${esc(panel.q)}">
@@ -494,6 +496,7 @@ $('#panel').addEventListener('click', (e) => {
 		toast('Triche activée');
 		return renderPanel();
 	}
+	if (SR.click(t, $('#panel'))) return renderPanel();
 	const b = t.closest('[data-f]');
 	if (b && b.tagName === 'BUTTON') runFeature(FEATURES[+b.dataset.f], b.dataset.v);
 });
@@ -526,7 +529,15 @@ window.smashKey = (e) => {
 	if (k === 'F4') { e.preventDefault(); runFeature(FEATURES.find(f => f.key === 'turboLock')); toast(live.turboLock ? 'Turbo verrouillé' : 'Turbo déverrouillé'); return true; }
 	if (k === 'F8') { e.preventDefault(); undoLoad(); return true; }
 	if (k === 'F9') { e.preventDefault(); toggleRecord(); return true; }
-	if (k === 'F10') { e.preventDefault(); if (e.shiftKey) timerReset(); else timerToggle(); return true; }
+	// Speedrun : F10 ou Ctrl+Espace (départ, segment suivant), Ctrl+Retour arrière (annuler), Maj+F10 ou Ctrl+Maj+Espace (zéro).
+	if (k === 'F10' || (e.ctrlKey && (k === ' ' || k === 'Backspace'))) {
+		e.preventDefault();
+		if (!SR.on) { toast('Active le chrono speedrun dans le panneau (F2 → Speedrun).'); return true; }
+		if (k === 'Backspace') SR.undo();
+		else if (e.shiftKey) SR.reset();
+		else if (!e.repeat) SR.split();
+		return true;
+	}
 	if (k === 'F11' && e.shiftKey) { e.preventDefault(); toggleMash(); return true; }
 	if ((k === 'c' || k === 'C') && e.ctrlKey) { e.preventDefault(); copyShot(); return true; }
 	if (k === 'Home') { runFeature(FEATURES.find(f => f.key === 'photo')); return true; }
@@ -576,7 +587,6 @@ window.smashFeaturesStart = () => {
 		try { const n = gm().getFrameNum(); live.fps = Math.max(0, n - live.fpsFrame); live.fpsFrame = n; } catch { /* */ }
 		renderHud();
 	}, 1000);
-	setInterval(() => { if (live.timer.running) renderHud(); }, 50);
 	setInterval(() => { if (fx.disco && canvas()) { hue = (hue + 12) % 360; canvas().style.filter = `hue-rotate(${hue}deg) saturate(1.6)`; } }, 60);
 	document.body.classList.toggle('photo', !!fx.photo);
 };

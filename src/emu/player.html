@@ -30,6 +30,7 @@
 			<div class="volume"><button class="tb" data-action="mute" id="btn-mute" data-tip="Couper le son"></button><input type="range" min="0" max="100" id="volume"></div>
 		</div>
 		<div class="bar-right">
+			<div class="sr hidden" id="sr"></div>
 			<button class="tb rp-btn" data-action="remote" data-tip="Jouer à distance avec des amis (Ctrl+J)"><span data-icon="wifi"></span><span class="rp-badge hidden" id="remote-badge"></span></button>
 			<button class="tb smash-btn" data-action="features" data-tip="66 fonctions (F2)"><span data-icon="sparkles"></span>66</button>
 			<button class="tb" data-action="help" data-tip="Raccourcis (F1)"><span data-icon="info"></span></button>
@@ -114,6 +115,7 @@
 	<script src="smash://app/renderer/egg.js"></script>
 	<script src="smash-shaders.js"></script>
 	<script src="player.js"></script>
+	<script src="speedrun.js"></script>
 	<script src="features.js"></script>
 	<script src="stats.js"></script>
 	<script src="inputs.js"></script>

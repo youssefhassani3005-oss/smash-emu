@@ -9,7 +9,7 @@ const ICONS = [
 	'chevron-down', 'chevron-up', 'minus', 'x', 'ellipsis-vertical', 'search', 'folder-open', 'copy', 'trash-2', 'image',
 	'upload', 'refresh-cw', 'check', 'star', 'users', 'user', 'gamepad-2', 'map', 'zap', 'settings-2', 'user-cog', 'music',
 	'film', 'box', 'wrench', 'terminal', 'paw-print', 'laugh', 'footprints', 'external-link', 'file-archive', 'file-code',
-	'file', 'package', 'puzzle', 'clock', 'calendar', 'hard-drive', 'arrow-up', 'arrow-down', 'circle-x', 'triangle-alert',
+	'file', 'package', 'puzzle', 'rewind', 'timer', 'flag', 'clipboard', 'clock', 'calendar', 'hard-drive', 'arrow-up', 'arrow-down', 'circle-x', 'triangle-alert',
 	'info', 'scroll-text', 'sliders-horizontal', 'layout-grid', 'heart', 'wifi', 'server', 'link', 'sparkles', 'monitor',
 	'maximize-2', 'square-stack', 'cpu', 'list-filter', 'house', 'cloud-download', 'eye', 'rocket', 'save', 'pencil', 'swords',
 	'pause', 'camera', 'rotate-ccw', 'keyboard', 'volume-2', 'volume-x', 'maximize', 'minimize', 'layers', 'history', 'log-out',

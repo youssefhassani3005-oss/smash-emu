@@ -182,6 +182,22 @@ const yuzuQuality = (id) => {
 	return true;
 };
 
+// Vitesses lente et rapide (en %) : celles choisies dans Smash Emu pour ce jeu, sinon celles de l'émulateur.
+const yuzuSpeedPct = (id, chosen = {}) => {
+	let text = '';
+	try { text = fs.readFileSync(path.join(yuzuUserDir(id), 'config', 'qt-config.ini'), 'utf8'); } catch { /* configuration absente */ }
+	const read = (key, def) => { const m = text.match(new RegExp(`^${key}=(\\d+)`, 'm')); return m ? Number(m[1]) : def; };
+	return { slow: (chosen && chosen.slow) || read('slow_speed_limit', 50), turbo: (chosen && chosen.turbo) || read('turbo_speed_limit', 200) };
+};
+const yuzuSpeed = (id, chosen) => {
+	if (!chosen || (!chosen.slow && !chosen.turbo)) return false;
+	const values = {};
+	if (chosen.slow) values.slow_speed_limit = chosen.slow;
+	if (chosen.turbo) values.turbo_speed_limit = chosen.turbo;
+	setQtIni(path.join(yuzuUserDir(id), 'config', 'qt-config.ini'), 'Core', values);
+	return true;
+};
+
 // Étapes du démarrage d'un jeu dans le journal (log/<id>_log.txt), avec la part de la barre de chargement.
 const STAGES = [
 	[/BootGame: \S+ starting/, 15, 'L’émulateur démarre'],
@@ -224,4 +240,4 @@ const openEmulator = () => {
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
-module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, yuzuQuality, yuzuStage, logStage, logStartedAt, setGpu, keyFiles, setQtIni, YUZU };
+module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, yuzuQuality, yuzuSpeed, yuzuSpeedPct, yuzuStage, logStage, logStartedAt, setGpu, keyFiles, setQtIni, YUZU };

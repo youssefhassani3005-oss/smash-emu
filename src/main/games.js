@@ -332,7 +332,7 @@ const prepareGame = (inst, engine, system) => {
 	if (!exe) throw new Error(`${ext.label} n’est pas installé. Installe-le depuis Paramètres → Émulateurs, ou indique où il se trouve.`);
 	// Interface Smash Emu autour de l'émulateur externe (réglage), sinon son interface d'origine en plein écran.
 	const embed = (inst.options || {}).externalUi !== 'native' && store.getSettings().externalUi !== 'native';
-	const notice = engine === 'citron' || engine === 'eden' ? prepareYuzu(engine, file, embed) : null;
+	const notice = engine === 'citron' || engine === 'eden' ? prepareYuzu(engine, file, embed, inst) : null;
 	const args = [...ext.args(file, { embed, shader: (inst.options || {}).externalShader, opts: (inst.options || {}).dolphin }), ...splitArgs((inst.options || {}).extraArgs || '')];
 	return { kind: 'process', exe, args, cwd: path.dirname(exe), embed, emulator: engine, name: inst.name, system, notice };
 };
@@ -340,10 +340,11 @@ const prepareGame = (inst, engine, system) => {
 // Citron, Eden : clés et firmware repris des autres émulateurs Switch s'ils leur manquent (sinon écran noir),
 // fenêtre de rendu seule visible, exécutable ZBIC (firmware 22+) décompressé pour Citron qui ne lit pas ce format.
 // Renvoie l'avertissement à afficher pour un jeu trop récent.
-const prepareYuzu = (engine, file, embed) => {
+const prepareYuzu = (engine, file, embed, inst = {}) => {
 	const switchkeys = require('./switchkeys');
 	const switchgame = require('./switchgame');
 	try { switchkeys.syncYuzu(engine); } catch { /* rien à reprendre */ }
+	try { switchkeys.yuzuSpeed(engine, (inst.options || {}).switchSpeed); } catch { /* réglage laissé tel quel */ }
 	try { switchkeys.yuzuWindowMode(engine, embed); } catch { /* configuration illisible : celle de l'émulateur s'applique */ }
 	let memory = null;
 	try { memory = switchkeys.yuzuMemory(engine); } catch { /* réglage laissé tel quel */ }
@@ -351,7 +352,13 @@ const prepareYuzu = (engine, file, embed) => {
 	try { switchkeys.yuzuQuality(engine); } catch { /* réglage laissé tel quel */ }
 	let info = null;
 	try { info = switchgame.prepare(file, { userDir: switchkeys.yuzuUserDir(engine), keyFiles: switchkeys.keyFiles(), unpack: engine === 'citron' }); } catch { /* jeu illisible : l'émulateur le dira */ }
-	return [info ? switchgame.notice(info, engine, !!emulators.pathFor('eden')) : null, memory].filter(Boolean).join(' ') || null;
+	// Randomizer : couleurs, valeurs et mods appliqués (ou retirés) à chaque lancement selon les réglages du jeu.
+	let rando = null;
+	try {
+		const tid = (info && info.tid) || (String(file).match(/\[(0100[0-9A-Fa-f]{12})\]/) || [])[1];
+		rando = require('./randomizer/switch').apply({ engine, userDir: switchkeys.yuzuUserDir(engine), tid, inst, setQtIni: switchkeys.setQtIni });
+	} catch (error) { rando = `Randomizer non appliqué : ${error.message}`; }
+	return [info ? switchgame.notice(info, engine, !!emulators.pathFor('eden')) : null, memory, rando].filter(Boolean).join(' ') || null;
 };
 
 // BIOS facultatif fourni par l'utilisateur : Documents\Smash Emu\bios\<console>\<fichier>.

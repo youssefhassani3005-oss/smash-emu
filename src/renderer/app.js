@@ -2607,9 +2607,9 @@ window.launcher.on('update:state', (u) => {
 	if (box) box.innerHTML = renderUpdate();
 	if (u.state === 'available' && updToastVersion !== u.version) {
 		updToastVersion = u.version;
-		toast(`Smash Emu <b>${esc(u.version)}</b> est disponible`, { type: 'info', timeout: 12000, actions: [{ label: 'Télécharger', run: () => api('update:download').catch(toastError) }] });
+		toast(`Smash Emu <b>${esc(u.version)}</b> est disponible : téléchargement en arrière-plan…`, { type: 'info', timeout: 8000 });
 	}
-	if (u.state === 'ready') toast('Mise à jour prête', { type: 'success', timeout: 15000, actions: [{ label: 'Redémarrer et installer', run: () => api('update:install') }] });
+	if (u.state === 'ready') toast(`Mise à jour ${esc(u.version || '')} prête : elle s’installe toute seule à la fermeture de Smash Emu`, { type: 'success', timeout: 20000, actions: [{ label: 'Redémarrer maintenant', run: () => api('update:install') }] });
 });
 api('update:get').then((u) => { state.update = u; }).catch(() => {});
 

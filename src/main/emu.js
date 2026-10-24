@@ -251,6 +251,8 @@ const HANDLERS = {
 		};
 	},
 	'emu:listStates': s => listStates(s.id),
+	'emu:speedrunGet': s => require('./speedrun').get(s.id),
+	'emu:speedrunSave': (s, data) => require('./speedrun').save(s.id, data),
 	'emu:controls': s => require('./controls').forPlayer(s.plan.system || 'n64', s.id),
 	// Boutons de la console (pour le bot) et mémoire du bot entre deux sessions.
 	'emu:buttons': s => require('./controls').get(s.plan.system || 'n64').buttons.filter(b => b.id < 24),

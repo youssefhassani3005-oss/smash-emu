@@ -183,18 +183,21 @@ const prepare = (file, { userDir, keyFiles, unpack = true }) => {
 			if (!key) return { sdk, tid, zbic: false, reason: 'keys' };
 			const exefs = exefsOf(read, nca, h, key);
 			if (!exefs) return { sdk, tid, zbic: false };
+			// Build ID de l'exécutable principal (en-tête NSO, 0x40) : nom des fichiers de triche de cette version.
+			const main = exefs.files.find(e => e.name === 'main' && e.size > 0x100);
+			const buildId = main ? exefs.read(main.off + 0x40, 0x20).toString('hex').toUpperCase() : null;
 			const packed = exefs.files.filter(e => !/\.npdm$/i.test(e.name) && e.size > 0x100).filter(e => {
 				const head = exefs.read(e.off, 0x10);
 				return head.toString('latin1', 0, 4) === 'NSO0' && head.readUInt32LE(0xc) & 0x80;
 			});
-			if (!packed.length || !unpack) return { sdk, tid, zbic: packed.length > 0 };
+			if (!packed.length || !unpack) return { sdk, tid, buildId, zbic: packed.length > 0 };
 			const modDir = path.join(userDir, 'load', tid, MOD_NAME);
 			const stat = fs.statSync(file);
 			const stamp = { format: FORMAT, source: path.basename(file), size: stat.size, mtimeMs: Math.round(stat.mtimeMs), files: packed.map(e => e.name) };
 			const files = stamp.files.map(n => path.join(modDir, 'exefs', n));
 			try {
 				const old = JSON.parse(fs.readFileSync(path.join(modDir, 'smash-emu.json'), 'utf8'));
-				if (JSON.stringify(old) === JSON.stringify(stamp) && files.every(f => fs.existsSync(f))) return { sdk, zbic: true, tid, files: stamp.files, cached: true };
+				if (JSON.stringify(old) === JSON.stringify(stamp) && files.every(f => fs.existsSync(f))) return { sdk, zbic: true, tid, buildId, files: stamp.files, cached: true };
 			} catch { /* pas encore préparé */ }
 			fs.mkdirSync(path.join(modDir, 'exefs'), { recursive: true });
 			packed.forEach((e, i) => {
@@ -202,7 +205,7 @@ const prepare = (file, { userDir, keyFiles, unpack = true }) => {
 				fs.renameSync(`${files[i]}.tmp`, files[i]);
 			});
 			fs.writeFileSync(path.join(modDir, 'smash-emu.json'), JSON.stringify(stamp));
-			return { sdk, zbic: true, tid, files: stamp.files, cached: false };
+			return { sdk, zbic: true, tid, buildId, files: stamp.files, cached: false };
 		}
 		return { zbic: false };
 	} finally {
