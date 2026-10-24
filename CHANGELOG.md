@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.7.6
+
+- **Moins de gels sur Switch** : Citron et Eden préparent les graphismes (shaders) en arrière-plan, au lieu de bloquer
+  le jeu quelques instants à chaque nouvel effet. Réglage gardé si tu l'as déjà changé dans l'émulateur.
+
 ## 2.7.5
 
 - **Écran de chargement corrigé** : il ne se fige plus au bout de 25 secondes (le message « Ça prend du temps »

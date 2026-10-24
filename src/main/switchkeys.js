@@ -157,8 +157,8 @@ const yuzuDocked = (id) => {
 };
 
 // Qualité d'image : les réglages d'origine affichent le jeu en 1× agrandi au plus proche voisin (très pixelisé).
-// Tant que le joueur ne les a pas changés, Smash Emu choisit l'agrandissement FSR et l'anti-crénelage SMAA, et la
-// résolution 2× avec une carte graphique dédiée. Les numéros des réglages diffèrent entre Citron et Eden.
+// Tant que le joueur ne les a pas changés, Smash Emu choisit l'agrandissement FSR, l'anti-crénelage SMAA, les shaders
+// en arrière-plan, et la résolution 2× avec une carte graphique dédiée. Les numéros des réglages diffèrent entre Citron et Eden.
 const QUALITY = {
 	eden: { res2x: 6, fsr: 6, smaa: 2 },
 	citron: { res2x: 5, fsr: 7, smaa: 2 },
@@ -175,6 +175,8 @@ const yuzuQuality = (id) => {
 	if (untouched('scaling_filter')) values.scaling_filter = q.fsr;
 	if (untouched('anti_aliasing')) values.anti_aliasing = q.smaa;
 	if (strongGpu && untouched('resolution_setup')) values.resolution_setup = q.res2x;
+	// Shaders préparés en arrière-plan : plus de gels de quelques images quand un nouvel effet apparaît.
+	if (untouched('use_asynchronous_shaders')) values.use_asynchronous_shaders = true;
 	if (!Object.keys(values).length) return false;
 	setQtIni(file, 'Renderer', values);
 	return true;

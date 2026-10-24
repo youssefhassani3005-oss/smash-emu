@@ -104,6 +104,7 @@ test('Citron, Eden : mode TV et mémoire de 4 Go réglés automatiquement', () =
 	assert.match(r, /^resolution_setup=6$/m);
 	assert.match(r, /^scaling_filter=6$/m);
 	assert.match(r, /^anti_aliasing=2$/m);
+	assert.match(r, /^use_asynchronous_shaders=true$/m);
 	assert.strictEqual(sk.yuzuQuality('eden'), false, 'réglages déjà choisis : rien n’est changé');
 	const msg = sk.yuzuMemory('eden');
 	if (require('os').totalmem() < 24 * 1024 ** 3) { assert.match(msg, /4 Go/); assert.match(fs.readFileSync(ini, 'utf8'), /^memory_layout_mode=0$/m); }
