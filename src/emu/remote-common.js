@@ -118,11 +118,32 @@
 		return '';
 	};
 
+	// maxWidth : largeur encodée au plus. Un jeu rétro n'a pas besoin de plus de 960 à 1280 pixels, et une image
+	// plus petite s'encode et se transmet plus vite (moins de retard).
 	const QUALITY = {
-		reactive: { label: 'Réactivité', maxBitrate: 4500000, maxFramerate: 60, degradation: 'maintain-framerate' },
-		balanced: { label: 'Équilibré', maxBitrate: 8000000, maxFramerate: 60, degradation: 'balanced' },
-		quality: { label: 'Qualité', maxBitrate: 14000000, maxFramerate: 60, degradation: 'maintain-resolution' },
-		saver: { label: 'Économie', maxBitrate: 2000000, maxFramerate: 30, degradation: 'maintain-framerate' },
+		reactive: { label: 'Réactivité', maxBitrate: 5000000, maxFramerate: 60, maxWidth: 960, degradation: 'maintain-framerate' },
+		balanced: { label: 'Équilibré', maxBitrate: 8000000, maxFramerate: 60, maxWidth: 1280, degradation: 'maintain-framerate' },
+		quality: { label: 'Qualité', maxBitrate: 14000000, maxFramerate: 60, maxWidth: 1920, degradation: 'balanced' },
+		saver: { label: 'Économie', maxBitrate: 2000000, maxFramerate: 30, maxWidth: 854, degradation: 'maintain-framerate' },
+	};
+
+	// Débit de départ plus haut : sans lui, WebRTC part de 300 kb/s et l'image reste floue plusieurs secondes.
+	const boostStart = (sdp, kbps = 3000) => {
+		const pts = [...sdp.matchAll(/^a=rtpmap:(\d+) (?:H264|VP8|VP9|AV1)\/90000/gm)].map(m => m[1]);
+		let out = sdp;
+		for (const pt of pts) {
+			const extra = `x-google-start-bitrate=${kbps};x-google-min-bitrate=800`;
+			const fmtp = new RegExp(`^a=fmtp:${pt} (.*)$`, 'm');
+			if (fmtp.test(out)) out = out.replace(fmtp, (line, params) => (params.includes('x-google-start-bitrate') ? line : `a=fmtp:${pt} ${params};${extra}`));
+			else out = out.replace(new RegExp(`^(a=rtpmap:${pt} .*)$`, 'm'), `$1\r\na=fmtp:${pt} ${extra}`);
+		}
+		return out;
+	};
+
+	// Réception : affichage dès qu'une image arrive, sans tampon de lissage.
+	const lowLatency = (receiver) => {
+		try { receiver.playoutDelayHint = 0; } catch { /* non pris en charge */ }
+		try { receiver.jitterBufferTarget = 0; } catch { /* non pris en charge */ }
 	};
 
 	// Codecs proposés : H.264 (souvent encodé par la carte graphique) puis VP8 pour la vidéo, Opus pour le son.
@@ -144,6 +165,6 @@
 		} catch (e) { console.warn('[smash] codecs', e.message); }
 	};
 
-	root.SmashRemote = { ICE, encode, decode, gathered, PAD_LABELS, DEFAULT_PAD, ANALOG, padState, valueFor, stats, advice, QUALITY, preferCodecs };
+	root.SmashRemote = { ICE, encode, decode, gathered, PAD_LABELS, DEFAULT_PAD, ANALOG, padState, valueFor, stats, advice, QUALITY, preferCodecs, boostStart, lowLatency };
 	if (typeof module !== 'undefined' && module.exports) module.exports = root.SmashRemote;
 })(typeof window !== 'undefined' ? window : globalThis);

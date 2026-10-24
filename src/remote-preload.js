@@ -8,6 +8,7 @@ const call = async (channel, ...args) => {
 
 contextBridge.exposeInMainWorld('smashRemote', {
 	config: () => call('remote:config'),
+	room: { open: code => call('room:open', code), post: (code, m) => call('room:post', code, m), close: code => call('room:close', code), onMessage: fn => ipcRenderer.on('room:msg', (_e, v) => fn(v)) },
 	setName: name => call('remote:setName', name),
 	addRecent: entry => call('remote:addRecent', entry),
 	window: action => call('remote:window', action),

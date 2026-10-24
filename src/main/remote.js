@@ -15,7 +15,9 @@ const openGuest = (code = '') => {
 		webPreferences: { preload: path.join(SRC, 'remote-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false },
 	});
 	const wcId = win.webContents.id;
-	guests.set(wcId, { win, code: /^SMASH-INV-[A-Za-z0-9_-]+$/.test(code) ? code : '' });
+	// Code de salon court (K7M-2QX) ou ancien long code d'invitation.
+	const room = require('./rooms').normalize(code);
+	guests.set(wcId, { win, code: room || (/^SMASH-INV-[A-Za-z0-9_-]+$/.test(code) ? code : '') });
 	win.on('closed', () => guests.delete(wcId));
 	win.webContents.on('will-navigate', e => e.preventDefault());
 	win.loadURL('smash://app/emu/remote.html');

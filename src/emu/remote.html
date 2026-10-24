@@ -7,6 +7,9 @@
 	<link rel="stylesheet" href="smash://app/renderer/fonts.css">
 	<link rel="stylesheet" href="player.css">
 	<style>
+		.jcode { font-family: 'Press Start 2P', monospace; font-size: 20px; letter-spacing: 4px; text-align: center; text-transform: uppercase; padding: 14px !important; }
+		.jsmall { font-size: 11.5px !important; color: #6f6f78 !important; margin-top: 4px !important; }
+		.jrow.hidden { display: none; }
 		body { background: #050506; }
 		#join { position: fixed; inset: 48px 0 0 0; display: grid; place-items: center; overflow-y: auto; padding: 20px; }
 		.jbox { width: min(620px, 94vw); background: rgba(18, 18, 21, 0.97); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 22px; box-shadow: 0 0 0 2px rgba(var(--brand-rgb), 0.3), 0 20px 60px rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; gap: 10px; color: #d8d8de; }
@@ -66,14 +69,21 @@
 
 	<main id="join">
 		<div class="jbox" id="step1">
-			<h2>REJOINDRE UNE PARTIE</h2>
-			<p>Colle le code d’invitation que ton ami t’a envoyé (ou glisse son fichier <b>.smashinvite</b> ici). Tu verras son jeu et tu joueras avec ta manette ou ton clavier.</p>
+			<h2>REJOINDRE UN AMI</h2>
+			<p>Tape le <b>code du salon</b> que ton ami voit dans son jeu (panneau À distance, Ctrl+J). Tu verras son jeu et tu joueras avec ta manette ou ton clavier. Plus simple encore : s’il t’invite depuis ses amis, clique sur « Rejoindre » dans la notification.</p>
+			<label>Code du salon</label>
+			<input id="offer" class="jcode" placeholder="K7M-2QX" autocomplete="off" spellcheck="false">
 			<label>Ton pseudo</label>
 			<input id="name" maxlength="24">
-			<label>Code d’invitation</label>
-			<textarea id="offer" placeholder="SMASH-INV-…"></textarea>
 			<div class="jerr" id="err1"></div>
-			<div class="jrow"><button class="pbtn primary" data-action="join">Rejoindre</button></div>
+			<div class="jrow"><button class="pbtn primary" id="join-btn" data-action="join">Rejoindre</button></div>
+			<p class="jsmall">Tu as reçu un long code SMASH-INV-… ou un fichier .smashinvite ? Colle-le (ou glisse le fichier) dans la case du code : ça marche aussi.</p>
+		</div>
+		<div class="jbox hidden" id="step-room">
+			<h2>CONNEXION…</h2>
+			<div class="jinfo" id="room-info"></div>
+			<p id="room-status">Recherche de la partie…</p>
+			<div class="jrow hidden" id="room-retry"><button class="pbtn primary" data-action="rejoin">Réessayer</button><button class="pbtn" data-action="back">Changer de code</button></div>
 		</div>
 		<div class="jbox hidden" id="step2">
 			<h2>ENVOIE TA RÉPONSE</h2>
