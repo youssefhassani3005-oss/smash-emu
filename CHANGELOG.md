@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.1
+
+- **45 thèmes dans la Boutique** (200 pièces chacun), inspirés des écrans d'inventaire et de pause des grandes séries : plateforme, aventure héroïque, RPG stylé, monstres de poche, exploration spatiale et autres classiques. Couleurs, police et décor originaux, sans nom ni logo de jeu.
+
 ## 2.9.0
 
 - **Jeu à distance bien plus simple** : un **code de salon** court (ex. K7M-2QX) dans le panneau À distance (Ctrl+J).

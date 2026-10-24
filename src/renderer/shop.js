@@ -77,7 +77,7 @@ ACTIONS['shop-buy'] = async (el) => {
 		SHOP.st = await api('coins:buy', el.dataset.id);
 		applyEquipped();
 		toast(`${esc(it ? it.name : 'Article')} acheté et équipé !`);
-		if (it && it.kind === 'home') state.settings = await api('settings:get');
+		if (it && ['home', 'theme'].includes(it.kind)) { state.settings = await api('settings:get'); applyTheme(state.settings.theme); }
 	} catch (e) { toastError(e); }
 	if (state.route.name === 'shop') setMain(shopHtml());
 	refreshTopbar();
@@ -86,7 +86,7 @@ ACTIONS['shop-equip'] = async (el) => {
 	try {
 		SHOP.st = await api('coins:equip', el.dataset.kind, el.dataset.id || null);
 		applyEquipped();
-		if (el.dataset.kind === 'home') state.settings = await api('settings:get');
+		if (['home', 'theme'].includes(el.dataset.kind)) { state.settings = await api('settings:get'); applyTheme(state.settings.theme); }
 	} catch (e) { toastError(e); }
 	if (state.route.name === 'shop') setMain(shopHtml());
 };

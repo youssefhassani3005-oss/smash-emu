@@ -192,7 +192,64 @@
 		['sup-synth', 'Synthwave', 'Supporter · Soleil rétro et grille néon.', '#10041d', '#ff3df2', '#3dd9ff', 'Audiowide', 'neon', 'warp',
 			[['sun', 100, 58, 0.8], ['wave', 100, 92, 1.4], ['note', 34, 30, 0.3, -10], ['bolt', 170, 32, 0.3, 12]]],
 	].map(([id, label, desc, bg, accent, accent2, font, icons, particles, scene]) => ({ id, label, game: label, console: 'Supporter', tagline: desc.split(' · ')[1], bg, accent, accent2, font, icons, particles, scene, keywords: '', light: false, supporter: true }));
-	const byId = Object.fromEntries([...THEMES, ...SUPPORTER].map(t => [t.id, t]));
+	// Thèmes de la Boutique (achetés avec les pièces Smash) : couleurs et motifs inspirés des écrans d'inventaire et
+	// de pause des grandes séries (plateforme, aventure, RPG stylé, monstres de poche, exploration spatiale…).
+	// Créations originales : aucun nom, personnage ni logo de jeu.
+	const S = (shapes, n) => shapes.map((s, i) => [s, 30 + ((i * 47) % 150), 25 + ((i * 31 + n * 7) % 65), 0.3 + ((i + n) % 4) * 0.12, (i % 2 ? 10 : -10)]);
+	const SHOP = [
+		// Plateforme
+		['shop-pause-champi', 'Pause champignon', 'Rouge vif et or, comme un menu de pause de plateforme.', '#2a0707', '#ff3b30', '#ffd60a', 'Russo One', 'bubble', 'stars', S(['star', 'heart', 'sun'], 1)],
+		['shop-etoile', 'Étoile de puissance', 'Jaune brillant sur bleu nuit.', '#0a1033', '#ffd23f', '#4fc3ff', 'Fredoka', 'bubble', 'sparks', S(['star', 'star', 'moon'], 2)],
+		['shop-chateau-lave', 'Château de lave', 'Briques sombres et magma.', '#1a0603', '#ff5a1f', '#ffb347', 'Russo One', 'ornate', 'sparks', S(['crown', 'bolt', 'mountain'], 3)],
+		['shop-nuage', 'Nuage arc-en-ciel', 'Pastel et ciel clair.', '#eaf6ff', '#ff6fb5', '#5ec8ff', 'Fredoka', 'bubble', 'petals', S(['sun', 'heart', 'flower'], 4), true],
+		['shop-circuit', 'Circuit karting', 'Damier, piste et néons de course.', '#0d0d12', '#00e0ff', '#ff2e63', 'Audiowide', 'neon', 'warp', S(['bolt', 'star', 'wave'], 5)],
+		['shop-des', 'Fête des dés', 'Plateau festif et confettis.', '#1a0f2e', '#ffcf3a', '#3ddc84', 'Fredoka', 'bubble', 'sparks', S(['star', 'gem', 'heart'], 6)],
+		['shop-galaxie', 'Galaxie ronde', 'Planètes miniatures et poussière d’étoiles.', '#06061a', '#8e7dff', '#ffde59', 'Orbitron', 'neon', 'stars', S(['moon', 'star', 'star', 'sun'], 7)],
+		['shop-tropical', 'Île tropicale', 'Lagon turquoise et soleil.', '#03262b', '#2ee6c8', '#ffd166', 'Fredoka', 'bubble', 'petals', S(['sun', 'wave', 'flower'], 8)],
+		// Aventure héroïque
+		['shop-sac-heros', 'Sac du héros', 'Cuir, laiton et cases d’objets.', '#1c140a', '#e3b04b', '#7fbf6a', 'Cinzel', 'ornate', 'sparks', S(['gem', 'crown', 'mountain'], 9)],
+		['shop-parchemin', 'Parchemin sépia', 'Carte ancienne et encre brune.', '#f3e6c8', '#8b5a2b', '#3f6e4a', 'Cinzel', 'ornate', 'petals', S(['mountain', 'sun', 'star'], 10), true],
+		['shop-ardoise', 'Ardoise runique', 'Tablette sombre et lueurs bleues.', '#0b1418', '#3fd3ff', '#ffb547', 'Orbitron', 'neon', 'stars', S(['gem', 'moon', 'bolt'], 11)],
+		['shop-temple-eau', 'Temple de l’eau', 'Bleus profonds et reflets.', '#041a2b', '#4fb3ff', '#9ff3ff', 'Cinzel', 'ornate', 'warp', S(['wave', 'gem', 'moon'], 12)],
+		['shop-foret', 'Forêt perdue', 'Mousse, lucioles et brume.', '#07160b', '#7bd96b', '#e9f59d', 'Cinzel', 'ornate', 'petals', S(['flower', 'mountain', 'star'], 13)],
+		['shop-desert', 'Désert ocre', 'Sable chaud et turquoise.', '#2b1a0b', '#f0a24a', '#3fd0c9', 'Cinzel', 'ornate', 'sparks', S(['sun', 'mountain', 'gem'], 14)],
+		['shop-masque', 'Lune menaçante', 'Ciel violet et lune trop proche.', '#140a1f', '#c86bff', '#ffcf6b', 'Cinzel', 'ornate', 'stars', S(['moon', 'star', 'crown'], 15)],
+		['shop-epee', 'Épée de légende', 'Acier, or et violet royal.', '#0f0d1c', '#b9c4ff', '#ffd76b', 'Cinzel', 'ornate', 'sparks', S(['crown', 'bolt', 'star'], 16)],
+		// RPG stylé
+		['shop-rebelle', 'Rouge rebelle', 'Rouge, noir et blanc, typographie qui claque.', '#0b0000', '#ff1e2d', '#ffffff', 'Russo One', 'neon', 'sparks', S(['bolt', 'star', 'crown'], 17)],
+		['shop-minuit', 'Minuit bleu', 'Bleu électrique et horloge de minuit.', '#020a26', '#2f7bff', '#a6f0ff', 'Russo One', 'neon', 'stars', S(['moon', 'note', 'bolt'], 18)],
+		['shop-enquete', 'Jaune enquête', 'Jaune vif et brouillard télévisé.', '#141000', '#ffd400', '#ff7a00', 'Russo One', 'neon', 'warp', S(['star', 'bolt', 'sun'], 19)],
+		['shop-velours', 'Salle de velours', 'Bleu velours et piano.', '#06102a', '#4d7dff', '#e7c27a', 'Cinzel', 'ornate', 'sparks', S(['note', 'crown', 'moon'], 20)],
+		['shop-calendrier', 'Calendrier scolaire', 'Cahier quadrillé et post-it.', '#f6f3ea', '#ff5c5c', '#2e7dff', 'Nunito', 'bubble', 'petals', S(['sun', 'heart', 'star'], 21), true],
+		['shop-tarot', 'Arcanes', 'Cartes de tarot, or et nuit.', '#120a18', '#e8c35a', '#7a5cff', 'Cinzel', 'ornate', 'stars', S(['moon', 'sun', 'star', 'gem'], 22)],
+		['shop-neon-ville', 'Ville néon', 'Rues de nuit et enseignes.', '#08060f', '#ff2bd6', '#00f0ff', 'Audiowide', 'neon', 'warp', S(['bolt', 'note', 'star'], 23)],
+		// Monstres de poche
+		['shop-boite-pc', 'Boîte de stockage', 'Grille de boîtes et papier peint.', '#0e2a1e', '#4ee38a', '#ffd84d', 'Silkscreen', 'bubble', 'sparks', S(['gem', 'heart', 'star'], 24)],
+		['shop-sac-dresseur', 'Sac de dresseur', 'Poches colorées et fermetures éclair.', '#1d0c0c', '#ff4d4d', '#ffe15a', 'Fredoka', 'bubble', 'sparks', S(['star', 'gem', 'heart'], 25)],
+		['shop-badge-feu', 'Badge feu', 'Flammes et volcan.', '#1f0700', '#ff6a00', '#ffd23a', 'Russo One', 'bubble', 'sparks', S(['sun', 'mountain', 'bolt'], 26)],
+		['shop-badge-eau', 'Badge eau', 'Vagues et bulles.', '#021a33', '#2aa6ff', '#9fe8ff', 'Fredoka', 'bubble', 'petals', S(['wave', 'moon', 'gem'], 27)],
+		['shop-badge-plante', 'Badge plante', 'Feuilles et pollen.', '#081a07', '#5fd35a', '#f2f27a', 'Fredoka', 'bubble', 'petals', S(['flower', 'flower', 'sun'], 28)],
+		['shop-badge-foudre', 'Badge foudre', 'Éclairs et jaune électrique.', '#141100', '#ffe11f', '#5ad1ff', 'Russo One', 'neon', 'sparks', S(['bolt', 'bolt', 'star'], 29)],
+		['shop-encyclo', 'Encyclopédie rouge', 'Appareil rouge et écran bleu.', '#2a0508', '#ff3346', '#58d7ff', 'Silkscreen', 'neon', 'stars', S(['gem', 'star', 'moon'], 30)],
+		['shop-poche-verte', 'Écran de poche', 'Quatre verts, comme une vieille console de poche.', '#0f380f', '#9bbc0f', '#8bac0f', 'Silkscreen', 'bubble', 'stars', S(['heart', 'star', 'sun'], 31)],
+		// Exploration spatiale
+		['shop-visiere', 'Visière de combat', 'HUD orange et verre teinté.', '#0a0c10', '#ff8a1f', '#43e6ff', 'Orbitron', 'neon', 'warp', S(['bolt', 'gem', 'star'], 32)],
+		['shop-carte-orange', 'Carte des cavernes', 'Plan quadrillé orange et bleu.', '#070d1c', '#ff9b38', '#3a7bff', 'Orbitron', 'neon', 'stars', S(['mountain', 'gem', 'star'], 33)],
+		['shop-armure', 'Armure variable', 'Rouge, or et vert.', '#120606', '#ff4a2a', '#7cff6b', 'Orbitron', 'neon', 'sparks', S(['crown', 'bolt', 'gem'], 34)],
+		['shop-lave-sous', 'Lave souterraine', 'Roche et magma.', '#160502', '#ff3c00', '#ffb000', 'Orbitron', 'ornate', 'sparks', S(['mountain', 'bolt', 'sun'], 35)],
+		['shop-cristaux', 'Cristaux bleus', 'Minerai radioactif et brume.', '#030d18', '#36c8ff', '#b06bff', 'Orbitron', 'neon', 'stars', S(['gem', 'gem', 'moon'], 36)],
+		['shop-scan', 'Journal de scan', 'Lignes de données vertes.', '#020f08', '#3dff8f', '#c3ff5e', 'Silkscreen', 'neon', 'warp', S(['note', 'bolt', 'star'], 37)],
+		// Autres classiques
+		['shop-fenetre-bleue', 'Fenêtre bleue', 'Le dégradé bleu des menus de RPG d’antan.', '#000c4a', '#ffffff', '#7fa8ff', 'Silkscreen', 'ornate', 'stars', S(['star', 'crown', 'moon'], 38)],
+		['shop-forge', 'Atelier forge', 'Enclume, braises et métal.', '#120c08', '#ff7b2f', '#c9d1d9', 'Cinzel', 'ornate', 'sparks', S(['bolt', 'mountain', 'crown'], 39)],
+		['shop-tresor', 'Carte au trésor', 'Bois flotté et or.', '#1a1006', '#ffc93c', '#2ec4b6', 'Cinzel', 'ornate', 'sparks', S(['gem', 'sun', 'wave'], 40)],
+		['shop-sablier', 'Sablier du temps', 'Sable doré et bleu nuit.', '#081028', '#f2c14e', '#6fa8ff', 'Cinzel', 'ornate', 'stars', S(['moon', 'star', 'sun'], 41)],
+		['shop-grimoire', 'Grimoire', 'Pages violettes et runes.', '#12081c', '#b26bff', '#4dffd2', 'Cinzel', 'ornate', 'petals', S(['moon', 'gem', 'star'], 42)],
+		['shop-cuisine', 'Cuisine du village', 'Tons chauds et carreaux.', '#fff4e3', '#e8642c', '#3a9d5d', 'Fredoka', 'bubble', 'petals', S(['sun', 'heart', 'flower'], 43), true],
+		['shop-rythme', 'Boîte à rythmes', 'Pads lumineux et basses.', '#0a0612', '#ff3dbb', '#ffe23d', 'Audiowide', 'neon', 'warp', S(['note', 'note', 'bolt'], 44)],
+		['shop-givre', 'Royaume de givre', 'Glace et aurore.', '#04131f', '#9fe9ff', '#d1b3ff', 'Cinzel', 'ornate', 'stars', S(['mountain', 'moon', 'star'], 45)],
+	].map(([id, label, tagline, bg, accent, accent2, font, icons, particles, scene, light = false]) => ({ id, label, game: label, console: 'Boutique', tagline, bg, accent, accent2, font, icons, particles, scene, keywords: '', light, shop: true }));
+	const byId = Object.fromEntries([...THEMES, ...SUPPORTER, ...SHOP].map(t => [t.id, t]));
 
 	// Anciens identifiants (première version à 105 thèmes) → thème le plus proche.
 	const ALIASES = {
@@ -231,7 +288,7 @@
 	};
 
 	const baseCss = () => Object.entries(BASE_FONTS).map(([id, f]) => `${id === 'smash' ? ':root, ' : ''}:root[data-theme="${id}"] {--font-display:${fontStack(f)};}`).join('\n');
-	const css = () => `${baseCss()}\n${[...THEMES, ...SUPPORTER].map(t => `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([k, v]) => `${k}:${v};`).join('')}}`).join('\n')}`;
+	const css = () => `${baseCss()}\n${[...THEMES, ...SUPPORTER, ...SHOP].map(t => `:root[data-theme="${t.id}"] {${Object.entries(vars(t)).map(([k, v]) => `${k}:${v};`).join('')}}`).join('\n')}`;
 
 	// ---------- Illustration ----------
 
@@ -365,7 +422,7 @@
 	};
 
 	const api = {
-		THEMES, SUPPORTER, CUSTOM, FONTS, ICON_STYLES, setImageUrl, PARTICLE_TYPES: Object.keys(PARTICLES), register, unregister, normalize, exportCode, importCode,
+		THEMES, SUPPORTER, SHOP, CUSTOM, FONTS, ICON_STYLES, setImageUrl, PARTICLE_TYPES: Object.keys(PARTICLES), register, unregister, normalize, exportCode, importCode,
 		css, match, vars, scene, emblem, decor, resolve, BASE_FONTS, MOTIFS: Object.keys(M),
 		get: id => byId[resolve(id)] || null,
 		fontOf: id => (byId[resolve(id)] ? byId[resolve(id)].font : BASE_FONTS[id] || 'Inter'),

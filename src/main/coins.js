@@ -30,7 +30,11 @@ const CATALOG = [
 	{ id: 'title-champion', kind: 'title', name: 'Titre « Champion »', price: 400, desc: 'Affiché sous ton nom.', look: 'linear-gradient(135deg,#3e2723,#ffb300)', text: 'Champion' },
 	{ id: 'title-legend', kind: 'title', name: 'Titre « Légende »', price: 1000, desc: 'Le plus rare.', look: 'linear-gradient(135deg,#1a0033,#ff00c8,#00e5ff)', text: 'Légende' },
 ];
-const KINDS = { home: 'Accueils', mascot: 'Mascotte', frame: 'Cadres', select: 'Effets', sound: 'Sons', title: 'Titres' };
+// Thèmes de la Boutique (couleurs, police, décor) : définis avec les autres thèmes dans game-themes.js.
+for (const t of require('../renderer/game-themes.js').SHOP) {
+	CATALOG.push({ id: `theme-${t.id}`, kind: 'theme', name: t.label, price: 200, desc: t.tagline, look: `linear-gradient(135deg, ${t.bg} 0%, ${t.bg} 35%, ${t.accent} 75%, ${t.accent2} 100%)`, theme: t.id });
+}
+const KINDS = { theme: 'Thèmes', home: 'Accueils', mascot: 'Mascotte', frame: 'Cadres', select: 'Effets', sound: 'Sons', title: 'Titres' };
 
 // Gains : une victoire rapporte le plus ; finir une course perdue compte aussi.
 const REWARDS = { raceWin: 100, raceFinish: 25, personalBest: 30 };
@@ -80,6 +84,7 @@ const equip = (kind, id) => {
 	c.equipped = { ...c.equipped, [kind]: id || null };
 	save(c);
 	if (kind === 'home') store.setSettings({ consoleLayout: id ? id.slice(5) : 'row' });
+	if (kind === 'theme') store.setSettings({ theme: id ? CATALOG.find(i => i.id === id).theme : 'smash' });
 	notify('coins:update', state());
 	return state();
 };
