@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('smashExt', {
 	config: () => call('ext:config'),
 	key: (name, arg) => call('ext:key', name, arg),
 	openNative: () => call('ext:openNative'),
+	controls: () => call('ext:controls'),
+	onControlsDone: fn => ipcRenderer.on('ext:controlsDone', (_e, v) => fn(v)),
 	side: px => call('ext:side', px),
 	padKey: (key, down) => call('ext:padKey', key, down),
 	remotePrepare: kind => call('ext:remotePrepare', kind),

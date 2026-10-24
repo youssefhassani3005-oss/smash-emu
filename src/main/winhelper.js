@@ -56,6 +56,7 @@ module.exports = {
 	embed: (child, parent, x, y, w, h) => send('embed', child, parent, x, y, w, h),
 	move: (child, x, y, w, h) => send('move', child, x, y, w, h),
 	hide: h => send('hide', h),
+	showMain: async (pid, except) => Number(await send('showmain', pid, except || 0)),
 	focus: h => send('focus', h),
 	keys: spec => send('keys', spec),
 	shot: (h, file, width = 0) => send('shot', h, file, width),

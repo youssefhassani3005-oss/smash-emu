@@ -72,6 +72,24 @@ public static class SmashWin {
 	// Au premier plan des enfants (au-dessus de la surface de rendu de Chromium), puis repositionnée.
 	public static void Move(long child, int x, int y, int w, int h) { SetWindowPos(new IntPtr(child), IntPtr.Zero, x, y, w, h, 0x0040 | 0x0020); }
 	public static void Hide(long h) { ShowWindow(new IntPtr(h), 0); }
+	// Fenêtre principale cachée d'un émulateur (menus, réglages), sauf la fenêtre de jeu incrustée : réaffichée devant.
+	public static long ShowMain(uint pid, long except) {
+		IntPtr best = IntPtr.Zero; long area = 0;
+		EnumWindows((h, p) => {
+			uint wp; GetWindowThreadProcessId(h, out wp);
+			if (wp != pid || h.ToInt64() == except || GetWindow(h, 4) != IntPtr.Zero) return true;
+			var sb = new StringBuilder(512); GetWindowText(h, sb, 512);
+			if (sb.ToString().IndexOf('|') < 0) return true;
+			RECT r; GetWindowRect(h, out r);
+			long a = (long)(r.R - r.L) * (r.B - r.T);
+			if (a > area) { area = a; best = h; }
+			return true;
+		}, IntPtr.Zero);
+		if (best == IntPtr.Zero) return 0;
+		ShowWindow(best, 9);
+		SetForegroundWindow(best);
+		return best.ToInt64();
+	}
 	public static void Focus(long h) { SetForegroundWindow(new IntPtr(h)); }
 	public static string Title(long h) { var sb = new StringBuilder(512); GetWindowText(new IntPtr(h), sb, 512); return sb.ToString().Replace((char)10, (char)32).Replace((char)9, (char)32); }
 	// Fenêtre principale au premier plan (la fenêtre Smash Emu même quand le jeu incrusté a le focus).
@@ -141,6 +159,7 @@ while ($true) {
 			'embed' { [SmashWin]::Embed([int64]$a[1], [int64]$a[2], [int]$a[3], [int]$a[4], [int]$a[5], [int]$a[6]); 'ok' }
 			'move' { [SmashWin]::Move([int64]$a[1], [int]$a[2], [int]$a[3], [int]$a[4], [int]$a[5]); 'ok' }
 			'hide' { [SmashWin]::Hide([int64]$a[1]); 'ok' }
+			'showmain' { [SmashWin]::ShowMain([uint32]$a[1], [int64]$a[2]) }
 			'focus' { [SmashWin]::Focus([int64]$a[1]); 'ok' }
 			'keys' { [SmashWin]::Keys($a[1]); 'ok' }
 			'shot' { [SmashWin]::Shot([int64]$a[1], $a[2], [int]$(if ($a.Length -gt 3) { $a[3] } else { 0 })); 'ok' }

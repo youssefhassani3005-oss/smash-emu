@@ -193,7 +193,12 @@ const openExternalHost = (id, plan) => {
 	const hotkeys = { 'CommandOrControl+J': 'remote', 'CommandOrControl+P': 'panel', F11: 'fullscreen', 'CommandOrControl+M': 'immersive', 'CommandOrControl+Shift+S': 'screenshot' };
 	const bind = () => { for (const [k, name] of Object.entries(hotkeys)) { try { globalShortcut.register(k, () => send(h, 'ext:hotkey', name)); } catch { /* raccourci pris */ } } };
 	const unbind = () => { for (const k of Object.keys(hotkeys)) { try { globalShortcut.unregister(k); } catch { /* ignoré */ } } };
-	win.on('focus', () => { bind(); send(h, 'ext:front', true); });
+	win.on('focus', () => {
+		bind();
+		send(h, 'ext:front', true);
+		// Retour à Smash Emu après les réglages des manettes : la fenêtre de l'émulateur se recache.
+		if (h.mainShown) { winhelper.hide(h.mainShown).catch(() => {}); h.mainShown = null; send(h, 'ext:controlsDone', true); }
+	});
 	win.on('blur', () => { unbind(); send(h, 'ext:front', false); });
 	win.on('minimize', () => send(h, 'ext:front', false));
 	bind();
@@ -357,6 +362,15 @@ const ACTIONS = {
 	},
 	key: (h, name, arg) => press(h, name, arg),
 	openNative: (h) => openNative(h),
+	// Manettes : réglages de l'émulateur ouverts devant le jeu (Citron et Eden : leur fenêtre principale, cachée
+	// pendant la partie, réapparaît) ; elle se recache quand on revient à la fenêtre Smash Emu.
+	controls: async (h) => {
+		if (!(emulators.EXTERNAL[h.plan.emulator] || {}).hideMain || !h.proc) { openNative(h); return 'native'; }
+		const hwnd = await winhelper.showMain(h.proc.pid, h.child);
+		if (!hwnd) throw new Error('Fenêtre de réglages introuvable.');
+		h.mainShown = hwnd;
+		return 'shown';
+	},
 	// Jeu à distance : place du panneau, touches du joueur 2, préparation de sa manette dans Dolphin.
 	side: (h, px) => { h.side = Math.max(0, Math.min(600, Number(px) || 0)); layout(h); },
 	padKey: (h, key, down) => {

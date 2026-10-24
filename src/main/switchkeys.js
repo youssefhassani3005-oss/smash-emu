@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 const { shell } = require('electron');
 const emulators = require('./emulators');
 
-const APPDATA = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+const appData = () => process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
 
 // Dossier « system » de Ryujinx : version portable à côté de l'exécutable, sinon %APPDATA%\Ryujinx.
 const systemDir = () => {
@@ -16,7 +16,7 @@ const systemDir = () => {
 		const portable = path.join(path.dirname(exe), 'portable');
 		if (fs.existsSync(portable)) return path.join(portable, 'system');
 	}
-	return path.join(APPDATA, 'Ryujinx', 'system');
+	return path.join(appData(), 'Ryujinx', 'system');
 };
 
 // Émulateurs de la famille yuzu (Citron, Eden) : même organisation des clés, du firmware et de la configuration.
@@ -25,7 +25,7 @@ const YUZU = ['citron', 'eden'];
 const yuzuUserDir = (id) => {
 	const exe = emulators.pathFor(id);
 	if (exe && fs.existsSync(path.join(path.dirname(exe), 'user'))) return path.join(path.dirname(exe), 'user');
-	return path.join(APPDATA, id);
+	return path.join(appData(), id);
 };
 const yuzuKeysDir = id => path.join(yuzuUserDir(id), 'keys');
 // Citron est fourni avec Smash Emu : ses dossiers servent même s'il n'a pas encore été lancé.
@@ -144,6 +144,18 @@ const yuzuMemory = (id) => {
 	return `Mémoire émulée remise à 4 Go (comme une vraie Switch) : le réglage de ${[4, 6, 8, 10, 12][mode] || 8} Go demande trop de RAM sur ce PC et faisait planter les jeux.`;
 };
 
+// Manette réglée en joueur 1 (manette Pro) : mode TV, comme une Switch posée sur sa station. En mode portable,
+// l'émulateur attend les Joy-Con fixés et beaucoup de jeux ignorent alors la manette.
+const yuzuDocked = (id) => {
+	const file = path.join(yuzuUserDir(id), 'config', 'qt-config.ini');
+	let text = '';
+	try { text = fs.readFileSync(file, 'utf8'); } catch { return false; }
+	const pad = /^player_0_type=0$/m.test(text) && /^player_0_button_a="engine:sdl/m.test(text);
+	if (!pad || /^use_docked_mode=1$/m.test(text)) return false;
+	setQtIni(file, 'System', { use_docked_mode: 1 });
+	return true;
+};
+
 const openFolder = () => { const dir = systemDir(); fs.mkdirSync(dir, { recursive: true }); return shell.openPath(dir); };
 
 // Ouvre un émulateur Switch normalement (pour installer le firmware : Outils → Installer le firmware).
@@ -153,4 +165,4 @@ const openEmulator = () => {
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
-module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, keyFiles, setQtIni };
+module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, keyFiles, setQtIni };

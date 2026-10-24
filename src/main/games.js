@@ -347,6 +347,7 @@ const prepareYuzu = (engine, file, embed) => {
 	try { switchkeys.yuzuWindowMode(engine, embed); } catch { /* configuration illisible : celle de l'émulateur s'applique */ }
 	let memory = null;
 	try { memory = switchkeys.yuzuMemory(engine); } catch { /* réglage laissé tel quel */ }
+	try { switchkeys.yuzuDocked(engine); } catch { /* réglage laissé tel quel */ }
 	let info = null;
 	try { info = switchgame.prepare(file, { userDir: switchkeys.yuzuUserDir(engine), keyFiles: switchkeys.keyFiles(), unpack: engine === 'citron' }); } catch { /* jeu illisible : l'émulateur le dira */ }
 	return [info ? switchgame.notice(info, engine, !!emulators.pathFor('eden')) : null, memory].filter(Boolean).join(' ') || null;

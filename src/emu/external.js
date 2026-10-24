@@ -215,6 +215,13 @@ const ACTIONS = {
 		t.querySelector('a').onclick = () => smashExt.showPath(file);
 	},
 	panel: () => (st.panel ? closePanel() : openPanel()),
+	// Manettes : réglages de l'émulateur ouverts devant le jeu, en un clic.
+	controls: async () => {
+		const r = await smashExt.controls();
+		toast(r === 'shown'
+			? `${st.cfg.emulator} est ouvert : menu <b>Émulation → Configurer → Contrôles</b>. Reviens dans Smash Emu quand c’est fait, sa fenêtre se recache.`
+			: `${st.cfg.emulator} est ouvert à part : règle tes manettes (menu Contrôles), ferme-le, puis relance le jeu.`);
+	},
 	minimize: () => smashExt.window('minimize'),
 	fullscreen: () => smashExt.window('fullscreen'),
 	close: () => smashExt.window('close'),
@@ -224,8 +231,9 @@ document.addEventListener('click', async (e) => {
 	const el = e.target.closest('.bar [data-action]');
 	if (!el) return;
 	try { await ACTIONS[el.dataset.action](); } catch (err) { toast(err.message, true); }
-	if (!['close', 'minimize', 'panel', 'remote'].includes(el.dataset.action)) backToGame();
+	if (!['close', 'minimize', 'panel', 'remote', 'controls'].includes(el.dataset.action)) backToGame();
 });
+smashExt.onControlsDone(() => { toast('Manettes enregistrées'); backToGame(); });
 
 window.addEventListener('keydown', (e) => {
 	if (e.key === 'F11') { e.preventDefault(); ACTIONS.fullscreen(); }

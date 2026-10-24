@@ -87,6 +87,21 @@ test('Switch : avertissement pour les jeux trop récents', () => {
 	assert.deepStrictEqual(switchgame.prepare(path.join(HOME, 'homebrew.nro'), { userDir: HOME, keyFiles: [] }), { zbic: false });
 });
 
+test('Citron, Eden : mode TV et mémoire de 4 Go réglés automatiquement', () => {
+	const dir = path.join(HOME, 'AppData', 'Roaming', 'eden', 'config');
+	process.env.APPDATA = path.join(HOME, 'AppData', 'Roaming');
+	fs.mkdirSync(dir, { recursive: true });
+	const ini = path.join(dir, 'qt-config.ini');
+	fs.writeFileSync(ini, '[Controls]\nplayer_0_type=0\nplayer_0_button_a="engine:sdl,button:0,port:0"\n[Core]\nmemory_layout_mode\\default=false\nmemory_layout_mode=2\n[System]\nuse_docked_mode\\default=false\nuse_docked_mode=0\n');
+	const sk = require('../src/main/switchkeys');
+	if (sk.yuzuUserDir('eden') !== path.dirname(dir)) return; // dossier de l'émulateur détecté ailleurs sur ce PC
+	assert.strictEqual(sk.yuzuDocked('eden'), true);
+	assert.match(fs.readFileSync(ini, 'utf8'), /^use_docked_mode=1$/m);
+	assert.strictEqual(sk.yuzuDocked('eden'), false);
+	const msg = sk.yuzuMemory('eden');
+	if (require('os').totalmem() < 24 * 1024 ** 3) { assert.match(msg, /4 Go/); assert.match(fs.readFileSync(ini, 'utf8'), /^memory_layout_mode=0$/m); }
+});
+
 test('Citron, Eden : réglage Qt écrit avec sa clé « default »', () => {
 	const ini = path.join(HOME, 'qt-config.ini');
 	fs.writeFileSync(ini, '[Renderer]\r\nbackend=1\r\n[UI]\r\nsingleWindowMode\\default=true\r\nsingleWindowMode=true\r\nfullscreen=false\r\n[WebService]\r\nx=1\r\n');

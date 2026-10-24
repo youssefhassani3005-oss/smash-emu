@@ -378,6 +378,9 @@ const chStartPad = () => {
 	const prev = {};
 	const step = () => {
 		if (!$('#ch')) { CH.loop = false; return; }
+		// Pendant une partie ou fenêtre en arrière-plan : la manette n'est pas lue (Chromium et l'émulateur se la
+		// disputeraient : une DualSense se reconnecte alors en boucle dans le jeu).
+		if (state.running.length || !document.hasFocus()) { setTimeout(() => requestAnimationFrame(step), 400); return; }
 		const pad = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find(Boolean);
 		if (pad && document.hasFocus() && !document.querySelector('.modal-layer, .menu')) {
 			const b = n => !!(pad.buttons[n] && pad.buttons[n].pressed);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.7.3
+
+- **Manettes Switch** : bouton **Manettes** dans la barre du jeu ; il ouvre les réglages des commandes de Citron ou
+  d'Eden devant le jeu, et leur fenêtre se recache au retour dans Smash Emu.
+- Manette réglée en joueur 1 : Citron et Eden passent en **mode TV** (en mode portable, beaucoup de jeux ignorent la
+  manette).
+- L'accueil ne lit plus la manette pendant une partie : une DualSense ne se reconnecte plus en boucle dans le jeu.
+
 ## 2.7.2
 
 - **Mods GameBanana** : nouvelle page Mods (barre d'icônes). Choisis un de tes jeux, Smash Emu trouve le jeu sur
