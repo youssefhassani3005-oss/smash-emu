@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.1
+
+- **Un seul fichier, installateur ou mise à jour** : si Smash Emu est déjà installé, Smash-Emu-Setup propose une mise à jour rapide (sans pages, même dossier, jeux et réglages gardés) puis relance Smash Emu ; sinon, installation complète.
+
 ## 2.8.0
 
 - **Randomizer Switch** (Citron, Eden), dans Menu → Randomizer pendant le jeu : graine (ou au hasard), code à partager
