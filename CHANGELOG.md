@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.9.0
+
+- **Jeu à distance bien plus simple** : un **code de salon** court (ex. K7M-2QX) dans le panneau À distance (Ctrl+J).
+  Ton ami clique sur « Rejoindre un ami », tape le code, et la connexion se fait toute seule : plus de long code à
+  copier dans les deux sens. Encore plus simple : bouton **Inviter** à côté de chaque ami en ligne, il clique sur
+  « Rejoindre » dans la notification.
+- **Moins de lag à distance** : image encodée à 1280 px au plus en « Équilibré », image nette dès le départ,
+  affichage immédiat chez l'invité, clavier de l'invité sur le canal rapide, image Switch envoyée dès qu'elle est
+  dessinée.
+- **Courses de speedrun entre amis** : bouton **Défier** sur la page Amis, même jeu chez les deux, Ctrl+Espace quand
+  tu es prêt, 3-2-1, et le plus rapide gagne des **pièces**.
+- **Fin détectée toute seule** : dans le panneau Speedrun, « Utiliser l'image actuelle » sur l'écran de fin ; le chrono
+  s'arrête quand le jeu le réaffiche.
+- **Pièces et Boutique** : +100 par victoire, +25 si tu finis la course, +30 par record battu. La Boutique propose 5
+  accueils (Tableau de bord, Vague, Cosmos, Manoir, Mallette), des mascottes, cadres, effets, sons et titres.
+- **Centre de notifications** (cloche) : invitations, courses, pièces gagnées.
+
 ## 2.8.1
 
 - **Un seul fichier, installateur ou mise à jour** : si Smash Emu est déjà installé, Smash-Emu-Setup propose une mise à jour rapide (sans pages, même dossier, jeux et réglages gardés) puis relance Smash Emu ; sinon, installation complète.

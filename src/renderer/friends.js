@@ -25,7 +25,8 @@ const frCard = (f) => {
 	return `<div class="fr-card ${f.status}">
 		<div class="fr-head">
 			<div class="fr-av" style="--c:${colorFor(f.code)}">${letter}<i class="fr-dot ${f.status}"></i></div>
-			<div class="grow"><b class="fr-name">${esc(f.name)}</b>${frStatus(f)}</div>
+			<div class="grow"><b class="fr-name">${esc(f.name)}</b>${f.title ? `<span class="fr-title">${esc(f.title)}</span>` : ''}${frStatus(f)}</div>
+			<button class="btn sm primary" data-action="race-challenge" data-code="${esc(f.code)}" data-name="${esc(f.name)}" data-tip="Course de speedrun sur un même jeu : le plus rapide gagne des pièces">${icon('timer')}Défier</button>
 			<button class="icon-btn" data-action="fr-menu" data-code="${esc(f.code)}" data-tip="Options">${icon('ellipsis-vertical')}</button>
 		</div>
 		${f.status === 'playing' && f.game ? `<div class="fr-now">${icon('gamepad-2')}<div><b>${esc(f.game.n)}</b><small>${esc(f.game.s)} · depuis ${frSince(f.game.t)}</small></div></div>` : ''}
@@ -115,6 +116,8 @@ window.launcher.on('friends:update', (st) => {
 window.launcher.on('friends:event', (e) => {
 	if (e.type === 'request') toast(`👋 <b>${esc(e.name)}</b> veut devenir ton ami.`, { type: 'info', timeout: 12000, actions: [{ label: 'Accepter', run: () => ACTIONS['fr-accept']({ dataset: { code: e.code } }) }, { label: 'Voir', run: () => ACTIONS.nav({ dataset: { to: 'friends' } }) }] });
 	if (e.type === 'online') toast(`🟢 <b>${esc(e.name)}</b> est en ligne.`, { type: 'info' });
+	// Invitation à jouer à distance : un clic ouvre la partie de l'ami, sans code à recopier.
+	if (e.type === 'play') toast(`🎮 <b>${esc(e.name)}</b> t’invite à jouer${e.game ? ` à <b>${esc(e.game)}</b>` : ''} !`, { type: 'info', timeout: 60000, actions: [{ label: 'Rejoindre', run: () => api('remote:join', e.room).catch(toastError) }] });
 	if (e.type === 'playing') toast(`🎮 <b>${esc(e.name)}</b> joue à <b>${esc(e.game)}</b>${e.system ? ` (${esc(e.system)})` : ''}.`, { type: 'info', timeout: 7000 });
 });
 

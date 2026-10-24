@@ -8,7 +8,13 @@ const call = async (channel, ...args) => {
 
 contextBridge.exposeInMainWorld('smashEmu', {
 	config: () => call('emu:config'),
+	room: { create: () => call('room:create'), open: code => call('room:open', code), post: (code, m) => call('room:post', code, m), close: code => call('room:close', code), friends: () => call('room:friends'), inviteFriend: (f, code, game) => call('room:inviteFriend', f, code, game), onMessage: fn => ipcRenderer.on('room:msg', (_e, v) => fn(v)) },
 	listStates: () => call('emu:listStates'),
+	raceGet: () => call('emu:raceGet'),
+	raceReady: () => call('emu:raceReady'),
+	raceFinish: ms => call('emu:raceFinish', ms),
+	raceForfeit: () => call('emu:raceForfeit'),
+	onRace: fn => ipcRenderer.on('game:race', (_e, v) => fn(v)),
 	speedrunGet: () => call('emu:speedrunGet'),
 	speedrunSave: data => call('emu:speedrunSave', data),
 	controls: () => call('emu:controls'),

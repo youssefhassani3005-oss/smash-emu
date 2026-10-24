@@ -8,6 +8,7 @@ const call = async (channel, ...args) => {
 
 contextBridge.exposeInMainWorld('smashExt', {
 	config: () => call('ext:config'),
+	room: { create: () => call('room:create'), open: code => call('room:open', code), post: (code, m) => call('room:post', code, m), close: code => call('room:close', code), friends: () => call('room:friends'), inviteFriend: (f, code, game) => call('room:inviteFriend', f, code, game), onMessage: fn => ipcRenderer.on('room:msg', (_e, v) => fn(v)) },
 	key: (name, arg) => call('ext:key', name, arg),
 	openNative: () => call('ext:openNative'),
 	controls: () => call('ext:controls'),
@@ -36,6 +37,12 @@ contextBridge.exposeInMainWorld('smashExt', {
 	randoRemoveMod: name => call('ext:randoRemoveMod', name),
 	randoImportProfile: () => call('ext:randoImportProfile'),
 	randoProfiles: () => call('ext:randoProfiles'),
+	raceGet: () => call('ext:raceGet'),
+	raceReady: () => call('ext:raceReady'),
+	raceFinish: ms => call('ext:raceFinish', ms),
+	raceForfeit: () => call('ext:raceForfeit'),
+	onRace: fn => ipcRenderer.on('game:race', (_e, v) => fn(v)),
+	frameSig: () => call('ext:frameSig'),
 	speedrunGet: () => call('ext:speedrunGet'),
 	speedrunSave: data => call('ext:speedrunSave', data),
 	speedrunKeys: on => call('ext:speedrunKeys', on),

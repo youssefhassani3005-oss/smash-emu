@@ -80,7 +80,7 @@ const save = patch => store.setSettings({ friends: { ...cfg(), ...patch } });
 const mySecret = () => { const s = cfg().secret; return s ? Buffer.from(s, 'base64') : null; };
 const myName = () => String(store.getSettings().playerName || '').trim().slice(0, 32) || 'Joueur Smash Emu';
 
-let hooks = { send: () => {}, current: () => null, version: '' };
+let hooks = { send: () => {}, current: () => null, version: '', race: () => {}, title: () => null };
 const emit = () => hooks.send('friends:update', state());
 const event = e => hooks.send('friends:event', e);
 
@@ -112,7 +112,7 @@ const presence = (status) => {
 	const game = c.showGame ? hooks.current() : null;
 	let st = status;
 	if (!st) { try { st = powerMonitor.getSystemIdleTime() > 15 * 60 && !game ? 'away' : 'on'; } catch { st = 'on'; } }
-	return { v: 1, n: myName(), st, g: game ? { n: short(game.name), s: short(game.system), t: game.since } : null, s: c.shareStats ? summary() : null, at: Date.now(), app: hooks.version };
+	return { v: 1, n: myName(), ti: hooks.title() || undefined, st, g: game ? { n: short(game.name), s: short(game.system), t: game.since } : null, s: c.shareStats ? summary() : null, at: Date.now(), app: hooks.version };
 };
 
 const post = async (topic, body) => {
@@ -167,6 +167,20 @@ const onPresence = (friend, p, fresh) => {
 };
 
 const onInbox = (msg, fresh) => {
+	// Course de speedrun : seulement d'un ami de la liste, et seulement les messages récents.
+	if (msg && msg.t === 'race') {
+		const from = normalize(msg.c);
+		const f = from && cfg().list.find(x => x.code === from);
+		if (f && fresh) hooks.race(msg, { code: f.code, name: short((friendsState[f.code] || {}).n || f.name) || 'Ami' });
+		return;
+	}
+	// Invitation à jouer à distance : code du salon de l'hôte, d'un ami de la liste.
+	if (msg && msg.t === 'play') {
+		const from = normalize(msg.c);
+		const f = from && cfg().list.find(x => x.code === from);
+		if (f && fresh && /^[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(String(msg.room))) event({ type: 'play', name: short((friendsState[f.code] || {}).n || f.name) || 'Ami', game: short(msg.game), room: msg.room });
+		return;
+	}
 	if (!msg || msg.t !== 'req') return;
 	const code = normalize(msg.c);
 	const c = cfg();
@@ -251,7 +265,7 @@ const state = () => {
 		connected, relay: 'ntfy.sh',
 		friends: c.list.map((f) => {
 			const p = friendsState[f.code] || f.last || null;
-			return { code: f.code, name: (p && p.n) || f.name || 'Ami', status: statusOf(p), game: p && p.g ? p.g : null, seen: p ? p.at : null, stats: p ? p.s : null, app: p ? p.app : null, addedAt: f.addedAt };
+			return { code: f.code, name: (p && p.n) || f.name || 'Ami', title: p && p.ti ? short(p.ti) : null, status: statusOf(p), game: p && p.g ? p.g : null, seen: p ? p.at : null, stats: p ? p.s : null, app: p ? p.app : null, addedAt: f.addedAt };
 		}),
 		requests: c.requests,
 	};
@@ -323,6 +337,15 @@ const init = (h) => {
 	setInterval(() => { if (cfg().on && Date.now() - lastSent > HEARTBEAT - 30000) publishNow().catch(() => {}); }, 60000);
 };
 
+// Message chiffré dans la boîte aux lettres d'un ami (courses de speedrun).
+const sendTo = async (code, obj) => {
+	const secret = secretOf(code);
+	if (!cfg().on || !mySecret()) throw new Error('Active d’abord les amis.');
+	if (!secret || !cfg().list.some(f => f.code === code)) throw new Error('Cet ami n’est pas dans ta liste.');
+	const ch = channels(secret);
+	await post(ch.inbox, seal(ch.key, { ...obj, c: myCode(), n: myName(), at: Date.now() }));
+};
+
 // À la fermeture de Smash Emu : « hors ligne » (2 s au plus).
 const goOffline = async () => {
 	if (!cfg().on) return;
@@ -332,4 +355,4 @@ const goOffline = async () => {
 	await Promise.race([post(ch.topic, seal(ch.key, presence('off'))), new Promise(r => setTimeout(r, 2000))]).catch(() => {});
 };
 
-module.exports = { init, state, enable, setOptions, add, remove, accept: add, decline, regenerate, publish, goOffline, codeOf, secretOf, normalize, channels, seal, unseal, statusOf };
+module.exports = { init, state, enable, setOptions, add, remove, accept: add, decline, regenerate, publish, goOffline, sendTo, codeOf, secretOf, normalize, channels, seal, unseal, statusOf };

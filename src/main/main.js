@@ -36,6 +36,9 @@ const emuinstall = require('./emuinstall');
 const saves = require('./saves');
 const friends = require('./friends');
 const census = require('./census');
+const coins = require('./coins');
+const race = require('./race');
+const notifications = require('./notifications');
 emu.registerScheme();
 Menu.setApplicationMenu(null);
 const games = require('./games');
@@ -284,6 +287,24 @@ const handlers = {
 	'friends:decline': code => friends.decline(code),
 	'friends:remove': code => friends.remove(code),
 	'friends:regenerate': () => friends.regenerate(),
+	// Pièces et Boutique.
+	'coins:state': () => coins.state(),
+	'coins:buy': id => coins.buy(id),
+	'coins:equip': (kind, id) => coins.equip(kind, id),
+	// Courses de speedrun entre amis.
+	'race:list': () => race.list(),
+	'race:invite': (code, instanceId) => {
+		const f = friends.state().friends.find(x => x.code === code);
+		if (!f) throw new Error('Cet ami n’est pas dans ta liste.');
+		return race.invite({ code: f.code, name: f.name }, instanceId);
+	},
+	'race:accept': (id, instanceId) => race.accept(id, instanceId),
+	'race:decline': id => race.decline(id),
+	'race:cancel': id => race.cancel(id),
+	// Centre de notifications.
+	'notifications:state': () => notifications.state(),
+	'notifications:read': id => notifications.markRead(id),
+	'notifications:clear': () => notifications.clear(),
 	'census:state': () => census.publicState(),
 	'census:set': on => census.setEnabled(on),
 	'census:summary': () => census.fetchSummary(),
@@ -612,19 +633,40 @@ app.whenReady().then(() => {
 	emu.registerIpc();
 	external.registerIpc();
 	remote.registerIpc();
+	require('./rooms').registerIpc();
 	session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['https://www.youtube-nocookie.com/*', 'https://www.youtube.com/*'] }, (details, cb) => {
 		const headers = { ...details.requestHeaders };
 		if (!headers.Referer) headers.Referer = 'https://smash-emu.app/';
 		cb({ requestHeaders: headers });
 	});
 	createWindow();
-	updater.init(s => send('update:state', s));
+	let updateNoted = null;
+	updater.init((s) => {
+		send('update:state', s);
+		if (s.state === 'available' && s.version && updateNoted !== s.version) { updateNoted = s.version; notifications.push({ kind: 'update', title: `Smash Emu ${s.version} est disponible`, text: 'Téléchargement en arrière-plan, installé à la fermeture.' }); }
+	});
 	const id = playArg();
 	if (id) win.webContents.once('did-finish-load', () => { try { runner.launch(id); } catch (error) { console.error(error.message); } });
 	startOperaWatch();
 	updatePresence();
 	community.get().then(() => updatePresence()).catch(() => {});
-	friends.init({ send, current: currentGame, version: app.getVersion() });
+	notifications.init(send);
+	coins.init((channel, payload) => {
+		send(channel, payload);
+		if (channel === 'coins:earned') notifications.push({ kind: 'coins', title: `+${payload.amount} pièces`, text: payload.reason });
+	});
+	// Course : l'état est aussi envoyé à la fenêtre du jeu concerné (chrono, compte à rebours).
+	race.init({
+		send,
+		sendTo: (code, obj) => friends.sendTo(code, obj),
+		notify: n => notifications.push(n),
+		windows: (id, view) => { const w = id && runner.windowOf(id); if (w) w.webContents.send('game:race', view); },
+	});
+	const friendsSend = (channel, payload) => {
+		send(channel, payload);
+		if (channel === 'friends:event' && payload && payload.type === 'request') notifications.push({ kind: 'friend', title: `${payload.name} veut être ton ami`, text: 'Accepte sa demande dans la page Amis.' });
+	};
+	friends.init({ send: friendsSend, current: currentGame, version: app.getVersion(), race: race.onMessage, title: () => (coins.equipped('title') || {}).text || null });
 	// Carte graphique dédiée (NVIDIA, AMD) : les jeux Switch sont affichés en 2×.
 	app.getGPUInfo('basic').then(i => switchkeys.setGpu(i.gpuDevice)).catch(() => {});
 	census.init({ send, version: app.getVersion(), emulators: () => Object.values(emulators.status()).filter(e => e.path).map(e => e.id) });

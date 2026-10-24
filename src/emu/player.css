@@ -508,3 +508,25 @@ body.recording .bar::after { content: '● REC'; position: absolute; right: 230p
 .srp-runs li { display: flex; justify-content: space-between; gap: 10px; color: #a9a9b0; }
 .srp-runs b { color: #e8e8ec; font-weight: 700; }
 @media (max-width: 720px) { .srp-cols, .srp-stats { grid-template-columns: 1fr 1fr; } .srp-cols { grid-template-columns: 1fr; } }
+/* Course de speedrun contre un ami et fin automatique. */
+.sr.race { border-color: rgba(var(--brand-rgb), 0.6); box-shadow: 0 0 0 1px rgba(var(--brand-rgb), 0.25), 0 0 18px rgba(var(--brand-rgb), 0.25); }
+.sr-vs { font-size: 11px; font-weight: 800; color: var(--brand); max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.sr-count { font-size: 14px; color: #ffd54f; min-width: 60px; animation: srPop 0.25s ease-out; }
+@keyframes srPop { from { transform: scale(1.6); opacity: 0.3; } }
+.srp-race { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(var(--brand-rgb), 0.14); border: 1px solid rgba(var(--brand-rgb), 0.45); }
+.srp-race b { font-size: 13.5px; }
+.srp-race span { flex: 1; color: #a9a9b0; font-size: 12px; }
+.srp-end { border-top: 1px solid rgba(255, 255, 255, 0.07); padding-top: 10px; }
+/* ---------- Jeu à distance : salon à code court ---------- */
+.rp-room-row { display: flex; align-items: center; gap: 10px; }
+.rp-code-big { flex: 1; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 22px; letter-spacing: 4px; color: var(--brand); background: rgba(var(--brand-rgb), 0.1); border: 1.5px dashed rgba(var(--brand-rgb), 0.5); border-radius: 12px; padding: 14px 8px; cursor: pointer; user-select: all; }
+.rp-code-big.wait { color: #6a6a72; border-color: #2a2a30; background: transparent; cursor: default; }
+.rp-room-acts { display: flex; flex-direction: column; gap: 6px; }
+.rp-friends { display: flex; flex-direction: column; gap: 6px; }
+.rp-friend { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 10px; background: #141417; border: 1px solid #222228; }
+.rp-friend small { color: #8a8a93; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+.rp-friend .rp-dot { background: #4caf50; }
+.rp-friend .rp-dot.away { background: #ffb300; }
+.rp-friend .rp-dot.playing { background: #29b6f6; }
+.rp-legacy { margin-top: 8px; color: #8a8a93; font-size: 12px; }
+.rp-legacy summary { cursor: pointer; margin-bottom: 8px; }
