@@ -178,16 +178,16 @@ const prepare = (file, { userDir, keyFiles, unpack = true }) => {
 			const h = ncaHeader(read, nca.off, keys.header_key);
 			if (!h || h[0x205] !== 0) continue;
 			const sdk = `${h[0x21f]}.${h[0x21e]}.${h[0x21d]}`;
+			const tid = h.readBigUInt64LE(0x210).toString(16).toUpperCase().padStart(16, '0');
 			const key = ncaKey(h, keys, titleKeys);
-			if (!key) return { sdk, zbic: false, reason: 'keys' };
+			if (!key) return { sdk, tid, zbic: false, reason: 'keys' };
 			const exefs = exefsOf(read, nca, h, key);
-			if (!exefs) return { sdk, zbic: false };
+			if (!exefs) return { sdk, tid, zbic: false };
 			const packed = exefs.files.filter(e => !/\.npdm$/i.test(e.name) && e.size > 0x100).filter(e => {
 				const head = exefs.read(e.off, 0x10);
 				return head.toString('latin1', 0, 4) === 'NSO0' && head.readUInt32LE(0xc) & 0x80;
 			});
-			if (!packed.length || !unpack) return { sdk, zbic: packed.length > 0 };
-			const tid = h.readBigUInt64LE(0x210).toString(16).toUpperCase().padStart(16, '0');
+			if (!packed.length || !unpack) return { sdk, tid, zbic: packed.length > 0 };
 			const modDir = path.join(userDir, 'load', tid, MOD_NAME);
 			const stat = fs.statSync(file);
 			const stamp = { format: FORMAT, source: path.basename(file), size: stat.size, mtimeMs: Math.round(stat.mtimeMs), files: packed.map(e => e.name) };

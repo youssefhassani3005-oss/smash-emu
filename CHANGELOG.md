@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.7.2
+
+- **Mods GameBanana** : nouvelle page Mods (barre d'icônes). Choisis un de tes jeux, Smash Emu trouve le jeu sur
+  GameBanana (à confirmer) et affiche ses mods en cartes illustrées : populaires, récents, mieux notés, mis à jour,
+  recherche. Fiche avec images, description et fichiers ; **Installer** en un clic : Switch dans le dossier « load »
+  d'Eden et de Citron (chargé automatiquement), N64 et Coop DX par l'installateur de Smash Emu, autres consoles dans
+  le dossier du jeu. Remplace la recherche Opera dans la barre.
+- Un jeu dont le fichier est encore en cours de copie ou d'extraction n'est plus lancé (message clair).
+
 ## 2.7.1
 
 - **Écran de chargement** pendant le démarrage d'un jeu : mascotte en pixel art qui avance le long de la barre,

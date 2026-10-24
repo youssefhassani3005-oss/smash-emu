@@ -270,6 +270,12 @@ const handlers = {
 		if ('playerName' in patch) friends.publish();
 		return s;
 	},
+	// Mods GameBanana : jeu lié à chaque instance, liste, fiche, installation.
+	'gb:games': q => require('./gamebanana').findGames(q),
+	'gb:link': (id, game) => summarize(store.updateInstance(id, { gbGame: game ? { id: Number(game.id), name: String(game.name || '').slice(0, 120), icon: game.icon || null } : null })),
+	'gb:mods': (gameId, opts) => require('./gamebanana').listMods(gameId, opts),
+	'gb:mod': id => require('./gamebanana').profile(id),
+	'gb:install': (instanceId, modId, fileId) => require('./gamebanana').install(instanceId, modId, fileId, p => send('gb:progress', { modId, ...p })),
 	'friends:state': () => friends.state(),
 	'friends:enable': on => friends.enable(on),
 	'friends:options': o => friends.setOptions(o),

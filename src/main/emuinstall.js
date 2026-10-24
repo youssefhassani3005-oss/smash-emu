@@ -219,4 +219,4 @@ const checkUpdates = async (force = false) => {
 	return result;
 };
 
-module.exports = { install, available, installed, checkUpdates, newer, DIR, SOURCES };
+module.exports = { install, available, installed, checkUpdates, newer, extract, DIR, SOURCES };

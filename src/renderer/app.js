@@ -224,7 +224,7 @@ const CONSOLE_DOCK = [
 	['home', 'house', 'Accueil', '#e60012'], ['roms', 'disc-3', 'Jeux', '#ff8a00'], ['library', 'library', 'Bibliothèque', '#21a85a'],
 	['friends', 'users', 'Amis', '#e5397a'], ['remote', 'wifi', 'À distance', '#1e88e5'], ['trophies', 'trophy', 'Trophées', '#e6a700'],
 	['dashboard', 'gauge', 'Statistiques', '#00a3a3'], ['multiworld', 'shuffle', 'Multiworld', '#8e5be8'], ['controls', 'gamepad-2', 'Manettes', '#5d6672'],
-	['discover', 'compass', 'Mods', '#16a596'], ['settings', 'settings', 'Réglages', '#5d6672'],
+	['mods', 'puzzle', 'Mods', '#16a596'], ['settings', 'settings', 'Réglages', '#5d6672'],
 ];
 const renderConsoleNav = () => {
 	const r = state.route;
@@ -281,6 +281,7 @@ const renderNav = () => {
 		${navBtn('dashboard', 'gauge', 'Tableau de bord')}
 		${navBtn('multiworld', 'shuffle', 'Multiworld')}
 		<div class="nav-group">Mods</div>
+		${navBtn('mods', 'puzzle', 'Mods GameBanana')}
 		${navBtn('discover', 'compass', 'Découvrir')}
 		${navBtn('opera', 'globe', 'Recherche Opera')}
 		${recent.length ? '<div class="nav-group">Récents</div>' : '<div class="nav-sep"></div>'}

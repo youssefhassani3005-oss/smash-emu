@@ -1,7 +1,7 @@
 {
   "name": "smash-emu",
   "productName": "Smash Emu",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "description": "Smash Emu : émulateur N64 intégré (pause, vitesse, sauvegardes d'état), bibliothèque de ROM et launcher de mods (sm64coopdx, ROM hacks), interface inspirée de Modrinth App",
   "main": "src/main/main.js",
   "private": true,

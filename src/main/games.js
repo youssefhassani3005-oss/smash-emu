@@ -303,6 +303,8 @@ const prepareGame = (inst, engine, system) => {
 	if (inst.rom && inst.rom.linked) {
 		file = inst.rom.linked;
 		if (!fs.existsSync(file)) throw new Error(`Image du jeu introuvable : ${file}`);
+		// Fichier encore en cours de copie (téléchargement, extraction) : l'émulateur le lirait incomplet.
+		if (Date.now() - fs.statSync(file).mtimeMs < 15000) throw new Error('Le fichier du jeu est encore en train d’être copié ou extrait : attends que la copie soit finie, puis relance.');
 	} else {
 		const base = inst.rom && inst.rom.ext ? path.join(dir, 'rom', `base.${inst.rom.ext}`) : null;
 		if (!base || !fs.existsSync(base)) throw new Error('Aucun jeu : choisis-en un dans les options de l’instance.');
