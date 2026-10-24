@@ -300,32 +300,62 @@ const MASCOT = `<svg viewBox="0 0 24 18" shape-rendering="crispEdges" aria-hidde
 	<g class="fa"><rect x="5" y="13" width="3" height="3" fill="#2a2a30"/><rect x="16" y="13" width="3" height="2" fill="#2a2a30"/></g>
 	<g class="fb"><rect x="5" y="13" width="3" height="2" fill="#2a2a30"/><rect x="16" y="13" width="3" height="3" fill="#2a2a30"/></g>
 </svg>`;
-const LD_LINES = ['On y va !', 'Je souffle dans la cartouche…', 'Chargement des pixels…', 'J’allume la console…', 'Je réchauffe les textures…', 'Presque prêt !', 'Ça prend un peu de temps… je tiens bon !', 'Encore quelques secondes…'];
+const LD_LINES = ['On y va !', 'Je souffle dans la cartouche…', 'Chargement des pixels…', 'J’allume la console…', 'Je réchauffe les textures…', 'Presque prêt !', 'Encore quelques secondes…', 'Je tiens bon !'];
 const LD_TIPS = ['<b>Ctrl+P</b> ouvre le menu Smash Emu pendant le jeu.', '<b>F11</b> passe en plein écran.', '<b>Ctrl+J</b> invite un ami à jouer à distance.', '<b>Ctrl+Maj+S</b> fait une capture d’écran.', 'Le premier lancement d’un jeu est souvent plus long : l’émulateur prépare ses graphismes.', 'Ton temps de jeu compte pour les trophées.'];
-const loader = { t: null, start: 0, line: 0, tip: 0 };
+const loader = { t: null, start: 0, line: 0, tip: 0, pct: 0, stage: null, stageAt: 0 };
+// Étape suivante de chaque étape réelle (Citron, Eden) : la barre avance vers elle sans la dépasser.
+const LD_NEXT = { 15: 30, 30: 45, 45: 60, 60: 72, 72: 85, 85: 97 };
+const setStage = (s) => {
+	const from = Math.max(loader.pct, s.pct);
+	loader.stage = { ...s, from, to: Math.min(97, Math.max(LD_NEXT[s.pct] || 97, from + 8)) };
+	loader.stageAt = Date.now();
+};
+const bubble = (text) => { const b = $('#ld-bubble'); if (b.textContent === text) return; b.textContent = text; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; };
 const loaderStart = () => {
-	clearInterval(loader.t);
-	loader.start = Date.now();
-	loader.line = 0;
+	if (loader.t) return; // déjà en cours (boîte de dialogue, nouvel état) : la barre ne repart pas de zéro
+	const pending = loader.pending;
+	Object.assign(loader, { start: Date.now(), line: 0, pct: 0, stage: null, pending: null });
+	if (pending) setStage(pending);
 	$('#ld-mascot').innerHTML = MASCOT;
 	$('#ld-scene').classList.remove('hidden');
+	bubble(loader.stage ? `${loader.stage.label}…` : LD_LINES[0]);
 	const step = () => {
-		const s = (Date.now() - loader.start) / 1000;
-		// Avance vite au début puis ralentit, sans jamais atteindre la fin avant l'affichage du jeu.
-		const pct = Math.min(94, 100 * (1 - Math.exp(-s / 14)));
-		$('#loading-progress').style.width = `${Math.max(4, pct)}%`;
-		$('#ld-mascot').style.left = `${Math.max(6, pct)}%`;
-		const line = Math.min(LD_LINES.length - 1, Math.floor(s / 4));
-		if (line !== loader.line) { loader.line = line; const b = $('#ld-bubble'); b.textContent = LD_LINES[line]; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; }
+		const now = Date.now();
+		const s = (now - loader.start) / 1000;
+		let target;
+		if (loader.stage) {
+			// Si la barre est déjà plus loin que l'étape, elle repart d'où elle est vers l'étape suivante.
+			const { from, to } = loader.stage;
+			target = from + (to - from) * (1 - Math.exp(-(now - loader.stageAt) / 3500));
+		} else target = 97 * (1 - Math.exp(-s / 6)); // sans étapes connues : la moitié en 4 s, 80 % en 10 s
+		loader.pct = Math.max(loader.pct, Math.min(97, target));
+		$('#loading-progress').style.width = `${Math.max(4, loader.pct)}%`;
+		$('#ld-mascot').style.left = `${Math.max(6, loader.pct)}%`;
+		$('#ld-pct').textContent = `${Math.round(loader.pct)} %`;
+		$('#ld-time').textContent = `${Math.floor(s)} s`;
+		if (!loader.stage) {
+			const line = Math.min(LD_LINES.length - 1, Math.floor(s / 3));
+			if (line !== loader.line) { loader.line = line; bubble(LD_LINES[line]); }
+		}
 		const tip = Math.floor(s / 5) % LD_TIPS.length;
 		if (tip !== loader.tip || !$('#ld-tip').innerHTML) { loader.tip = tip; $('#ld-tip').innerHTML = LD_TIPS[tip]; }
 	};
 	step();
-	loader.t = setInterval(step, 400);
+	loader.t = setInterval(step, 120);
 };
-const loaderStop = () => { clearInterval(loader.t); $('#ld-scene').classList.add('hidden'); };
+const loaderStop = () => { clearInterval(loader.t); loader.t = null; loader.pending = null; $('#ld-scene').classList.add('hidden'); };
+
+smashExt.onStage((s) => {
+	if (!loader.t) { loader.pending = s; return; } // arrivée avant l'ouverture de l'écran de chargement
+	if (loader.stage && s.pct <= loader.stage.pct) return;
+	setStage(s);
+	bubble(`${s.label}…`);
+	$('#ld-mascot').classList.remove('dash'); void $('#ld-mascot').offsetWidth; $('#ld-mascot').classList.add('dash');
+});
 
 smashExt.onState((s) => {
+	// « Ça prend du temps » n'arrête pas le chargement : seul l'affichage du jeu ou un échec le termine.
+	if (s.slow) { showHelp({ hint: `Ça prend du temps… ${s.hint || ''}` }); return; }
 	if (s.waiting) loaderStart();
 	else loaderStop();
 	$('#ld-bg').classList.toggle('on', !!(s.waiting && st.cfg && st.cfg.cover));
@@ -339,7 +369,6 @@ smashExt.onState((s) => {
 		showHelp(s.dialog ? { dialog: s.dialog } : s.notice ? { hint: s.notice } : {});
 		return;
 	}
-	if (s.slow) { showHelp({ hint: `Ça prend du temps… ${s.hint || ''}` }); return; }
 	if (s.attached) {
 		st.attached = true;
 		$('#waiting').classList.add('hidden');

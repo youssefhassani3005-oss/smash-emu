@@ -180,6 +180,39 @@ const yuzuQuality = (id) => {
 	return true;
 };
 
+// Étapes du démarrage d'un jeu dans le journal (log/<id>_log.txt), avec la part de la barre de chargement.
+const STAGES = [
+	[/BootGame: \S+ starting/, 15, 'L’émulateur démarre'],
+	[/core\.cpp:\d+:Load: Loading/, 30, 'Lecture du jeu'],
+	[/Report: Device:/, 45, 'Carte graphique prête'],
+	[/BootGame: Booting game/, 60, 'Le jeu démarre'],
+	[/Total Pipeline Count: (\d+)/, 72, 'Chargement des graphismes'],
+	[/SerializeVulkanPipelineCache|\] Service\.\w+ </, 85, 'Presque prêt'],
+];
+const logStage = (txt) => {
+	let best = null;
+	for (const [re, pct, label] of STAGES) {
+		const m = txt.match(re);
+		if (m && (!best || pct > best.pct)) best = { pct, label: m[1] ? `${label} (${m[1]} shaders)` : label };
+	}
+	return best;
+};
+// Le journal est renouvelé à chaque lancement. Son heure de départ = dernière écriture moins le temps écoulé
+// indiqué par sa dernière ligne ; l'ancien journal (lancement précédent) est ainsi ignoré.
+const logStartedAt = (txt, mtime) => {
+	const all = txt.match(/^\[\s*\d+\.\d+\]/gm);
+	return all ? mtime - parseFloat(all[all.length - 1].slice(1)) * 1000 : 0;
+};
+const yuzuStage = (id, since) => {
+	try {
+		const file = path.join(yuzuUserDir(id), 'log', `${id}_log.txt`);
+		const stat = fs.statSync(file);
+		if (stat.mtimeMs < since) return null;
+		const txt = fs.readFileSync(file, 'utf8');
+		return logStartedAt(txt, stat.mtimeMs) >= since - 5000 ? logStage(txt) : null;
+	} catch { return null; }
+};
+
 const openFolder = () => { const dir = systemDir(); fs.mkdirSync(dir, { recursive: true }); return shell.openPath(dir); };
 
 // Ouvre un émulateur Switch normalement (pour installer le firmware : Outils → Installer le firmware).
@@ -189,4 +222,4 @@ const openEmulator = () => {
 	spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
 };
 
-module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, yuzuQuality, setGpu, keyFiles, setQtIni };
+module.exports = { status, importKeys, openFolder, openEmulator, classify, syncCitron, syncYuzu, yuzuUserDir, yuzuWindowMode, yuzuMemory, yuzuDocked, yuzuQuality, yuzuStage, logStage, logStartedAt, setGpu, keyFiles, setQtIni, YUZU };

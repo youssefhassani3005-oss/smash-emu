@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('smashExt', {
 	top: on => call('ext:top', on),
 	window: action => call('ext:window', action),
 	onState: fn => ipcRenderer.on('ext:state', (_e, v) => fn(v)),
+	onStage: fn => ipcRenderer.on('ext:stage', (_e, v) => fn(v)),
 	onFullscreen: fn => ipcRenderer.on('ext:fullscreen', (_e, v) => fn(v)),
 	onHotkey: fn => ipcRenderer.on('ext:hotkey', (_e, v) => fn(v)),
 	onBar: fn => ipcRenderer.on('ext:bar', (_e, v) => fn(v)),

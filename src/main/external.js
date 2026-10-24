@@ -74,7 +74,7 @@ const currentExtension = () => {
 const attach = async (h) => {
 	const gen = ++h.gen;
 	const ext = emulators.EXTERNAL[h.plan.emulator] || {};
-	const deadline = Date.now() + 90000;
+	let deadline = Date.now() + 90000;
 	while (Date.now() < deadline && !h.closed && gen === h.gen) {
 		const wins = h.proc ? await winhelper.windowsOf(h.proc.pid).catch(() => []) : [];
 		// Les boîtes de dialogue (BIOS manquant, erreur, assistant) ne sont jamais incrustées ni masquées :
@@ -112,11 +112,23 @@ const attach = async (h) => {
 			send(h, 'ext:state', { waiting: true, dialog: dialogs[0].title || 'Fenêtre de l’émulateur' });
 		}
 		if (!dialogs.length) h.dialogShown = false;
+		// Le démarrage avance (journal de l'émulateur) : on lui laisse plus de temps, sans message d'alerte.
+		if (pollStage(h)) deadline = Math.max(deadline, Date.now() + 60000);
 		// Rien après 25 s : l'émulateur attend sans doute un réglage (BIOS, firmware…).
-		if (!h.slowSent && Date.now() - h.spawnedAt > 25000) { h.slowSent = true; send(h, 'ext:state', { slow: true, hint: requirement(h) }); }
+		if (!h.slowSent && h.stage < 45 && Date.now() - h.spawnedAt > 25000) { h.slowSent = true; send(h, 'ext:state', { slow: true, hint: requirement(h) }); }
 		await new Promise(r => setTimeout(r, 700));
 	}
 	if (!h.closed && gen === h.gen) send(h, 'ext:state', { attached: false, failed: true, error: 'La fenêtre de jeu de l’émulateur n’est pas apparue.', hint: requirement(h), lines: lastLines(h) });
+};
+
+// Étapes réelles du démarrage de Citron et d'Eden (lues dans leur journal) pour la barre de chargement.
+const pollStage = (h) => {
+	if (!switchkeys.YUZU.includes(h.plan.emulator)) return false;
+	const s = switchkeys.yuzuStage(h.plan.emulator, h.spawnedAt);
+	if (!s || s.pct <= h.stage) return false;
+	h.stage = s.pct;
+	send(h, 'ext:stage', s);
+	return true;
 };
 
 // Ce qu'il faut à l'émulateur pour démarrer un jeu (affiché quand il ne s'ouvre pas).
@@ -151,6 +163,7 @@ const spawnEmu = (h) => {
 	h.spawnedAt = Date.now();
 	h.slowSent = false;
 	h.failed = false;
+	h.stage = 0;
 	proc.stdout.on('data', d => runner.pushLog(id, 'stdout', d.toString()));
 	proc.stderr.on('data', d => runner.pushLog(id, 'stderr', d.toString()));
 	proc.on('error', e => runner.pushLog(id, 'launcher', `Erreur de lancement : ${e.message}`));

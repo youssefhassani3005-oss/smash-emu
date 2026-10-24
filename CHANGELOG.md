@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.7.5
+
+- **Écran de chargement corrigé** : il ne se fige plus au bout de 25 secondes (le message « Ça prend du temps »
+  arrêtait l'animation) et ne repart plus de zéro quand une fenêtre de l'émulateur s'ouvre.
+- **Vraies étapes avec Citron et Eden** : la barre suit le démarrage réel (lecture du jeu, carte graphique,
+  démarrage, chargement des shaders), avec l'étape dans la bulle de la mascotte. Tant que le démarrage avance,
+  Smash Emu attend sans afficher d'alerte.
+- **Plus rapide** : barre fluide, pourcentage et secondes écoulées, mascotte qui court avec des traits de vitesse.
+
 ## 2.7.4
 
 - **Jeux Switch plus nets** : tant que tu n'as pas changé ces réglages, Citron et Eden affichent les jeux avec

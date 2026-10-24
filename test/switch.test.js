@@ -118,3 +118,29 @@ test('Citron, Eden : réglage Qt écrit avec sa clé « default »', () => {
 	switchkeys.setQtIni(fresh, 'UI', { singleWindowMode: true });
 	assert.strictEqual(fs.readFileSync(fresh, 'utf8'), '[UI]\nsingleWindowMode\\default=false\nsingleWindowMode=true');
 });
+
+test('Citron, Eden : étapes du démarrage lues dans le journal', () => {
+	const log = [
+		'[   0.728737] Frontend <Info> yuzu/main_window.cpp:1892:BootGame: Eden starting...',
+		'[   1.224607] Core <Info> core/core.cpp:351:Load: Loading Jeu (0100000000010000) ...',
+		'[   1.765822] Render.Vulkan <Info> video_core/renderer_vulkan/renderer_vulkan.cpp:265:Report: Device: GPU',
+	].join('\n');
+	assert.deepStrictEqual(switchkeys.logStage(log), { pct: 45, label: 'Carte graphique prête' });
+	const more = `${log}\n[   2.231976] Render.Vulkan <Info> video_core/renderer_vulkan/vk_pipeline_cache.cpp:715:LoadDiskResources: Total Pipeline Count: 602`;
+	assert.deepStrictEqual(switchkeys.logStage(more), { pct: 72, label: 'Chargement des graphismes (602 shaders)' });
+	assert.strictEqual(switchkeys.logStage('[   0.1] Frontend <Info> rien'), null);
+	assert.strictEqual(switchkeys.logStartedAt(log, 10000), 10000 - 1765.822);
+	// Ancien journal (lancement précédent) : ignoré.
+	const dir = path.join(HOME, 'AppData', 'Roaming', 'eden', 'log');
+	process.env.APPDATA = path.join(HOME, 'AppData', 'Roaming');
+	if (switchkeys.yuzuUserDir('eden') !== path.dirname(dir)) return;
+	fs.mkdirSync(dir, { recursive: true });
+	const file = path.join(dir, 'eden_log.txt');
+	fs.writeFileSync(file, log);
+	const now = Date.now();
+	fs.utimesSync(file, new Date(now - 600000), new Date(now - 600000));
+	assert.strictEqual(switchkeys.yuzuStage('eden', now - 1000), null);
+	fs.utimesSync(file, new Date(now), new Date(now));
+	assert.strictEqual(switchkeys.yuzuStage('eden', now - 1000).pct, 45);
+	assert.strictEqual(switchkeys.yuzuStage('eden', now + 60000), null);
+});
