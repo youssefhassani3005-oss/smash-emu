@@ -39,7 +39,11 @@ const LAYOUT_LABEL = { row: 'Rangée', grid: 'Grille', cosmos: 'Horizon', dash: 
 for (const s of require('../renderer/home-skins.js').LIST) {
 	CATALOG.push({ id: `skin-${s.id}`, kind: 'skin', name: s.name, price: 150, desc: `${LAYOUT_LABEL[s.layout] || s.layout} · ${s.credit}`, look: `linear-gradient(135deg, ${s.bg} 0%, ${s.bg2} 45%, ${s.acc} 85%, ${s.acc2} 100%)`, skin: s.id });
 }
-const KINDS = { skin: 'Styles d’accueil', theme: 'Thèmes', home: 'Accueils', mascot: 'Mascotte', frame: 'Cadres', select: 'Effets', sound: 'Sons', title: 'Titres' };
+// Accueils fidèles (home-faithful.js) : mise en page reprise d'un thème communautaire, auteur cité.
+for (const f of require('../renderer/home-faithful.js').LIST) {
+	CATALOG.push({ id: `faith-${f.id}`, kind: 'faith', name: f.name, price: 300, desc: `D’après « ${f.ref} » (${f.src}, ${f.author}). Image de fond au choix.`, look: `url("previews/faith-${f.id}.jpg") center / cover, linear-gradient(135deg, #222, #444)`, faith: f.id });
+}
+const KINDS = { faith: 'Accueils fidèles', skin: 'Styles d’accueil', theme: 'Thèmes', home: 'Accueils', mascot: 'Mascotte', frame: 'Cadres', select: 'Effets', sound: 'Sons', title: 'Titres' };
 
 // Gains : une victoire rapporte le plus ; finir une course perdue compte aussi.
 const REWARDS = { raceWin: 100, raceFinish: 25, personalBest: 30 };
@@ -90,6 +94,8 @@ const equip = (kind, id) => {
 	save(c);
 	// Un accueil ou un style remplace l'autre : un seul à la fois.
 	if (kind === 'home') { store.setSettings({ consoleLayout: id ? id.slice(5) : 'row', consoleSkin: null }); c.equipped = { ...c.equipped, skin: null }; save(c); }
+	if (kind === 'faith') { store.setSettings({ consoleFaith: id ? CATALOG.find(i => i.id === id).faith : null, ...(id ? { consoleSkin: null } : {}) }); if (id) { c.equipped = { ...c.equipped, skin: null, home: null }; save(c); } }
+	if (kind === 'home' || kind === 'skin') store.setSettings({ consoleFaith: null });
 	if (kind === 'skin') { store.setSettings({ consoleSkin: id ? CATALOG.find(i => i.id === id).skin : null }); if (id) { c.equipped = { ...c.equipped, home: null }; save(c); } }
 	if (kind === 'theme') store.setSettings({ theme: id ? CATALOG.find(i => i.id === id).theme : 'smash' });
 	notify('coins:update', state());

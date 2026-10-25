@@ -291,6 +291,19 @@ const handlers = {
 	'coins:state': () => coins.state(),
 	'coins:buy': id => coins.buy(id),
 	'coins:equip': (kind, id) => coins.equip(kind, id),
+	// Image de fond choisie par le joueur pour un accueil fidèle : copiée dans Documents\Smash Emu\faith.
+	'faith:image': async (faithId) => {
+		if (!/^[a-z0-9-]{1,40}$/.test(String(faithId))) throw new Error('Accueil inconnu.');
+		const r = await dialog.showOpenDialog(win, { title: 'Image de fond de l’accueil', properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }] });
+		if (r.canceled || !r.filePaths[0]) return null;
+		const dir = path.join(store.ROOT, 'faith');
+		fs.mkdirSync(dir, { recursive: true });
+		const dest = path.join(dir, `${faithId}${path.extname(r.filePaths[0]).toLowerCase()}`);
+		fs.copyFileSync(r.filePaths[0], dest);
+		const s = store.getSettings();
+		store.setSettings({ faithImages: { ...(s.faithImages || {}), [faithId]: dest }, faithImagesAt: { ...(s.faithImagesAt || {}), [faithId]: Date.now() } });
+		return dest;
+	},
 	// Courses de speedrun entre amis.
 	'race:list': () => race.list(),
 	'race:invite': (code, instanceId) => {

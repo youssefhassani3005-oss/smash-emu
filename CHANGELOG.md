@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.0
+
+- **40 accueils fidèles** dans la Boutique (300 pièces chacun, rubrique « Accueils fidèles ») : chacun reprend vraiment
+  la mise en page d'un thème communautaire (Pegasus, ES-DE, thèmes Switch) : placement, tailles, typographie, effets
+  et navigation, avec tes jeux et tes jaquettes. Exemples : barre croisée, chaînes, mur de jaquettes, tableur, écran
+  rétro à lignes, multicartouche en pixels, vitrine de console, cartes de jeux, relais façon terminal…
+- **Image de fond au choix** pour chaque accueil fidèle (Accueil → Réglages → « Choisir l'image de fond ») ; sans
+  image, l'accueil prend le fond ou la jaquette du jeu choisi. Aucun personnage ni logo des thèmes d'origine.
+- Comparaison référence / Smash Emu : docs/accueils-fideles.html.
+
 ## 3.0.0
 
 - **153 styles d'accueil** dans la Boutique (150 pièces chacun) : chacun est inspiré d'un vrai accueil de console ou

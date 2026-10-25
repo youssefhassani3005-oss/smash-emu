@@ -2,7 +2,7 @@
 // Pièces Smash et Boutique (accueils, mascotte, cadres, effets, sons, titres), centre de notifications (panneau
 // latéral) et courses de speedrun entre amis (défi, invitation, lancement du jeu).
 
-const SHOP = { st: null, kind: 'skin', notif: { items: [], unread: 0 }, races: [], launched: new Set() };
+const SHOP = { st: null, kind: 'faith', notif: { items: [], unread: 0 }, races: [], launched: new Set() };
 TITLES.shop = () => [{ label: 'Boutique' }];
 
 const loadCoins = async () => { try { SHOP.st = await api('coins:state'); } catch { /* pas encore prêt */ } applyEquipped(); };
@@ -77,7 +77,7 @@ ACTIONS['shop-buy'] = async (el) => {
 		SHOP.st = await api('coins:buy', el.dataset.id);
 		applyEquipped();
 		toast(`${esc(it ? it.name : 'Article')} acheté et équipé !`);
-		if (it && ['home', 'theme', 'skin'].includes(it.kind)) { state.settings = await api('settings:get'); applyTheme(state.settings.theme); }
+		if (it && ['home', 'theme', 'skin', 'faith'].includes(it.kind)) { state.settings = await api('settings:get'); applyTheme(state.settings.theme); }
 	} catch (e) { toastError(e); }
 	if (state.route.name === 'shop') setMain(shopHtml());
 	refreshTopbar();
@@ -86,7 +86,7 @@ ACTIONS['shop-equip'] = async (el) => {
 	try {
 		SHOP.st = await api('coins:equip', el.dataset.kind, el.dataset.id || null);
 		applyEquipped();
-		if (['home', 'theme', 'skin'].includes(el.dataset.kind)) { state.settings = await api('settings:get'); applyTheme(state.settings.theme); }
+		if (['home', 'theme', 'skin', 'faith'].includes(el.dataset.kind)) { state.settings = await api('settings:get'); applyTheme(state.settings.theme); }
 	} catch (e) { toastError(e); }
 	if (state.route.name === 'shop') setMain(shopHtml());
 };
