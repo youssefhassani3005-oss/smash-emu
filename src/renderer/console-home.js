@@ -6,9 +6,11 @@
 
 const CH = { page: 0, sel: 0, palettes: {}, info: {}, pad: { at: 0, held: '' }, loop: false, coverBusy: false };
 // Accueils achetés dans la Boutique : dash, wave, cosmos (rangée), manor (liste), case (grille de mallette).
-const GEOM = { row: { cols: 0, per: 0 }, grid: { cols: 5, per: 15 }, wii: { cols: 4, per: 12 }, dash: { cols: 0, per: 0 }, wave: { cols: 0, per: 0 }, cosmos: { cols: 0, per: 0 }, manor: { cols: 0, per: 0 }, case: { cols: 6, per: 18 } };
-const LINEAR = new Set(['row', 'dash', 'wave', 'cosmos', 'manor']);
-const chLayout = () => (GEOM[state.settings.consoleLayout] ? state.settings.consoleLayout : 'row');
+const GEOM = { row: { cols: 0, per: 0 }, grid: { cols: 5, per: 15 }, wii: { cols: 4, per: 12 }, dash: { cols: 0, per: 0 }, wave: { cols: 0, per: 0 }, cosmos: { cols: 0, per: 0 }, manor: { cols: 0, per: 0 }, case: { cols: 6, per: 18 }, colorful: { cols: 0, per: 0 } };
+const LINEAR = new Set(['row', 'dash', 'wave', 'cosmos', 'manor', 'colorful']);
+// Style d'accueil acheté dans la Boutique (home-skins.js) : il impose sa disposition, ses couleurs et ses tuiles.
+const chSkin = () => (state.settings.consoleSkin && window.SmashHomeSkins ? window.SmashHomeSkins.get(state.settings.consoleSkin) : null);
+const chLayout = () => { const s = chSkin(); if (s && GEOM[s.layout]) return s.layout; return GEOM[state.settings.consoleLayout] ? state.settings.consoleLayout : 'row'; };
 const chLinear = () => LINEAR.has(chLayout());
 
 // Couleur d'identité et motif de fond de chaque console.
@@ -147,7 +149,11 @@ const chBlip = (f = 760, d = 0.035, vol = 0.04, delay = 0) => {
 };
 const chSound = { move: () => chBlip(700, 0.03, 0.03), page: () => chBlip(520, 0.06, 0.035), ok: () => { chBlip(880, 0.05); chBlip(1320, 0.07, 0.04, 0.06); }, back: () => chBlip(420, 0.06, 0.035) };
 
-const chList = () => sortInstances(state.instances, state.settings.consoleSort || 'played');
+const chAll = () => sortInstances(state.instances, state.settings.consoleSort || 'played');
+// Sélecteur « Consoles » : d'abord la console (avec sa photo), puis ses jeux.
+const chConsoles = () => { const seen = new Map(); for (const i of chAll()) { const s = chSys(i); seen.set(s, (seen.get(s) || 0) + 1); } return [...seen.entries()]; };
+const chConsole = () => { const list = chConsoles(); if (!list.some(([s]) => s === CH.console)) CH.console = list.length ? list[0][0] : null; return CH.console; };
+const chList = () => (chLayout() === 'colorful' ? chAll().filter(i => chSys(i) === chConsole()) : chAll());
 
 // Ordre d'apparition des tuiles à l'arrivée sur l'accueil (les tuiles visibles d'abord).
 const chDelay = (idx) => {
@@ -227,7 +233,10 @@ const consoleHome = () => {
 		if (layout === 'dash') body = `<div class="ch-hero" id="ch-info"></div>${row}<div class="ch-cards">${cards}</div>${foot}`;
 		else if (layout === 'cosmos') body = `<div class="ch-tabs"><b>Jeux</b><span>Médias</span></div>${row}<div class="ch-hero" id="ch-info"></div><div class="ch-cards-lbl">À voir</div><div class="ch-cards">${cards}</div>${foot}`;
 		else if (layout === 'wave') body = `<svg class="ch-waves" viewBox="0 0 1200 400" preserveAspectRatio="none"><path d="M0 220 C200 140 400 300 600 210 S1000 120 1200 200" /><path d="M0 260 C250 200 450 330 700 250 S1050 170 1200 240" /><path d="M0 300 C300 250 500 360 800 290 S1100 230 1200 280" /></svg>${row}<div class="ch-info" id="ch-info"></div>${foot}`;
-		else body = `${row}<div class="ch-info" id="ch-info"></div>${foot}`;
+		else if (layout === 'colorful') {
+			const cons = chConsoles().map(([s, count]) => `<button class="ch-con ${s === chConsole() ? 'on' : ''}" data-action="ch-console" data-sys="${esc(s)}" style="--sys:${lookOf(s)[0]}"><img src="assets/consoles/${esc(s)}.jpg" alt="" onerror="this.remove()"><b>${esc(sysInfo(s).label)}</b><small>${count} jeu${count > 1 ? 'x' : ''}</small></button>`).join('');
+			body = `<div class="ch-cons-wrap"><div class="ch-cons" id="ch-cons">${cons}</div></div>${row}<div class="ch-info" id="ch-info"></div>${foot}`;
+		} else body = `${row}<div class="ch-info" id="ch-info"></div>${foot}`;
 	} else {
 		const pages = Math.max(1, Math.ceil((list.length + 1) / g.per));
 		CH.page = Math.max(0, Math.min(Math.floor(CH.sel / g.per), pages - 1));
@@ -254,7 +263,10 @@ const consoleHome = () => {
 			${layout === 'case' ? `<div class="ch-case-desc" id="ch-info"></div><div class="ch-case-hints"><span><b class="pad-a">A</b>Jouer</span><span><b class="pad-x">X</b>Détails</span><span><b class="pad-y">Y</b>Options</span></div>` : ''}
 `;
 	}
-	setMain(`<div class="ch ch-l-${layout} ${state.prevRendered !== 'home' ? 'ch-intro' : ''}" id="ch">${body}</div>`);
+	const sk = chSkin();
+	const skAttrs = sk ? ` data-skin="${sk.id}" data-sk-sel="${sk.sel}" data-sk-pat="${sk.pat}" data-sk-ratio="${sk.ratio}" data-sk-bg="${sk.bgmode}" data-sk-light="${sk.light ? 1 : 0}" style="--sk-bg:${sk.bg};--sk-bg2:${sk.bg2};--sk-acc:${sk.acc};--sk-acc2:${sk.acc2};--sk-text:${sk.text};--sk-radius:${sk.radius}px;--sk-font:'${sk.font}', 'Inter', sans-serif"` : '';
+	setMain(`<div class="ch ch-l-${layout} ${state.prevRendered !== 'home' ? 'ch-intro' : ''}" id="ch"${skAttrs}>${body}</div>`);
+	if (layout === 'colorful') { const on = $('.ch-con.on'); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' }); }
 	$('#page').classList.add('page-console');
 	chSelect(CH.sel, { silent: true });
 	chLoadPalettes(list);
@@ -355,6 +367,7 @@ const chMove = (dx, dy) => {
 	const count = chList().length + 1;
 	const layout = chLayout();
 	let i = CH.sel;
+	if (layout === 'colorful' && dy) { chSwitchConsole(dy); return; }
 	if (layout === 'manor') {
 		if (!dx && !dy) return;
 		i += dy || dx;
@@ -379,10 +392,23 @@ const chMove = (dx, dy) => {
 // LB / RB : saut d'une page (6 jeux dans la rangée).
 const chJump = (d) => {
 	const layout = chLayout();
+	if (layout === 'colorful') { chSwitchConsole(d); return; }
 	const per = LINEAR.has(layout) ? 6 : GEOM[layout].per;
 	const count = chList().length + 1;
 	const next = Math.max(0, Math.min(count - 1, (Math.floor(CH.sel / per) + d) * per));
 	if (next !== CH.sel) { chSelect(next, { silent: true }); chSound.page(); }
+};
+
+// Console précédente ou suivante (haut / bas, LB / RB) dans le sélecteur « Consoles ».
+const chSwitchConsole = (d) => {
+	const list = chConsoles().map(([s]) => s);
+	const k = list.indexOf(chConsole());
+	const next = list[(k + d + list.length) % list.length];
+	if (!next || next === CH.console) return;
+	CH.console = next;
+	CH.sel = 0;
+	chSound.page();
+	consoleHome();
 };
 
 const chCurrent = () => chList()[CH.sel];
@@ -477,7 +503,7 @@ document.addEventListener('contextmenu', (e) => {
 
 // ---------- Réglages de l'interface Console ----------
 
-const LAYOUTS = [['row', 'Rangée', 'Grandes tuiles sur une ligne'], ['grid', 'Grille', '5 × 3 tuiles par page'], ['wii', 'Chaînes', '4 × 3 chaînes et barre du bas']];
+const LAYOUTS = [['row', 'Rangée', 'Grandes tuiles sur une ligne'], ['grid', 'Grille', '5 × 3 tuiles par page'], ['wii', 'Chaînes', '4 × 3 chaînes et barre du bas'], ['colorful', 'Consoles', 'Choisis la console (photo), puis le jeu']];
 const STYLES = [['theme', 'Mon thème', 'Couleurs et décor du thème choisi'], ['light', 'Clair', 'Blanc, comme les consoles récentes'], ['dark', 'Sombre', 'Fond sombre, décor au choix']];
 const DECORS = [['bulles', 'Bulles', 'Clair et doux'], ['feuilles', 'Feuilles', 'Vert à fleurs'], ['rayures', 'Rayures', 'Gris rayé'], ['auto', 'Console du jeu', 'Motif et couleur de la console'], ['uni', 'Uni', 'Sans motif']];
 
@@ -562,6 +588,7 @@ Object.assign(ACTIONS, {
 	'ch-details': () => { const i = chCurrent(); if (i) go('instance', { id: i.id }); else ACTIONS['import-roms'](); },
 	'ch-menu': () => { const i = chCurrent(); const t = $('.ch-tile.sel'); if (i && t) instanceMenu(t, i); },
 	'ch-page': el => chGoto(CH.page + Number(el.dataset.d)),
+	'ch-console': (el) => { if (el.dataset.sys === CH.console) return; CH.console = el.dataset.sys; CH.sel = 0; chSound.page(); consoleHome(); },
 	'ch-goto': el => chGoto(Number(el.dataset.p)),
 	'ch-options': () => chOptions(),
 	'ct-search': () => chSearch(),

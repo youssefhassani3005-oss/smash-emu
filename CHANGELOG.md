@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.0.0
+
+- **153 styles d'accueil** dans la Boutique (150 pièces chacun) : chacun est inspiré d'un vrai accueil de console ou
+  de frontend d'émulation (thèmes Switch personnalisés, Pegasus, ES-DE, RetroArch, Batocera, Playnite…). Couleurs
+  extraites de la capture de la référence, disposition reprise (rangée, grille, liste, carrousel, vague, inventaire…),
+  police, forme des tuiles, effet de sélection et motif de fond. Créations originales : aucune image, logo ni
+  personnage repris. Galerie des références : docs/references-accueils.html.
+- **Sélecteur « Consoles »** (style Colorful) : choisis d'abord la console, avec sa photo, puis ses jeux.
+  Haut / bas ou LB / RB pour changer de console. Disponible gratuitement dans les réglages de l'accueil. Photos
+  libres de Wikimedia Commons (principalement d'Evan-Amos), crédits dans assets/consoles/CREDITS.md.
+
 ## 2.9.1
 
 - **45 thèmes dans la Boutique** (200 pièces chacun), inspirés des écrans d'inventaire et de pause des grandes séries : plateforme, aventure héroïque, RPG stylé, monstres de poche, exploration spatiale et autres classiques. Couleurs, police et décor originaux, sans nom ni logo de jeu.
