@@ -367,7 +367,7 @@ document.addEventListener('click', async (e) => {
 	const el = e.target.closest('.bar [data-action]');
 	if (!el) return;
 	try { await ACTIONS[el.dataset.action](); } catch (err) { toast(err.message, true); }
-	if (!['close', 'minimize', 'panel', 'remote', 'controls'].includes(el.dataset.action)) backToGame();
+	if (!['close', 'minimize', 'panel', 'remote', 'controls', 'assist'].includes(el.dataset.action)) backToGame();
 });
 smashExt.onControlsDone(() => { toast('Manettes enregistrées'); backToGame(); });
 
@@ -377,7 +377,15 @@ window.addEventListener('keydown', (e) => {
 	if (e.ctrlKey && e.key.toLowerCase() === 'p') { e.preventDefault(); ACTIONS.panel(); }
 });
 
+// Indices et succès : panneau à droite, le jeu lui laisse la place (comme le jeu à distance).
+const ASSIST = window.SmashAssist.create({
+	toast: text => toast(text, false, 6000),
+	onToggle: (open) => { smashExt.side(open ? RP_SIDE : 0).catch(() => {}); if (!open) backToGame(); },
+});
+ACTIONS.assist = () => ASSIST.toggle();
+
 smashExt.onHotkey((name) => {
+	if (name === 'assist') ASSIST.toggle();
 	if (name === 'panel') ACTIONS.panel();
 	if (name === 'fullscreen') ACTIONS.fullscreen();
 	if (name === 'screenshot' && !st.panel) ACTIONS.screenshot().catch(err => toast(err.message, true));

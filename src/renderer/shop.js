@@ -96,7 +96,7 @@ window.launcher.on('coins:earned', (e) => toast(`<b>+${e.amount} pièces</b> · 
 
 // ---------- Centre de notifications ----------
 
-const NOTIF_ICON = { race: 'timer', 'race-invite': 'timer', friend: 'user-plus', coins: 'circle-dollar-sign', update: 'download', info: 'info' };
+const NOTIF_ICON = { race: 'timer', 'race-invite': 'timer', friend: 'user-plus', coins: 'circle-dollar-sign', update: 'download', info: 'info', achievement: 'medal' };
 const notifItem = n => `<div class="nt-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}">
 	<span class="nt-ic k-${esc(n.kind)}">${icon(NOTIF_ICON[n.kind] || 'info')}</span>
 	<div class="grow"><b>${esc(n.title)}</b>${n.text ? `<span>${esc(n.text)}</span>` : ''}

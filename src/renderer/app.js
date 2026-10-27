@@ -226,7 +226,7 @@ const CONSOLE_DOCK = [
 	['home', 'house', 'Accueil', '#e60012'], ['roms', 'disc-3', 'Jeux', '#ff8a00'], ['library', 'library', 'Bibliothèque', '#21a85a'],
 	['friends', 'users', 'Amis', '#e5397a'], ['remote', 'wifi', 'À distance', '#1e88e5'], ['trophies', 'trophy', 'Trophées', '#e6a700'],
 	['dashboard', 'gauge', 'Statistiques', '#00a3a3'], ['multiworld', 'shuffle', 'Multiworld', '#8e5be8'], ['controls', 'gamepad-2', 'Manettes', '#5d6672'],
-	['mods', 'puzzle', 'Mods', '#16a596'], ['switch', 'gamepad', 'Centre Switch', '#e60012'], ['shop', 'store', 'Boutique', '#f4b400'], ['settings', 'settings', 'Réglages', '#5d6672'],
+	['mods', 'puzzle', 'Mods', '#16a596'], ['switch', 'gamepad', 'Centre Switch', '#e60012'], ['assist', 'medal', 'Succès et indices', '#f4b400'], ['shop', 'store', 'Boutique', '#f4b400'], ['settings', 'settings', 'Réglages', '#5d6672'],
 ];
 const renderConsoleNav = () => {
 	const r = state.route;
@@ -278,6 +278,7 @@ const renderNav = () => {
 		${navBtn('library', 'library', 'Bibliothèque')}
 		${navBtn('controls', 'gamepad-2', 'Manettes')}
 		${navBtn('switch', 'gamepad', 'Centre Switch')}
+		${navBtn('assist', 'medal', 'Succès et indices')}
 		${navBtn('remote', 'wifi', 'À distance')}
 		${navBtn('friends', 'users', 'Amis', typeof friendsOnline === 'function' ? friendsOnline() : 0)}
 		${navBtn('trophies', 'trophy', 'Trophées')}
@@ -1988,8 +1989,8 @@ const renderUpdate = () => {
 
 const installBtn = (id) => {
 	const p = (state.emuInstall || {})[id];
-	if (p && ['resolving', 'downloading', 'extracting'].includes(p.state)) {
-		const label = { resolving: 'Recherche…', downloading: p.percent != null ? `Téléchargement ${p.percent} %` : 'Téléchargement…', extracting: 'Installation…' }[p.state] || '…';
+	if (p && ['resolving', 'downloading', 'extracting', 'cores'].includes(p.state)) {
+		const label = { resolving: 'Recherche…', downloading: p.percent != null ? `Téléchargement ${p.percent} %` : 'Téléchargement…', extracting: 'Installation…', cores: `Cœurs ${p.done + 1} / ${p.total}` }[p.state] || '…';
 		return `<button class="btn sm primary" disabled>${icon('download')}${label}</button>`;
 	}
 	return `<button class="btn sm primary" data-action="emu-install" data-id="${id}">${icon('download')}Installer</button>`;
@@ -1997,7 +1998,7 @@ const installBtn = (id) => {
 // Émulateur installé : « Mettre à jour » si une version plus récente existe, sinon « À jour » / « Vérifier ».
 const updateBtn = (id) => {
 	const p = (state.emuInstall || {})[id];
-	if (p && ['resolving', 'downloading', 'extracting'].includes(p.state)) return installBtn(id);
+	if (p && ['resolving', 'downloading', 'extracting', 'cores'].includes(p.state)) return installBtn(id);
 	const u = (state.emuUpdates || {})[id];
 	if (u && u.update) return `<button class="btn sm primary" data-action="emu-install" data-id="${id}" data-update="1" data-tip="Version installée : ${esc(u.installed || '?')}">${icon('download')}Mettre à jour (${esc(u.latest)})</button>`;
 	if (u && !u.error) return `<span class="tag green" data-tip="Dernière version officielle">${icon('check')}À jour</span><button class="btn sm" data-action="emu-install" data-id="${id}" data-update="1" data-tip="Réinstaller la dernière version">${icon('refresh-cw')}</button>`;

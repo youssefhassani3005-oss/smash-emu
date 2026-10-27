@@ -59,3 +59,13 @@ contextBridge.exposeInMainWorld('smashExt', {
 	onBar: fn => ipcRenderer.on('ext:bar', (_e, v) => fn(v)),
 	onNotice: fn => ipcRenderer.on('ext:notice', (_e, v) => fn(v)),
 });
+
+// Indices et succès (commun avec le lecteur intégré).
+contextBridge.exposeInMainWorld('smashAssist', {
+	info: () => call('assist:info'),
+	ask: q => call('assist:ask', q),
+	reset: () => call('assist:reset'),
+	progress: () => call('assist:progress'),
+	poll: () => call('assist:poll'),
+	onDelta: fn => ipcRenderer.on('assist:delta', (_e, v) => fn(v)),
+});

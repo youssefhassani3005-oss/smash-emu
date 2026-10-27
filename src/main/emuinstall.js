@@ -29,6 +29,73 @@ const SOURCES = {
 	azahar: { github: 'azahar-emu/azahar', asset: /^azahar-windows-msvc-[\d.]+\.zip$/i },
 	cemu: { github: 'cemu-project/Cemu', asset: /windows-x64\.zip$/i, portable: { dir: 'portable' } },
 	ppsspp: { github: 'hrydgard/ppsspp', asset: /Windows-x64\.zip$/i },
+	// RetroArch : dernière version stable du serveur officiel de libretro, puis un cœur par console (voir after).
+	retroarch: { libretro: 'https://buildbot.libretro.com/stable/', hosts: ['libretro.com'], after: (exe, progress) => setupRetroArch(exe, progress) },
+};
+
+// ---------- RetroArch ----------
+
+const LIBRETRO_CORES = 'https://buildbot.libretro.com/nightly/windows/x86_64/latest/';
+
+const resolveLibretro = async (src) => {
+	let res;
+	try { res = await net.fetch(src.libretro, { signal: AbortSignal.timeout(20000) }); } catch { throw new Error('le serveur officiel de RetroArch est injoignable pour le moment'); }
+	if (!res.ok) throw new Error(`Le serveur officiel a répondu ${res.status}.`);
+	const versions = [...new Set((await res.text()).match(/\d+\.\d+\.\d+(?=\/)/g) || [])];
+	if (!versions.length) throw new Error('Aucune version stable de RetroArch trouvée.');
+	const version = versions.sort((a, b) => (newer(a, b) ? -1 : newer(b, a) ? 1 : 0))[0];
+	return { url: `${src.libretro}${version}/windows/x86_64/RetroArch.7z`, name: 'RetroArch.7z', version };
+};
+
+// Réglages de RetroArch (retroarch.cfg, à côté de l'exécutable) : clés « nom = "valeur" » remplacées ou ajoutées.
+const setRetroArchCfg = (exe, values) => {
+	const file = path.join(path.dirname(exe), 'retroarch.cfg');
+	let lines = [];
+	try { lines = fs.readFileSync(file, 'utf8').split(/\r?\n/); } catch { /* créé ci-dessous, RetroArch complète le reste */ }
+	for (const [k, v] of Object.entries(values)) {
+		const line = `${k} = "${String(v).replace(/"/g, '')}"`;
+		const i = lines.findIndex(l => l.trim().startsWith(`${k} =`));
+		if (i >= 0) lines[i] = line; else lines.push(line);
+	}
+	fs.writeFileSync(file, lines.filter((l, i) => l || i < lines.length - 1).join('\n') + '\n');
+};
+
+// Cœurs des consoles prises en charge, et réglages pour une fenêtre incrustée dans Smash Emu : succès activés
+// (connexion dans RetroArch : Paramètres → Succès), pas de pause quand la fenêtre perd le focus, Échap ne ferme pas
+// le jeu (Smash Emu s'en charge), pas de plein écran natif. Rendu Vulkan : en OpenGL, l'image reste noire une fois
+// la fenêtre incrustée ; la N64 passe donc par ParaLLEl (rendu Vulkan du cœur Mupen64Plus-Next).
+const setupRetroArch = async (exe, progress = () => {}) => {
+	const dir = path.join(path.dirname(exe), 'cores');
+	fs.mkdirSync(dir, { recursive: true });
+	const cores = [...new Set(Object.values(emulators.RETROARCH_CORES))];
+	for (const [n, core] of cores.entries()) {
+		progress({ state: 'cores', done: n, total: cores.length, core });
+		if (fs.existsSync(path.join(dir, `${core}_libretro.dll`))) continue;
+		const tmp = path.join(store.CACHE_DIR, `${core}_libretro.dll.zip`);
+		try {
+			await download(`${LIBRETRO_CORES}${core}_libretro.dll.zip`, tmp, () => {});
+			await extract(tmp, dir);
+		} finally { fs.rmSync(tmp, { force: true }); }
+	}
+	const user = store.getSettings().raUser;
+	setRetroArchCfg(exe, {
+		cheevos_enable: 'true', cheevos_hardcore_mode_enable: 'false', ...(user ? { cheevos_username: user } : {}),
+		pause_nonactive: 'false', input_exit_emulator: 'nul', video_fullscreen: 'false', config_save_on_exit: 'true', video_driver: 'vulkan',
+	});
+	const n64 = path.join(path.dirname(exe), 'config', 'Mupen64Plus-Next');
+	fs.mkdirSync(n64, { recursive: true });
+	setCoreOptions(path.join(n64, 'Mupen64Plus-Next.opt'), { 'mupen64plus-rdp-plugin': 'parallel', 'mupen64plus-rsp-plugin': 'parallel' });
+};
+
+// Options d'un cœur (fichier .opt, même format que retroarch.cfg).
+const setCoreOptions = (file, values) => {
+	let lines = [];
+	try { lines = fs.readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean); } catch { /* nouveau fichier */ }
+	for (const [k, v] of Object.entries(values)) {
+		const i = lines.findIndex(l => l.trim().startsWith(`${k} =`));
+		if (i >= 0) lines[i] = `${k} = "${v}"`; else lines.push(`${k} = "${v}"`);
+	}
+	fs.writeFileSync(file, `${lines.join('\n')}\n`);
 };
 
 const TRUSTED = /(^|\.)(github\.com|githubusercontent\.com)$/;
@@ -90,7 +157,7 @@ const resolveForgejo = async (src) => {
 	return { url, name: path.basename(new URL(url).pathname), version: url.match(src.asset)[1] || rel.tag_name };
 };
 
-const resolve = src => (src.github ? resolveGithub(src) : src.forgejo ? resolveForgejo(src) : resolveQuery(src));
+const resolve = src => (src.github ? resolveGithub(src) : src.forgejo ? resolveForgejo(src) : src.libretro ? resolveLibretro(src) : resolveQuery(src));
 
 const download = async (url, file, progress) => {
 	const res = await net.fetch(url, { redirect: 'follow' });
@@ -156,6 +223,7 @@ const install = async (id, progress) => {
 		if (!exe) throw new Error('Archive téléchargée mais l’exécutable est introuvable.');
 		if (src.portable && src.portable.dir) fs.mkdirSync(path.join(path.dirname(exe), src.portable.dir), { recursive: true });
 		if (src.portable && src.portable.file) { const f = path.join(path.dirname(exe), src.portable.file); if (!fs.existsSync(f)) fs.writeFileSync(f, ''); }
+		if (src.after) await src.after(exe, progress);
 		const s = store.getSettings();
 		store.setSettings({ emulators: { ...(s.emulators || {}), [id]: exe }, emulatorVersions: { ...(s.emulatorVersions || {}), [id]: { version: rel.version, at: Date.now() } } });
 		progress({ state: 'done', path: exe, version: rel.version });
@@ -219,4 +287,4 @@ const checkUpdates = async (force = false) => {
 	return result;
 };
 
-module.exports = { install, available, installed, checkUpdates, newer, extract, DIR, SOURCES };
+module.exports = { install, available, installed, checkUpdates, newer, extract, DIR, SOURCES, setRetroArchCfg, setupRetroArch };

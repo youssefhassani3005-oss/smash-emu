@@ -7,7 +7,7 @@ const store = require('./store');
 
 const FILE = path.join(store.ROOT, 'notifications.json');
 const MAX = 50;
-const KINDS = ['race', 'race-invite', 'friend', 'coins', 'update', 'info'];
+const KINDS = ['race', 'race-invite', 'friend', 'coins', 'update', 'info', 'achievement'];
 
 let send = () => {};
 const init = (fn) => { send = fn; };

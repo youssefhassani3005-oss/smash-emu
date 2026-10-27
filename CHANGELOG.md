@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.3.0 : Indices et succès
+
+Nouvelle page **Succès et indices** (médaille dans la barre) et, en jeu, **Ctrl+I** (ou la bulle de la barre) ouvre
+un panneau à droite avec deux onglets.
+
+- **Assistant d'indices** (Claude, avec ta propre clé API Anthropic) : il voit l'image du jeu, connaît le jeu et la
+  console, cherche dans les soluces et wikis du web quand il n'est pas sûr, et répond en français au niveau choisi :
+  **coup de pouce**, **indice précis** ou **solution**. Suggestions rapides, conversation suivie, sources et coût
+  affichés (environ un centime par question avec Claude Opus 5.5 ; Sonnet 5.5 et Haiku 5.5 au choix, moins chers).
+  Clé chiffrée par Windows ; l'image n'est jointe que si la case est cochée.
+- **RetroAchievements** : connecte ton compte (nom d'utilisateur + clé d'API web). Les jeux à cartouche sont reconnus
+  par l'empreinte de leur fichier, calculée comme RetroAchievements (NES, SNES, N64, Game Boy, GBA, DS, Mega Drive,
+  Master System, Game Gear, 32X, PC Engine, Atari, Virtual Boy, Jaguar) ; les autres par leur titre, à confirmer.
+  Succès avec badges, points et progression, dans la page et en jeu ; bouton **Indice** sur chaque succès pour
+  demander à l'assistant comment l'obtenir.
+- **Succès débloqués en direct** : pendant la partie, Smash Emu vérifie toutes les 90 s et affiche chaque nouveau
+  succès (+10 pièces, notification).
+- **RetroArch** en un clic (version stable officielle et un cœur par console) : c'est lui qui débloque les succès des
+  consoles à cartouche, l'émulateur intégré ne pouvant pas le faire. Incrusté dans Smash Emu (rendu Vulkan, N64 en
+  ParaLLEl), succès activés, Échap ne ferme plus le jeu. Choix dans les options du jeu → Émulateur. Les jeux N64
+  peuvent maintenant utiliser n'importe quel émulateur externe, pas seulement Project64.
+
 ## 3.2.0 : Centre Switch
 
 Nouvelle page **Centre Switch** (icône manette rouge dans la barre) : tous tes jeux Switch, et pour chacun six onglets.

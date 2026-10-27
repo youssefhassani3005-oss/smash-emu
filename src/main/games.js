@@ -292,7 +292,21 @@ const prepareLaunch = (id) => {
 	if (patches.length) fs.writeFileSync(out, data);
 	if (engine === 'smash') return { kind: 'emu', rom: out, name: inst.name };
 	// Project64 garde sa propre fenêtre : son rendu (plugins vidéo) devient noir une fois incrusté dans Smash Emu.
-	return { kind: 'process', exe: paths.project64, args: [out, ...splitArgs(o.extraArgs || '')], cwd: path.dirname(paths.project64), embed: false, emulator: 'project64', name: inst.name, system: 'n64' };
+	if (engine === 'project64') return { kind: 'process', exe: paths.project64, args: [out, ...splitArgs(o.extraArgs || '')], cwd: path.dirname(paths.project64), embed: false, emulator: 'project64', name: inst.name, system: 'n64' };
+	return externalPlan(inst, engine, 'n64', out);
+};
+
+// Émulateur externe (installé ou fourni), incrusté dans une fenêtre Smash Emu sauf réglage contraire.
+const externalPlan = (inst, engine, system, file) => {
+	const ext = emulators.EXTERNAL[engine];
+	if (!ext) throw new Error(`Émulateur inconnu : ${engine}`);
+	const exe = emulators.pathFor(engine);
+	if (!exe) throw new Error(`${ext.label} n’est pas installé. Installe-le depuis Paramètres → Émulateurs, ou indique où il se trouve.`);
+	// Interface Smash Emu autour de l'émulateur externe (réglage), sinon son interface d'origine en plein écran.
+	const embed = (inst.options || {}).externalUi !== 'native' && store.getSettings().externalUi !== 'native';
+	const notice = engine === 'citron' || engine === 'eden' ? prepareYuzu(engine, file, embed, inst) : null;
+	const args = [...ext.args(file, { embed, shader: (inst.options || {}).externalShader, opts: (inst.options || {}).dolphin, system }), ...splitArgs((inst.options || {}).extraArgs || '')];
+	return { kind: 'process', exe, args, cwd: path.dirname(exe), embed, emulator: engine, name: inst.name, system, notice };
 };
 
 // Lancement d'un jeu non N64 : cœur intégré ou émulateur externe.
@@ -326,15 +340,7 @@ const prepareGame = (inst, engine, system) => {
 		const bios = biosFor(system);
 		return { kind: 'emu', rom: file, name: inst.name, system, ejs: sys.ejs, core: sys.core, threads: !!sys.threads, bios };
 	}
-	const ext = emulators.EXTERNAL[engine];
-	if (!ext) throw new Error(`Émulateur inconnu : ${engine}`);
-	const exe = emulators.pathFor(engine);
-	if (!exe) throw new Error(`${ext.label} n’est pas installé. Installe-le depuis Paramètres → Émulateurs, ou indique où il se trouve.`);
-	// Interface Smash Emu autour de l'émulateur externe (réglage), sinon son interface d'origine en plein écran.
-	const embed = (inst.options || {}).externalUi !== 'native' && store.getSettings().externalUi !== 'native';
-	const notice = engine === 'citron' || engine === 'eden' ? prepareYuzu(engine, file, embed, inst) : null;
-	const args = [...ext.args(file, { embed, shader: (inst.options || {}).externalShader, opts: (inst.options || {}).dolphin }), ...splitArgs((inst.options || {}).extraArgs || '')];
-	return { kind: 'process', exe, args, cwd: path.dirname(exe), embed, emulator: engine, name: inst.name, system, notice };
+	return externalPlan(inst, engine, system, file);
 };
 
 // Citron, Eden : clés et firmware repris des autres émulateurs Switch s'ils leur manquent (sinon écran noir),

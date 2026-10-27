@@ -537,10 +537,20 @@ $('#panel').addEventListener('change', (e) => {
 
 ACTIONS.features = () => togglePanel();
 
+// Indices et succès (Ctrl+I) : l'assistant reçoit l'image brute du jeu.
+const ASSIST = window.SmashAssist.create({
+	toast: text => toast(text, { ms: 6000 }),
+	getImage: async () => { const b = await shotBlob(); return b ? new Uint8Array(await b.arrayBuffer()) : null; },
+	onToggle: (open) => { if (!open) focusGame(); },
+});
+ACTIONS.assist = () => ASSIST.toggle();
+
 // ---------- Raccourcis ----------
 
 // Appelé par player.js avant ses propres raccourcis ; true = touche gérée.
 window.smashKey = (e) => {
+	// Question en cours de frappe dans « Indices et succès » : rien n'est envoyé au jeu.
+	if (e.target && e.target.closest && e.target.closest('#sa')) return true;
 	if (panel.open && e.target.closest && e.target.closest('#panel') && e.key !== 'Escape' && e.key !== 'F2') return true;
 	if (fx.inputs && !e.repeat) { live.keys.add(e.key.length === 1 ? e.key.toUpperCase() : e.key); renderHud(); }
 	const k = e.key;

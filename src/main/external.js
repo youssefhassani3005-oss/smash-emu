@@ -204,7 +204,7 @@ const openExternalHost = (id, plan) => {
 	spawnEmu(h);
 
 	// Raccourcis de l'hôte actifs seulement quand la fenêtre Smash Emu (ou le jeu incrusté) a le focus.
-	const hotkeys = { 'CommandOrControl+J': 'remote', 'CommandOrControl+P': 'panel', F11: 'fullscreen', 'CommandOrControl+M': 'immersive', 'CommandOrControl+Shift+S': 'screenshot' };
+	const hotkeys = { 'CommandOrControl+J': 'remote', 'CommandOrControl+P': 'panel', 'CommandOrControl+I': 'assist', F11: 'fullscreen', 'CommandOrControl+M': 'immersive', 'CommandOrControl+Shift+S': 'screenshot' };
 	// Chrono speedrun : ses touches ne sont prises à l'émulateur que lorsqu'il est activé pour ce jeu.
 	const srKeys = { 'CommandOrControl+Space': 'srSplit', 'CommandOrControl+Backspace': 'srUndo', 'CommandOrControl+Shift+Space': 'srReset' };
 	const active = () => ({ ...hotkeys, ...(h.speedrun ? srKeys : {}) });
@@ -581,4 +581,17 @@ const registerIpc = () => {
 	}
 };
 
-module.exports = { openExternalHost, registerIpc, markRemoteHost };
+// Image actuelle du jeu d'une fenêtre (assistant d'indices) : image figée du panneau s'il est ouvert, sinon capture.
+const grabFrame = async (senderId, width = 1024) => {
+	const h = hosts.get(senderId);
+	if (!h) return null;
+	if (h.panel && h.frame && fs.existsSync(h.frame)) return fs.readFileSync(h.frame);
+	// La capture lit l'écran à l'endroit du jeu : fenêtre pas au premier plan = autre chose dessus, pas d'image.
+	if (!h.child || !h.win.isFocused()) return null;
+	const file = path.join(os.tmpdir(), `smash-hint-${h.id}.png`);
+	await shotTo(h, file, width);
+	return fs.readFileSync(file);
+};
+const hostOf = senderId => hosts.get(senderId) || null;
+
+module.exports = { openExternalHost, registerIpc, markRemoteHost, grabFrame, hostOf };

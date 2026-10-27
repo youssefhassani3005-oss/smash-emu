@@ -17,7 +17,7 @@ const ICONS = [
 	'message-circle', 'shield-check', 'crown', 'key-round', 'shuffle', 'gift', 'radio', 'list-music', 'skip-forward', 'skip-back', 'repeat', 'badge-check', 'chart-column', 'lock',
 	'user-plus', 'user-minus', 'wifi-off', 'power', 'bell', 'mail', 'sun', 'moon', 'tv', 'smartphone', 'arrow-left', 'arrow-right',
 	'dices', 'party-popper', 'pin', 'wand-sparkles', 'droplet', 'layout-dashboard', 'circle-dot', 'globe-lock', 'tag', 'filter',
-	'stethoscope', 'arrow-left-right', 'gamepad',
+	'stethoscope', 'arrow-left-right', 'gamepad', 'medal',
 ];
 
 const icons = {};

@@ -49,3 +49,13 @@ contextBridge.exposeInMainWorld('smashEmu', {
 	onTrophy: fn => ipcRenderer.on('emu:trophy', (_e, v) => fn(v)),
 	onVideoSaved: fn => ipcRenderer.on('emu:video-saved', (_e, v) => fn(v)),
 });
+
+// Indices et succès (commun avec les émulateurs externes).
+contextBridge.exposeInMainWorld('smashAssist', {
+	info: () => call('assist:info'),
+	ask: q => call('assist:ask', q),
+	reset: () => call('assist:reset'),
+	progress: () => call('assist:progress'),
+	poll: () => call('assist:poll'),
+	onDelta: fn => ipcRenderer.on('assist:delta', (_e, v) => fn(v)),
+});

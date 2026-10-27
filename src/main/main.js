@@ -48,6 +48,8 @@ const runner = require('./runner');
 const opera = require('./opera');
 const rom = require('./rom');
 const switchhub = require('./switchhub');
+const hints = require('./hints');
+const retro = require('./retro');
 
 let win = null;
 // Une sauvegarde Switch ne se remplace pas pendant que le jeu tourne : l'émulateur l'écraserait en quittant.
@@ -616,6 +618,32 @@ const handlers = {
 		} catch { /* informations GPU indisponibles */ }
 		return switchhub.diagnose(id, { gpu });
 	},
+	// Assistant d'indices (clé API Claude du joueur) et RetroAchievements (nom d'utilisateur + clé d'API web).
+	'assist:config': () => ({ hints: hints.config(), ra: retro.config(), retroarch: !!emulators.pathFor('retroarch') }),
+	// RetroArch ouvert seul : connexion à RetroAchievements (Paramètres → Succès), une fois pour toutes.
+	'ra:openRetroArch': () => {
+		const exe = emulators.pathFor('retroarch');
+		if (!exe) throw new Error('RetroArch n’est pas installé.');
+		require('child_process').spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' }).unref();
+	},
+	'assist:setHints': patch => hints.setConfig(patch || {}),
+	'assist:setRa': patch => retro.setConfig(patch || {}),
+	'ra:profile': () => retro.profile(),
+	'ra:games': () => store.listInstances().filter(i => i.type === 'rom' || i.type === 'coopdx').map((i) => {
+		const system = retro.systemOf(i);
+		return { id: i.id, name: i.name, system, supported: retro.supported(system), link: retro.linkOf(i), lastPlayed: i.lastPlayed || 0 };
+	}).sort((a, b) => (b.lastPlayed - a.lastPlayed) || a.name.localeCompare(b.name)),
+	'ra:identify': id => retro.identify(id),
+	'ra:identifyAll': async () => {
+		const out = { found: 0, missing: 0 };
+		for (const i of store.listInstances().filter(x => (x.type === 'rom' || x.type === 'coopdx') && !x.raGame && retro.supported(retro.systemOf(x)))) {
+			try { if (await retro.identify(i.id)) out.found++; else out.missing++; } catch (error) { if (/clé|key/i.test(error.message)) throw error; out.missing++; }
+		}
+		return out;
+	},
+	'ra:candidates': (id, q) => retro.candidates(store.getInstance(id), q || ''),
+	'ra:link': (id, gameId) => retro.link(id, gameId),
+	'ra:progress': (id, fresh) => retro.progress(id, { fresh: !!fresh }),
 	'sw:openLog': (id) => { const e = switchhub.ctx(id).engine; const f = path.join(switchhub.userDir(e), 'log', `${e}_log.txt`); if (!fs.existsSync(f)) throw new Error('Pas encore de journal : lance le jeu une fois.'); return shell.openPath(f); },
 	'controls:list': () => controls.list(),
 	'controls:get': (system, instanceId) => controls.get(system, instanceId || null),
@@ -711,6 +739,7 @@ app.whenReady().then(() => {
 	external.registerIpc();
 	remote.registerIpc();
 	require('./rooms').registerIpc();
+	require('./assist').registerIpc();
 	session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['https://www.youtube-nocookie.com/*', 'https://www.youtube.com/*'] }, (details, cb) => {
 		const headers = { ...details.requestHeaders };
 		if (!headers.Referer) headers.Referer = 'https://smash-emu.app/';

@@ -29,6 +29,19 @@ const dolphinOpts = (p = {}) => {
 	return a;
 };
 
+// RetroArch : un cœur libretro par console, téléchargé avec RetroArch (cores\<cœur>_libretro.dll). Ces cœurs sont
+// pris en charge par RetroAchievements : c'est avec RetroArch que les succès des consoles à cartouche se débloquent.
+const RETROARCH_CORES = {
+	nes: 'fceumm', snes: 'snes9x', n64: 'mupen64plus_next', gb: 'gambatte', gbc: 'gambatte', gba: 'mgba', vb: 'mednafen_vb',
+	nds: 'melondsds', sms: 'genesis_plus_gx', md: 'genesis_plus_gx', gg: 'genesis_plus_gx', '32x': 'picodrive',
+	pce: 'mednafen_pce_fast', a2600: 'stella', a7800: 'prosystem', lynx: 'handy', jaguar: 'virtualjaguar',
+};
+const retroarchCore = (system) => {
+	const core = RETROARCH_CORES[system];
+	const exe = core && pathFor('retroarch');
+	return exe ? path.join(path.dirname(exe), 'cores', `${core}_libretro.dll`) : null;
+};
+
 const EXTERNAL = {
 	project64: { label: 'Project64', systems: ['n64'], exe: ['Project64.exe'], args: f => [f], site: 'https://www.pj64-emu.com/download/project64-latest',
 		hotkeys: { pause: 'F2', save: () => 'F5', load: () => 'F7', turboDown: 'F4', turboUp: 'F4', reset: 'F1' }, keysHint: '<b>F2</b> pause, <b>F5</b> sauver, <b>F7</b> charger, <b>F4</b> turbo' },
@@ -65,6 +78,18 @@ const EXTERNAL = {
 	// hideMain : lancé caché, seule sa fenêtre de rendu apparaît (incrustée dans Smash Emu).
 	citron: { label: 'Citron', systems: ['switch'], exe: ['citron.exe'], hideMain: true, args: (f, o = {}) => [...(o.embed ? [] : ['-f']), '-g', f], hotkeys: { pause: 'F4', turboDown: 'CTRL+U', turboUp: 'CTRL+U', speeds: { unlimited: 'CTRL+U' } }, keysHint: '<b>F4</b> pause, <b>Ctrl+U</b> vitesse illimitée, <b>F10</b> mode TV / portable', site: 'https://github.com/citron-neo/emulator/releases', note: 'Fourni avec Smash Emu. Nécessite les clés (prod.keys) et le firmware de ta propre Switch : importe les clés ci-dessous.' },
 	eden: { label: 'Eden', systems: ['switch'], exe: ['eden.exe'], hideMain: true, args: (f, o = {}) => [...(o.embed ? [] : ['-f']), '-g', f], hotkeys: { pause: 'F4', turboDown: 'CTRL+U', turboUp: 'CTRL+U', speeds: { slow: 'CTRL+X', turbo: 'CTRL+Z', unlimited: 'CTRL+U' } }, keysHint: '<b>F4</b> pause, <b>Ctrl+X</b> lent, <b>Ctrl+Z</b> rapide, <b>Ctrl+U</b> vitesse illimitée, <b>F10</b> mode TV / portable', site: 'https://eden-emu.dev/downloads', note: 'Émulateur Switch libre mis à jour chaque nuit : il lance mieux les jeux récents que Citron. Les clés et le firmware sont repris de Citron ou de Ryujinx.' },
+	retroarch: {
+		label: 'RetroArch', systems: Object.keys(RETROARCH_CORES), exe: ['retroarch.exe'],
+		args: (f, o = {}) => {
+			const core = retroarchCore(o.system);
+			if (!core || !fs.existsSync(core)) throw new Error('Cœur RetroArch manquant pour cette console : réinstalle RetroArch (Paramètres → Émulateurs).');
+			return ['-L', core, ...(o.embed ? [] : ['-f']), f];
+		},
+		hotkeys: { pause: 'P', save: () => 'F2', load: () => 'F4', turboDown: 'L:down', turboUp: 'L:up', slots: 1 },
+		keysHint: '<b>P</b> pause, <b>F2</b> sauver, <b>F4</b> charger, <b>L</b> avance rapide (maintenir), <b>F1</b> menu RetroArch',
+		site: 'https://www.retroarch.com/?page=platforms',
+		note: 'Débloque les succès RetroAchievements des consoles à cartouche (NES, SNES, N64, Game Boy, GBA, DS, Mega Drive…). Connecte-toi une fois dans RetroArch : Paramètres → Succès.',
+	},
 	xenia: { label: 'Xenia', systems: ['x360'], exe: ['xenia_canary.exe', 'xenia.exe'], args: (f, o = {}) => [...(o.embed ? [] : ['--fullscreen=true']), f], site: 'https://xenia.jp/download/' },
 };
 
@@ -124,4 +149,4 @@ const status = (refresh = false) => {
 	return Object.fromEntries(Object.entries(EXTERNAL).map(([id, e]) => [id, { id, label: e.label, systems: e.systems, site: e.site, note: e.note || null, keys: !!e.keys, path: pathFor(id) }]));
 };
 
-module.exports = { EXTERNAL, pathFor, status, detectAll };
+module.exports = { EXTERNAL, pathFor, status, detectAll, RETROARCH_CORES, retroarchCore };

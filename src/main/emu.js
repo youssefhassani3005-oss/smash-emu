@@ -475,4 +475,6 @@ const registerIpc = () => {
 // Partie lancée en mode « héberger à distance » ?
 const isRemoteHost = id => [...sessions.values()].some(s => s.id === id && s.remoteHost);
 
-module.exports = { registerScheme, handleProtocol, registerIpc, openEmu, listStates, saveCtx, markRemoteHost, isRemoteHost };
+const sessionOf = senderId => sessions.get(senderId) || null;
+
+module.exports = { registerScheme, handleProtocol, registerIpc, openEmu, listStates, saveCtx, markRemoteHost, isRemoteHost, sessionOf };
