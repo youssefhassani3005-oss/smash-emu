@@ -58,4 +58,5 @@ contextBridge.exposeInMainWorld('smashAssist', {
 	progress: () => call('assist:progress'),
 	poll: () => call('assist:poll'),
 	onDelta: fn => ipcRenderer.on('assist:delta', (_e, v) => fn(v)),
+	onUnlocked: fn => ipcRenderer.on('assist:unlocked', (_e, v) => fn(v)),
 });

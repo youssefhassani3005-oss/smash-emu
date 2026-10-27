@@ -29,3 +29,5 @@
 .ap-ach.got { box-shadow: inset 0 0 0 2px #f4b400; }
 .ap-ach:not(.got) img { opacity: 0.85; }
 .md-game[disabled] { opacity: 0.5; cursor: default; }
+.sw-note.ap-bad { background: rgba(255, 170, 0, 0.12); color: var(--text); }
+.sw-note.ap-bad svg.icon { color: #e09400; }

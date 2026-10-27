@@ -108,8 +108,16 @@ const announceTrophies = (fresh) => {
 		if (w) w.webContents.send('emu:trophy', t);
 	}
 };
-runner.setFinishHook((id, startedAt) => { try { stats.record(id, startedAt); } catch { /* historique */ } trophies.noteSession(startedAt); announceTrophies(trophies.evaluate(runner.status())); });
-setInterval(() => { const st = runner.status(); if (st.length) announceTrophies(trophies.evaluate(st)); }, 60000);
+// Succès maison des jeux Switch : pièces, notification et alerte dans la fenêtre du jeu.
+const announceSwitch = (fresh) => {
+	for (const a of require('./switchach').reward(fresh)) {
+		const w = a.gameId ? runner.windowOf(a.gameId) : null;
+		if (w && !w.isDestroyed()) w.webContents.send('assist:unlocked', a);
+	}
+};
+const checkSwitch = () => { try { announceSwitch(require('./switchach').evaluate(runner.status())); } catch { /* vérifié au prochain tour */ } };
+runner.setFinishHook((id, startedAt) => { try { stats.record(id, startedAt); } catch { /* historique */ } trophies.noteSession(startedAt); announceTrophies(trophies.evaluate(runner.status())); checkSwitch(); });
+setInterval(() => { const st = runner.status(); if (st.length) { announceTrophies(trophies.evaluate(st)); checkSwitch(); } }, 60000);
 runner.setExternalOpener(external.openExternalHost);
 
 // ---------- Icônes d'instance ----------
@@ -609,6 +617,7 @@ const handlers = {
 	'sw:shaderClear': (id, engine) => switchhub.clearShaders(id, engine || null),
 	'sw:storage': () => switchhub.storage(),
 	'sw:shaderClearAll': () => switchhub.clearAllShaders(),
+	'sw:achievements': (id) => { const sa = require('./switchach'); announceSwitch(sa.evaluate(runner.status(), id)); return sa.progress(id); },
 	'sw:diagnose': async (id) => {
 		let gpu = null;
 		try {
@@ -629,14 +638,14 @@ const handlers = {
 	'assist:setHints': patch => hints.setConfig(patch || {}),
 	'assist:setRa': patch => retro.setConfig(patch || {}),
 	'ra:profile': () => retro.profile(),
-	'ra:games': () => store.listInstances().filter(i => i.type === 'rom' || i.type === 'coopdx').map((i) => {
+	'ra:games': () => store.listInstances().filter(i => i.type === 'rom').map((i) => {
 		const system = retro.systemOf(i);
-		return { id: i.id, name: i.name, system, supported: retro.supported(system), link: retro.linkOf(i), lastPlayed: i.lastPlayed || 0 };
+		return { id: i.id, name: i.name, system, supported: retro.eligible(i), link: retro.linkOf(i), lastPlayed: i.lastPlayed || 0 };
 	}).sort((a, b) => (b.lastPlayed - a.lastPlayed) || a.name.localeCompare(b.name)),
 	'ra:identify': id => retro.identify(id),
 	'ra:identifyAll': async () => {
 		const out = { found: 0, missing: 0 };
-		for (const i of store.listInstances().filter(x => (x.type === 'rom' || x.type === 'coopdx') && !x.raGame && retro.supported(retro.systemOf(x)))) {
+		for (const i of store.listInstances().filter(x => !x.raGame && retro.eligible(x))) {
 			try { if (await retro.identify(i.id)) out.found++; else out.missing++; } catch (error) { if (/clé|key/i.test(error.message)) throw error; out.missing++; }
 		}
 		return out;

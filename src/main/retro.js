@@ -60,7 +60,12 @@ const hashFile = (system, file) => {
 	const c = CONSOLES[system];
 	if (!c || !c.hash || !file || !fs.existsSync(file)) return null;
 	if (c.hash === 'nds') return ndsHash(file);
-	const buf = fs.readFileSync(file);
+	return hashBuffer(system, fs.readFileSync(file));
+};
+
+const hashBuffer = (system, buf) => {
+	const c = CONSOLES[system];
+	if (!c || !c.hash || c.hash === 'nds') return null;
 	switch (c.hash) {
 		case 'n64': return md5(toZ64(buf));
 		// NES : en-tête iNES (« NES\x1a ») ou FDS (« FDS\x1a ») de 16 octets ignoré.
@@ -114,14 +119,29 @@ const gameList = async (consoleId) => {
 // ---------- Reconnaissance des jeux ----------
 
 const systemOf = inst => (inst.type === 'coopdx' ? 'n64' : (inst.rom && inst.rom.system) || inst.system || 'n64');
-const romFile = (inst) => {
-	if (!inst.rom) return null;
-	if (inst.rom.linked) return inst.rom.linked;
-	return inst.rom.ext ? path.join(store.instanceDir(inst.id), 'rom', `base.${inst.rom.ext}`) : null;
+// SM64 Coop DX est un portage PC : pas de succès RetroAchievements.
+const eligible = inst => inst.type === 'rom' && !!CONSOLES[systemOf(inst)];
+
+// Empreinte du jeu tel qu'il est lancé : ROM de base (N64 : rom\base.z64) avec les patchs activés (Chaos Edition,
+// randomizer…), car c'est ce fichier que RetroArch donne à RetroAchievements.
+const romHash = (inst) => {
+	const system = systemOf(inst);
+	const c = CONSOLES[system];
+	if (!c || !c.hash || !inst.rom) return null;
+	const dir = store.instanceDir(inst.id);
+	const base = inst.rom.linked || path.join(dir, 'rom', inst.rom.ext ? `base.${inst.rom.ext}` : 'base.z64');
+	if (!fs.existsSync(base)) return null;
+	const patches = inst.rom.linked ? [] : require('./games').listContent(inst.id).filter(m => m.kind === 'patch' && m.enabled);
+	if (!patches.length || c.hash === 'nds') return hashFile(system, base);
+	const rom = require('./rom');
+	let data = fs.readFileSync(base);
+	for (const p of patches) data = rom.applyPatch(data, fs.readFileSync(p.path), p.rel);
+	return hashBuffer(system, data);
 };
 
 // Titre simplifié pour comparer : sans région, version, article, ponctuation ni accents.
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+	.replace(/\.(nkit|iso|wbfs|rvz|gcz|ciso|wia|z64|v64|n64|nes|sfc|smc|gba|gbc|gb|nds|md|gen|sms|gg|pce|bin|cue|chd|zip|7z)\b/g, ' ')
 	.replace(/\[.*?\]|\(.*?\)|~.*?~/g, ' ').replace(/\b(the|a|an|le|la|les)\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
 const similarity = (a, b) => {
 	const x = new Set(norm(a).split(' ').filter(Boolean));
@@ -131,9 +151,12 @@ const similarity = (a, b) => {
 	return norm(a) === norm(b) ? 1 : inter / Math.max(x.size, y.size);
 };
 
+// Titre cherché : celui de la ROM, sauf pour un jeu patché (hack, randomizer), désigné par le nom de l'instance.
+const patched = (inst) => { try { return !inst.rom.linked && require('./games').listContent(inst.id).some(m => m.kind === 'patch' && m.enabled); } catch { return false; } };
 const titleOf = (inst) => {
 	const info = (inst.rom && inst.rom.info) || {};
-	return inst.type === 'coopdx' ? 'Super Mario 64' : info.known || info.title || inst.name;
+	if (inst.type === 'coopdx') return 'Super Mario 64';
+	return patched(inst) ? inst.name : info.known || info.title || inst.name;
 };
 
 const candidates = async (inst, q = '') => {
@@ -152,20 +175,26 @@ const linkOf = inst => inst.raGame || null;
 const identify = async (id) => {
 	const inst = store.getInstance(id);
 	if (inst.raGame) return inst.raGame;
-	const system = systemOf(inst);
-	const sys = CONSOLES[system];
-	if (!sys) return null;
+	if (!eligible(inst)) return null;
+	const sys = CONSOLES[systemOf(inst)];
 	const list = await gameList(sys.id);
 	let found = null;
 	let by = null;
-	if (sys.hash) {
-		let hash = null;
-		try { hash = hashFile(system, romFile(inst)); } catch { /* fichier illisible */ }
-		if (hash) { found = list.find(g => g.hashes.includes(hash)); by = 'hash'; }
+	let hash = null;
+	try { hash = romHash(inst); } catch { /* fichier ou patch illisible */ }
+	if (hash) { found = list.find(g => g.hashes.includes(hash)); by = 'hash'; }
+	if (!found) {
+		// Même titre : le jeu principal plutôt que ses sous-ensembles (« [Subset - …] ») et ses hacks (« ~Hack~ »).
+		const exact = list.filter(g => norm(g.title) === norm(titleOf(inst)));
+		const main = exact.filter(g => !/\[subset|^~/i.test(g.title));
+		const pick = main.length ? main : exact;
+		if (pick.length === 1) { found = pick[0]; by = 'title'; }
 	}
 	if (!found) {
-		const exact = list.filter(g => norm(g.title) === norm(titleOf(inst)));
-		if (exact.length === 1) { found = exact[0]; by = 'title'; }
+		// Titre court de la ROM (« Majora's Mask ») : fin du titre officiel après « : » (« The Legend of Zelda: Majora's Mask »).
+		const t = norm(titleOf(inst));
+		const tail = t.split(' ').length >= 2 ? list.filter(g => !/\[subset|^~/i.test(g.title) && g.title.includes(':') && norm(g.title.slice(g.title.lastIndexOf(':') + 1)) === t) : [];
+		if (tail.length === 1) { found = tail[0]; by = 'title'; }
 	}
 	if (!found) return null;
 	const link = { id: found.id, title: found.title, icon: media(found.icon), by };
@@ -205,6 +234,16 @@ const progress = async (id, { fresh = false } = {}) => {
 		completion: r.UserCompletion || '0%', achievements: list,
 		unlockers: UNLOCKERS[systemOf(inst)] || 'RetroArch',
 	};
+	// Version du fichier prise en charge ? Sinon les succès s'affichent mais l'émulateur ne pourra pas les débloquer.
+	value.fileOk = null;
+	const sys = CONSOLES[systemOf(inst)];
+	if (sys && sys.hash) {
+		try {
+			const hash = romHash(inst);
+			const entry = hash && (await gameList(sys.id)).find(x => x.id === g.id);
+			if (entry) value.fileOk = entry.hashes.includes(hash);
+		} catch { /* inconnu */ }
+	}
 	progressCache.set(g.id, { at: Date.now(), value });
 	return value;
 };
@@ -252,6 +291,6 @@ const publicConfig = () => { const c = config(); return { user: c.user, keyPrevi
 const supported = system => !!CONSOLES[system];
 
 module.exports = {
-	CONSOLES, UNLOCKERS, hashFile, toZ64, ndsHash, norm, similarity, gameList, identify, candidates, link, linkOf,
+	CONSOLES, UNLOCKERS, hashFile, hashBuffer, romHash, eligible, toZ64, ndsHash, norm, similarity, gameList, identify, candidates, link, linkOf,
 	progress, poll, profile, setConfig, config: publicConfig, ready, supported, systemOf, setFetch, badge, media,
 };

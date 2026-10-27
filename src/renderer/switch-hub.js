@@ -6,7 +6,7 @@
 const SWH = { id: null, list: null, tab: 'saves', game: null, data: null, storage: null, token: 0 };
 TITLES.switch = () => [{ label: 'Centre Switch' }];
 
-const SW_TABS = [['saves', 'Sauvegardes', 'save'], ['settings', 'Réglages du jeu', 'sliders-horizontal'], ['mods', 'Mods', 'puzzle'], ['cheats', 'Triches', 'wand-sparkles'], ['shaders', 'Shaders', 'layers'], ['diag', 'Diagnostic', 'stethoscope']];
+const SW_TABS = [['saves', 'Sauvegardes', 'save'], ['settings', 'Réglages du jeu', 'sliders-horizontal'], ['mods', 'Mods', 'puzzle'], ['cheats', 'Triches', 'wand-sparkles'], ['shaders', 'Shaders', 'layers'], ['ach', 'Succès', 'medal'], ['diag', 'Diagnostic', 'stethoscope']];
 const SW_LABEL = { citron: 'Citron', eden: 'Eden' };
 const SW_REASON = { manual: 'manuelle', auto: 'avant une partie', 'before-restore': 'avant une restauration', 'before-transfer': 'avant un transfert', 'before-import': 'avant un import' };
 const swSize = n => (!n ? '0 o' : n < 1024 ? `${n} o` : n < 1048576 ? `${(n / 1024).toFixed(0)} Ko` : n < 1073741824 ? `${(n / 1048576).toFixed(1)} Mo` : `${(n / 1073741824).toFixed(2)} Go`);
@@ -107,8 +107,17 @@ const swDiag = d => `<div class="sw-verdict ${d.verdict}">${icon(SW_STATE_ICON[d
 
 const swNoTid = () => `<div class="empty">${icon('key-round')}<div>Smash Emu n’arrive pas à identifier ce jeu. Importe les clés de ta console (Paramètres → Émulateurs), puis reviens ici.</div></div>`;
 
-const SW_BODY = { saves: swSaves, settings: swSettings, mods: swMods, cheats: swCheats, shaders: swShaders, diag: swDiag };
-const SW_LOAD = { saves: 'sw:saves', settings: 'sw:settings', mods: 'sw:mods', cheats: 'sw:cheats', shaders: 'sw:shaders', diag: 'sw:diagnose' };
+// Succès maison : la Switch n'a pas de succès RetroAchievements, Smash Emu propose les siens.
+const swAch = (d) => {
+	const pct = d.total ? Math.round((d.earned / d.total) * 100) : 0;
+	return `<div class="sw-card"><div class="sw-card-head">${icon('medal')}<b>${d.earned} / ${d.total} succès</b><span class="sw-pill">${d.myPoints} / ${d.points} pièces</span></div>
+		<div class="ap-bar"><i style="width:${pct}%"></i></div></div>
+		<div class="ap-achs" style="margin-top:14px">${d.achievements.map(a => `<div class="ap-ach ${a.earned ? 'got' : ''}" data-tip="${esc(a.desc)}" data-tip-pos="top"><span class="sw-emoji ${a.earned ? '' : 'off'}">${a.emoji}</span><b>${esc(a.title)}</b><small>${a.earned ? `obtenu ${esc(ago(a.earned))}` : esc(a.desc)}</small><small>+${a.points} pièces</small></div>`).join('')}</div>
+		<div class="sw-note">${icon('info')}RetroAchievements ne prend pas en charge la Switch : ces succès maison se débloquent tout seuls d’après tes parties (temps, jours, sauvegardes, mods, triches, randomizer, speedrun, captures) et rapportent leurs points en pièces. En jeu : Ctrl+I → Succès.</div>`;
+};
+
+const SW_BODY = { saves: swSaves, settings: swSettings, mods: swMods, cheats: swCheats, shaders: swShaders, ach: swAch, diag: swDiag };
+const SW_LOAD = { saves: 'sw:saves', settings: 'sw:settings', mods: 'sw:mods', cheats: 'sw:cheats', shaders: 'sw:shaders', ach: 'sw:achievements', diag: 'sw:diagnose' };
 
 const swMain = () => {
 	const g = SWH.game;

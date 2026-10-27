@@ -32,7 +32,7 @@ const HANDLERS = {
 		const g = gameOf(e.sender.id);
 		const inst = store.getInstance(g.id);
 		return {
-			hints: hints.config(), ra: retro.config(), raSupported: retro.supported(retro.systemOf(inst)),
+			hints: hints.config(), ra: retro.config(), raSupported: retro.eligible(inst), home: g.system === 'switch',
 			game: { name: inst.name, console: (systems.SYSTEMS[g.system] || {}).label || '' }, talking: hints.has(g.id),
 		};
 	},
@@ -53,9 +53,20 @@ const HANDLERS = {
 		}, (d) => { if (!sender.isDestroyed()) sender.send('assist:delta', d); });
 	},
 	'assist:reset': (e) => { hints.reset(gameOf(e.sender.id).id); return true; },
-	'assist:progress': async (e) => retro.progress(gameOf(e.sender.id).id),
+	// Switch : succès maison de Smash Emu (RetroAchievements ne prend pas en charge la Switch).
+	'assist:progress': async (e) => {
+		const g = gameOf(e.sender.id);
+		if (g.system !== 'switch') return retro.progress(g.id);
+		const sa = require('./switchach');
+		sa.reward(sa.evaluate(require('./runner').status(), g.id));
+		return sa.progress(g.id);
+	},
 	'assist:poll': async (e) => {
 		const g = gameOf(e.sender.id);
+		if (g.system === 'switch') {
+			const sa = require('./switchach');
+			return sa.reward(sa.evaluate(require('./runner').status(), g.id));
+		}
 		const fresh = await retro.poll(g.id);
 		if (fresh.length) {
 			const coins = require('./coins');

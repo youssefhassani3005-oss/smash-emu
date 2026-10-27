@@ -69,7 +69,8 @@ const apDetail = () => {
 			<div class="small muted">${esc(p.game.console)} · ${p.earned} / ${p.total} succès · ${p.myPoints} / ${p.points} points · ${p.game.players} joueurs</div>
 			<div class="ap-bar"><i style="width:${pct}%"></i></div></div>
 			<div class="ap-btns"><button class="btn sm" data-action="ap-change">Changer de jeu</button><button class="btn sm" data-action="ap-refresh">${icon('refresh-cw')}</button></div></div>
-		<div class="small muted" style="margin:6px 0 12px">Ces succès se débloquent avec <b>${esc(p.unlockers)}</b>. En jeu, Ctrl+I → Succès, puis « Indice » sur un succès pour savoir comment l’obtenir.</div>
+		${p.fileOk === false ? `<div class="sw-note ap-bad">${icon('triangle-alert')}<span><b>Ta version de ce jeu n’est pas prise en charge par RetroAchievements.</b> Les succès s’affichent, mais l’émulateur ne pourra pas les débloquer avec ce fichier (autre révision, région ou jeu patché). La liste des versions acceptées est sur la page du jeu, sur retroachievements.org (« Fichiers pris en charge »).</span></div>` : ''}
+		<div class="small muted" style="margin:6px 0 12px">${p.fileOk ? '✓ Ta version du jeu est reconnue. ' : ''}Ces succès se débloquent avec <b>${esc(p.unlockers)}</b>. En jeu, Ctrl+I → Succès, puis « Indice » sur un succès pour savoir comment l’obtenir.</div>
 		${p.total ? `<div class="ap-achs">${p.achievements.map(a => `<div class="ap-ach ${a.earned ? 'got' : ''}" data-tip="${esc(a.desc)}" data-tip-pos="top"><img src="${esc(a.earned ? a.badge : a.locked)}" alt="" loading="lazy"><b>${esc(a.title)}</b><small>${a.points} pts${a.hardcore ? ' · hardcore' : ''}</small></div>`).join('')}</div>`
 			: '<div class="small muted">Ce jeu n’a pas encore de succès sur RetroAchievements.</div>'}
 	</div>`;

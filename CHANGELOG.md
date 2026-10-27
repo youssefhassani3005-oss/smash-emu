@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.3.1
+
+- **Succès maison pour les jeux Switch** (RetroAchievements ne prend pas en charge la Switch) : 20 succès par jeu,
+  débloqués tout seuls d'après tes parties : premier lancement, première sauvegarde, 1 h, 10 h, 25 h, 10 parties,
+  3 et 7 jours de jeu, partie de 2 h, nuit blanche, copie de secours, sauvegarde dans Citron et Eden, mod, triche,
+  randomizer, réglages sur mesure, 5 captures, run de speedrun, plus 2 succès pour l'ensemble de tes jeux Switch.
+  Leurs points sont gagnés en pièces. Visibles en jeu (Ctrl+I → Succès, alerte en direct) et dans le Centre Switch
+  (nouvel onglet Succès).
+- **RetroAchievements : reconnaissance corrigée.** Les ROM N64 n'étaient pas lues (rangées autrement que celles
+  des autres consoles) : Super Mario 64, Smash Bros., Mario Party, Pokémon Stadium 2… sont maintenant reconnus
+  par leur empreinte. Un jeu patché est reconnu sur le fichier réellement lancé et sous son propre nom (ex.
+  Chaos Edition) ; un titre court trouve son titre officiel (« Majora's Mask » → « The Legend of Zelda: Majora's
+  Mask ») ; « .nkit » et les sous-ensembles ne gênent plus. Avertissement quand ta version du fichier n'est pas
+  acceptée par RetroAchievements (les succès s'affichent mais ne se débloqueront pas). SM64 Coop DX n'est plus
+  proposé (pas de succès pour ce portage PC).
+
 ## 3.3.0 : Indices et succès
 
 Nouvelle page **Succès et indices** (médaille dans la barre) et, en jeu, **Ctrl+I** (ou la bulle de la barre) ouvre

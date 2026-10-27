@@ -1,4 +1,6 @@
 /* ---------- Centre Switch ---------- */
+.sw-emoji { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 12px; font-size: 30px; background: rgba(244, 180, 0, 0.18); }
+.sw-emoji.off { filter: grayscale(1); opacity: 0.45; background: var(--button); }
 .sw-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .sw-head h2 { margin: 0 0 2px; font-size: 21px; color: var(--contrast); }
 .sw-head .grow { min-width: 200px; }

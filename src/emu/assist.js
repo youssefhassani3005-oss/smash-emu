@@ -58,6 +58,9 @@ window.SmashAssist = (() => {
 	.sa-ach .p { font-weight: 700; color: #f4b400; font-size: 12px; }
 	.sa-ach button { border: none; background: rgba(255, 255, 255, 0.08); color: #fff; padding: 5px 9px; border-radius: 8px; font-size: 11.5px; }
 	.sa-filter { display: flex; gap: 5px; margin-bottom: 10px; }
+	.sa-emoji { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 8px; font-size: 24px; background: rgba(244, 180, 0, 0.18); }
+	.sa-emoji.off { filter: grayscale(1); opacity: 0.45; background: rgba(255, 255, 255, 0.06); }
+	.sa-emoji.big { width: 48px; height: 48px; border-radius: 10px; }
 	`;
 
 	const create = ({ toast = () => {}, getImage = null, onToggle = () => {} } = {}) => {
@@ -85,21 +88,23 @@ window.SmashAssist = (() => {
 
 		const raBody = () => {
 			const i = s.info;
-			if (!i.raSupported) return '<div class="sa-empty">Cette console n’a pas de succès RetroAchievements.</div>';
-			if (!i.ra.ready) return '<div class="sa-empty">Connecte ton compte <b>RetroAchievements</b> dans Smash Emu : page <b>Succès et indices</b> (barre du bas). Il faut ton nom d’utilisateur et ta clé d’API web (gratuite).</div>';
+			if (!i.raSupported && !i.home) return '<div class="sa-empty">Cette console n’a pas de succès RetroAchievements.</div>';
+			if (!i.ra.ready && !i.home) return '<div class="sa-empty">Connecte ton compte <b>RetroAchievements</b> dans Smash Emu : page <b>Succès et indices</b> (barre du bas). Il faut ton nom d’utilisateur et ta clé d’API web (gratuite).</div>';
 			if (s.raError) return `<div class="sa-msg err">${esc(s.raError)}</div>`;
 			if (!s.ra) return '<div class="sa-empty"><span class="sa-dots">Chargement des succès</span></div>';
 			if (s.ra === 'none') return '<div class="sa-empty">Ce jeu n’a pas été reconnu par RetroAchievements. Associe-le au bon jeu dans Smash Emu : page <b>Succès et indices</b>.</div>';
 			const r = s.ra;
 			const pct = r.total ? Math.round((r.earned / r.total) * 100) : 0;
 			const list = r.achievements.filter(a => (s.filter === 'todo' ? !a.earned : s.filter === 'got' ? a.earned : true));
-			return `<div class="sa-game">${r.game.icon ? `<img src="${esc(r.game.icon)}" alt="">` : ''}<div><b>${esc(r.game.title)}</b><span>${r.earned} / ${r.total} succès · ${r.myPoints} / ${r.points} points</span></div></div>
+			return `<div class="sa-game">${r.game.icon ? `<img src="${esc(r.game.icon)}" alt="">` : '<span class="sa-emoji big">🏆</span>'}<div><b>${esc(r.game.title)}</b><span>${r.earned} / ${r.total} succès · ${r.myPoints} / ${r.points} ${r.home ? 'pièces' : 'points'}</span></div></div>
 				<div class="sa-bar"><i style="width:${pct}%"></i></div>
+				${r.home ? '<div class="sa-note">Succès maison de Smash Emu : RetroAchievements ne prend pas en charge la Switch. Ils se débloquent tout seuls d’après tes parties (temps, jours, sauvegardes, mods, triches, randomizer, speedrun…) et rapportent leurs points en pièces.</div>' : `
 				${r.total ? '' : '<div class="sa-note">Ce jeu n’a pas encore de succès sur RetroAchievements.</div>'}
-				<div class="sa-note">Les succès se débloquent dans un émulateur approuvé par RetroAchievements (${esc(r.unlockers)}), connecté à ton compte. Smash Emu te prévient dès qu’un succès tombe.</div>
+				${r.fileOk === false ? '<div class="sa-note">Ta version de ce jeu n’est pas prise en charge par RetroAchievements : les succès s’affichent mais ne pourront pas se débloquer avec ce fichier.</div>' : ''}
+				<div class="sa-note">Les succès se débloquent dans un émulateur approuvé par RetroAchievements (${esc(r.unlockers)}), connecté à ton compte. Smash Emu te prévient dès qu’un succès tombe.</div>`}
 				<div class="sa-filter">${[['todo', 'À débloquer'], ['got', 'Débloqués'], ['all', 'Tous']].map(([k, l]) => `<button class="sa-chip ${s.filter === k ? 'on' : ''}" data-filter="${k}">${l}</button>`).join('')}</div>
-				${list.map(a => `<div class="sa-ach ${a.earned ? 'got' : ''}"><img src="${esc(a.earned ? a.badge : a.locked)}" alt="" loading="lazy"><div class="t"><b>${esc(a.title)}</b><span>${esc(a.desc)}</span></div>
-					<div style="text-align:right"><div class="p">${a.points} pts</div>${a.earned ? '' : `<button data-hint-ach="${a.id}">Indice</button>`}</div></div>`).join('') || '<div class="sa-empty">Rien ici.</div>'}`;
+				${list.map(a => `<div class="sa-ach ${a.earned ? 'got' : ''}">${a.emoji ? `<span class="sa-emoji ${a.earned ? '' : 'off'}">${a.emoji}</span>` : `<img src="${esc(a.earned ? a.badge : a.locked)}" alt="" loading="lazy">`}<div class="t"><b>${esc(a.title)}</b><span>${esc(a.desc)}</span></div>
+					<div style="text-align:right"><div class="p">${a.points} ${r.home ? '🪙' : 'pts'}</div>${a.earned || r.home ? '' : `<button data-hint-ach="${a.id}">Indice</button>`}</div></div>`).join('') || '<div class="sa-empty">Rien ici.</div>'}`;
 		};
 
 		const render = () => {
@@ -118,7 +123,7 @@ window.SmashAssist = (() => {
 		};
 
 		const loadRa = async (fresh = false) => {
-			if (!s.info || !s.info.ra.ready || !s.info.raSupported) return;
+			if (!s.info || (!s.info.home && (!s.info.ra.ready || !s.info.raSupported))) return;
 			if (fresh) s.ra = null;
 			try { s.ra = (await api.progress()) || 'none'; s.raError = null; } catch (error) { s.raError = error.message; }
 			if (s.open) render();
@@ -185,15 +190,19 @@ window.SmashAssist = (() => {
 		});
 		el.addEventListener('keyup', e => e.stopPropagation());
 
+		// Succès maison (Switch) : points en pièces ; RetroAchievements : points du site et 10 pièces.
+		const announce = a => toast(a.emoji ? `${a.emoji} Succès débloqué : <b>${esc(a.title)}</b> (+${a.points} pièces)` : `🏆 Succès débloqué : <b>${esc(a.title)}</b> (+${a.points} points, +10 pièces)`);
+		if (api.onUnlocked) api.onUnlocked((a) => { announce(a); loadRa(true); });
+
 		// Nouveaux succès : vérifiés toutes les 90 s pendant la partie (débloqués par l'émulateur, vus par l'API).
 		let timer = null;
 		const startPolling = () => {
-			if (timer || !s.info || !s.info.ra.ready || !s.info.raSupported) return;
+			if (timer || !s.info || (!s.info.home && (!s.info.ra.ready || !s.info.raSupported))) return;
 			api.poll().catch(() => {});
 			timer = setInterval(async () => {
 				try {
 					const fresh = await api.poll();
-					for (const a of fresh) toast(`🏆 Succès débloqué : <b>${esc(a.title)}</b> (+${a.points} points, +10 pièces)`);
+					for (const a of fresh) announce(a);
 					if (fresh.length) loadRa(true);
 				} catch { /* réseau indisponible : on réessaie au prochain tour */ }
 			}, POLL_MS);

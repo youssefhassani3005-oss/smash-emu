@@ -59,6 +59,7 @@ test('titres comparés sans région ni article', () => {
 	assert.strictEqual(retro.norm('The Legend of Zelda: Ocarina of Time (Europe) (En,Fr,De)'), retro.norm('Legend of Zelda, The - Ocarina of Time'));
 	assert.ok(retro.similarity('Super Mario 64 (USA)', 'Super Mario 64') === 1);
 	assert.ok(retro.similarity('Mario Kart 64', 'Super Mario 64') < 1);
+	assert.strictEqual(retro.norm('Animal Crossing - City Folk (En,Fr,Es) (v1.00).nkit'), retro.norm('Animal Crossing: City Folk'));
 });
 
 test('reconnaissance : par empreinte, puis par titre identique, sinon candidats', async () => {
@@ -71,11 +72,28 @@ test('reconnaissance : par empreinte, puis par titre identique, sinon candidats'
 	store.updateInstance(b.id, { rom: { system: 'gb', linked: write('sml.gb', crypto.randomBytes(100)) } });
 	const c = store.createInstance({ name: 'Jeu inconnu', type: 'rom' });
 	store.updateInstance(c.id, { rom: { system: 'gb', linked: write('x.gb', crypto.randomBytes(100)) } });
+	// N64 : ROM copiée dans le dossier du jeu (rom\base.z64), sans extension enregistrée.
+	const n64rom = Buffer.concat([Buffer.from([0x80, 0x37, 0x12, 0x40]), crypto.randomBytes(1020)]);
+	const d = store.createInstance({ name: 'Super Mario 64', type: 'rom' });
+	fs.mkdirSync(path.join(store.instanceDir(d.id), 'rom'), { recursive: true });
+	fs.writeFileSync(path.join(store.instanceDir(d.id), 'rom', 'base.z64'), n64rom);
+	store.updateInstance(d.id, { rom: { file: 'Super Mario 64 (USA).z64', info: { known: 'Super Mario 64 (US)' } } });
+	const e = store.createInstance({ name: 'Super Mario 64', type: 'rom' });
+	fs.mkdirSync(path.join(store.instanceDir(e.id), 'rom'), { recursive: true });
+	fs.writeFileSync(path.join(store.instanceDir(e.id), 'rom', 'base.z64'), Buffer.concat([Buffer.from([0x80, 0x37, 0x12, 0x40]), crypto.randomBytes(500)]));
+	store.updateInstance(e.id, { rom: { file: 'sm64.z64', info: { known: 'Super Mario 64 (US)' } } });
+	const coop = store.createInstance({ name: 'Coop', type: 'coopdx' });
 	await retro.setConfig({ user: 'Joueur', key: 'ABCDEFGHIJKLMNOPQRSTUVWX12345678' });
 	const calls = [];
 	retro.setFetch(async (url) => {
 		calls.push(url);
 		const u = new URL(url);
+		if (u.pathname.endsWith('API_GetGameList.php') && u.searchParams.get('i') === '2') {
+			return { ok: true, status: 200, json: async () => [
+				{ ID: 10003, Title: 'Super Mario 64', ImageIcon: '/Images/9.png', NumAchievements: 114, Points: 900, Hashes: [md5(n64rom)] },
+				{ ID: 20000, Title: 'Super Mario 64 [Subset - Bonus]', ImageIcon: '/Images/8.png', NumAchievements: 10, Points: 50, Hashes: ['ff'] },
+			] };
+		}
 		if (u.pathname.endsWith('API_GetGameList.php')) {
 			return { ok: true, status: 200, json: async () => [
 				{ ID: 1, Title: 'Tetris', ImageIcon: '/Images/1.png', NumAchievements: 20, Points: 200, Hashes: [md5(rom).toUpperCase()] },
@@ -97,9 +115,15 @@ test('reconnaissance : par empreinte, puis par titre identique, sinon candidats'
 	const lb = await retro.identify(b.id);
 	assert.deepStrictEqual([lb.id, lb.by], [2, 'title']);
 	assert.strictEqual(await retro.identify(c.id), null);
+	const ld = await retro.identify(d.id);
+	assert.deepStrictEqual([ld.id, ld.by], [10003, 'hash'], 'ROM N64 du dossier du jeu reconnue par empreinte');
+	const le = await retro.identify(e.id);
+	assert.deepStrictEqual([le.id, le.by], [10003, 'title'], 'titre identique : le jeu principal, pas le sous-ensemble');
+	assert.strictEqual(await retro.identify(coop.id), null, 'Coop DX : pas de succès');
+	assert.ok(!retro.eligible(store.getInstance(coop.id)));
 	const cands = await retro.candidates(store.getInstance(c.id), 'Mario Land');
 	assert.deepStrictEqual(cands.slice(0, 2).map(x => x.id).sort(), [2, 3]);
-	assert.strictEqual(calls.filter(u => u.includes('GetGameList')).length, 1, 'liste des jeux gardée en cache');
+	assert.strictEqual(calls.filter(u => u.includes('GetGameList') && u.includes('i=4&')).length, 1, 'liste des jeux gardée en cache');
 	assert.ok(calls.every(u => u.includes('y=ABCDEFGHIJKLMNOPQRSTUVWX12345678')));
 
 	const p = await retro.progress(a.id);
