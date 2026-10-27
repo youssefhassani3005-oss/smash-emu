@@ -47,8 +47,11 @@ const catalog = require('./catalog');
 const runner = require('./runner');
 const opera = require('./opera');
 const rom = require('./rom');
+const switchhub = require('./switchhub');
 
 let win = null;
+// Une sauvegarde Switch ne se remplace pas pendant que le jeu tourne : l'émulateur l'écraserait en quittant.
+const swIdle = (id) => { if (runner.isRunning(id)) throw new Error('Ferme le jeu avant : l’émulateur écraserait la sauvegarde en quittant.'); };
 const send = (channel, payload) => { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); };
 runner.setEmitter((type, payload) => { send(`run:${type}`, payload); if (type === 'status') { updatePresence(); friends.publish(); } });
 
@@ -553,6 +556,67 @@ const handlers = {
 	'switch:import': (files) => switchkeys.importKeys(files),
 	'switch:folder': () => switchkeys.openFolder(),
 	'switch:open': () => switchkeys.openEmulator(),
+	// Centre Switch : sauvegardes, réglages du jeu, mods, triches, shaders, diagnostic (Citron, Eden).
+	'sw:list': () => switchhub.list(),
+	'sw:game': id => switchhub.game(id),
+	'sw:engine': (id, engine) => switchhub.setEngine(id, engine),
+	'sw:saves': id => switchhub.saves(id),
+	'sw:backup': (id, engine) => { const c = switchhub.ctx(id); swIdle(id); const n = switchhub.backup(c.tid, engine, 'manual'); if (!n) throw new Error('Pas encore de sauvegarde de ce jeu dans cet émulateur.'); return switchhub.saves(id); },
+	'sw:restore': (id, name, engine) => { swIdle(id); switchhub.restore(switchhub.ctx(id).tid, name, engine); return switchhub.saves(id); },
+	'sw:transfer': (id, from, to) => { swIdle(id); switchhub.transfer(switchhub.ctx(id).tid, from, to); return switchhub.saves(id); },
+	'sw:backupDelete': (id, name) => { switchhub.removeBackup(switchhub.ctx(id).tid, name); return switchhub.saves(id); },
+	'sw:autoBackup': (on) => { store.setSettings({ switchAutoBackup: !!on }); return !!on; },
+	'sw:saveFolder': (id, engine) => { const s = switchhub.saveOf(engine, switchhub.ctx(id).tid); const d = s.exists ? s.dir : path.dirname(s.dir || switchhub.userDir(engine)); fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+	'sw:backupFolder': (id) => { const d = path.join(switchhub.BACKUP_DIR, switchhub.ctx(id).tid || ''); fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+	'sw:export': async (id, engine) => {
+		const c = switchhub.ctx(id);
+		const r = await dialog.showSaveDialog(win, { defaultPath: `${c.inst.name.replace(/[<>:"/\\|?*]/g, '_')} - sauvegarde ${switchhub.LABEL[engine]}.zip`, filters: [{ name: 'Archive ZIP', extensions: ['zip'] }] });
+		return r.canceled ? null : switchhub.exportZip(c.tid, engine, r.filePath);
+	},
+	'sw:import': async (id, engine, kind) => {
+		swIdle(id);
+		const r = await dialog.showOpenDialog(win, kind === 'folder' ? { title: 'Dossier de la sauvegarde', properties: ['openDirectory'] } : { title: 'Sauvegarde Switch', properties: ['openFile'], filters: [{ name: 'Archives', extensions: ['zip', '7z', 'rar'] }] });
+		if (r.canceled || !r.filePaths[0]) return null;
+		await switchhub.importSave(switchhub.ctx(id).tid, engine, r.filePaths[0]);
+		return switchhub.saves(id);
+	},
+	'sw:settings': id => switchhub.settings(id),
+	'sw:setOption': (id, opt, value) => switchhub.setOption(id, opt, value),
+	'sw:preset': (id, preset) => switchhub.applyPreset(id, preset),
+	'sw:resetOptions': id => switchhub.resetOptions(id),
+	'sw:mods': id => switchhub.mods(id),
+	'sw:modToggle': (id, name, on) => switchhub.toggleMod(id, name, on),
+	'sw:modSolo': (id, name) => switchhub.soloMod(id, name),
+	'sw:modRemove': (id, name) => switchhub.removeMod(id, name),
+	'sw:modImport': async (id, kind) => {
+		const r = await dialog.showOpenDialog(win, kind === 'folder' ? { title: 'Dossier du mod', properties: ['openDirectory'] } : { title: 'Archive du mod', properties: ['openFile'], filters: [{ name: 'Archives', extensions: ['zip', '7z', 'rar'] }] });
+		return r.canceled || !r.filePaths[0] ? null : switchhub.importMod(id, r.filePaths[0]);
+	},
+	'sw:modFolder': (id) => { const c = switchhub.ctx(id); const d = switchhub.modBases(['citron', 'eden'].includes(c.engine) ? c.engine : 'eden', c.tid).on; fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+	'sw:cheats': id => switchhub.cheats(id),
+	'sw:cheatImport': async (id) => {
+		const r = await dialog.showOpenDialog(win, { title: 'Fichier de triches (format Atmosphère)', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Triches', extensions: ['txt'] }] });
+		if (r.canceled || !r.filePaths.length) return null;
+		let last = null;
+		for (const f of r.filePaths) last = switchhub.importCheats(id, f);
+		return last;
+	},
+	'sw:cheatToggle': (id, bid, index, on) => switchhub.toggleCheat(id, bid, index, on),
+	'sw:cheatRemove': (id, bid) => switchhub.removeCheats(id, bid),
+	'sw:shaders': id => switchhub.shaders(id),
+	'sw:shaderClear': (id, engine) => switchhub.clearShaders(id, engine || null),
+	'sw:storage': () => switchhub.storage(),
+	'sw:shaderClearAll': () => switchhub.clearAllShaders(),
+	'sw:diagnose': async (id) => {
+		let gpu = null;
+		try {
+			const info = await app.getGPUInfo('basic');
+			const dev = (info.gpuDevice || []).find(d => d.active) || (info.gpuDevice || [])[0];
+			gpu = dev ? { dedicated: (info.gpuDevice || []).some(d => [0x10de, 0x1002].includes(d.vendorId)), name: dev.deviceString || null } : null;
+		} catch { /* informations GPU indisponibles */ }
+		return switchhub.diagnose(id, { gpu });
+	},
+	'sw:openLog': (id) => { const e = switchhub.ctx(id).engine; const f = path.join(switchhub.userDir(e), 'log', `${e}_log.txt`); if (!fs.existsSync(f)) throw new Error('Pas encore de journal : lance le jeu une fois.'); return shell.openPath(f); },
 	'controls:list': () => controls.list(),
 	'controls:get': (system, instanceId) => controls.get(system, instanceId || null),
 	'controls:set': (system, profile, instanceId) => controls.set(system, profile, instanceId || null),

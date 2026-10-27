@@ -344,6 +344,8 @@ const prepareYuzu = (engine, file, embed, inst = {}) => {
 	const switchkeys = require('./switchkeys');
 	const switchgame = require('./switchgame');
 	try { switchkeys.syncYuzu(engine); } catch { /* rien à reprendre */ }
+	// Copie de secours de la sauvegarde du jeu (Centre Switch), seulement si elle a changé depuis la dernière.
+	try { require('./switchhub').autoBackup(engine, file); } catch { /* copie impossible : le jeu se lance quand même */ }
 	try { switchkeys.yuzuSpeed(engine, (inst.options || {}).switchSpeed); } catch { /* réglage laissé tel quel */ }
 	try { switchkeys.yuzuWindowMode(engine, embed); } catch { /* configuration illisible : celle de l'émulateur s'applique */ }
 	let memory = null;

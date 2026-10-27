@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.2.0 : Centre Switch
+
+Nouvelle page **Centre Switch** (icône manette rouge dans la barre) : tous tes jeux Switch, et pour chacun six onglets.
+Toutes les idées, faites et à venir : [docs/IDEES-SWITCH.md](docs/IDEES-SWITCH.md).
+
+- **Sauvegardes** : celle de Citron et celle d'Eden côte à côte. Copie de secours **automatique avant chaque partie**
+  (seulement si elle a changé), copies manuelles, restauration, **transfert Citron ⇄ Eden** (proposé quand tu changes
+  l'émulateur d'un jeu), export en .zip, import depuis .zip, .7z, .rar ou dossier. L'état actuel est toujours mis de
+  côté avant d'être remplacé. La sauvegarde reste accessible même si le fichier du jeu a été supprimé.
+- **Réglages du jeu** (pour ce jeu seulement) : résolution ½× à 4×, filtre (FSR, ScaleForce…), anti-crénelage,
+  synchronisation verticale, format d'image, filtrage des textures, précision du GPU, shaders en arrière-plan, mode
+  TV / portable, **langue** et région de la console, volume. Préréglages PC modeste, Équilibré, Beau, Ultra (4K).
+- **Mods** : liste, activer / désactiver sans supprimer, bouton « Seul » pour trouver le mod qui fait planter, import
+  d'archive ou de dossier, lien vers GameBanana.
+- **Triches** : import de fichiers Atmosphère (.txt), une case par triche, rangées par version du jeu.
+- **Shaders** : taille du cache par jeu, vider un jeu ou tous.
+- **Diagnostic** : émulateur, fichier, clés, firmware, version du jeu, mémoire, carte graphique, disque, mods actifs
+  et dernières erreurs du journal, avec ce qu'il faut faire pour chaque point.
+
 ## 3.1.0
 
 - **40 accueils fidèles** dans la Boutique (300 pièces chacun, rubrique « Accueils fidèles ») : chacun reprend vraiment

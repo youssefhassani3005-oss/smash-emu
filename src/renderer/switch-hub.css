@@ -1,0 +1,46 @@
+/* ---------- Centre Switch ---------- */
+.sw-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.sw-head h2 { margin: 0 0 2px; font-size: 21px; color: var(--contrast); }
+.sw-head .grow { min-width: 200px; }
+.sw-art { position: relative; flex-shrink: 0; width: 64px; height: 64px; border-radius: 16px; overflow: hidden; background: #0b0d10; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25); }
+.sw-engine { display: flex; flex-direction: column; gap: 4px; }
+.sw-red { color: #ff4d5e; }
+.sw-tabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 5px; margin-bottom: 16px; border-radius: 16px; background: color-mix(in srgb, var(--raised) 88%, transparent); box-shadow: inset 0 0 0 1px var(--divider); }
+.sw-tab { display: flex; align-items: center; gap: 7px; padding: 8px 13px; border: none; border-radius: 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--text); background: transparent; transition: background 0.15s, color 0.15s; }
+.sw-tab svg.icon { width: 16px; height: 16px; }
+.sw-tab:hover { background: var(--button); color: var(--contrast); }
+.sw-tab.on { background: var(--brand); color: var(--on-brand, #fff); }
+.sw-body { animation: swIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes swIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.sw-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.sw-card { padding: 14px 16px; border-radius: 18px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--divider); }
+.sw-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; color: var(--contrast); }
+.sw-card-head svg.icon { width: 18px; height: 18px; color: var(--brand); }
+.sw-pill { padding: 2px 9px; border-radius: 999px; font-size: 11px; background: rgba(var(--brand-rgb), 0.16); color: var(--brand); }
+.sw-pill.warn { background: rgba(255, 170, 0, 0.16); color: #e09400; }
+.sw-big { font-size: 18px; font-weight: 700; color: var(--contrast); margin-bottom: 2px; }
+.sw-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.sw-line { gap: 14px; padding: 12px 14px; margin-bottom: 14px; border-radius: 16px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--divider); }
+.sw-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0 10px; }
+.sw-sub h3 { margin: 0 auto 0 0; font-size: 15px; color: var(--contrast); }
+.sw-list { display: flex; flex-direction: column; gap: 6px; }
+.sw-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 14px; background: var(--raised-2, var(--raised)); }
+.sw-row b { display: block; font-size: 13px; color: var(--contrast); }
+.sw-row small { display: block; font-size: 11.5px; color: var(--text-dim); }
+.sw-row .grow { min-width: 0; }
+.sw-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; margin-top: 14px; }
+.sw-opt { padding: 12px 14px; border-radius: 16px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--divider); }
+.sw-opt .chips { margin-top: 8px; }
+.sw-opt .chip { padding: 5px 10px; font-size: 12px; }
+.sw-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; padding: 10px 12px; border-radius: 14px; font-size: 12.5px; line-height: 1.5; color: var(--text-dim); background: rgba(var(--brand-rgb), 0.07); }
+.sw-note svg.icon { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; color: var(--brand); }
+.sw-verdict { display: flex; align-items: center; gap: 10px; padding: 14px 16px; margin-bottom: 12px; border-radius: 16px; font-size: 14px; }
+.sw-verdict svg.icon { width: 22px; height: 22px; flex-shrink: 0; }
+.sw-verdict.ok { background: rgba(27, 217, 106, 0.14); color: #18b85a; }
+.sw-verdict.warn { background: rgba(255, 170, 0, 0.15); color: #d98c00; }
+.sw-verdict.bad { background: rgba(255, 77, 94, 0.15); color: #ff4d5e; }
+.sw-check > svg.icon { width: 18px; height: 18px; flex-shrink: 0; }
+.sw-check.ok > svg.icon { color: #18b85a; }
+.sw-check.warn > svg.icon { color: #d98c00; }
+.sw-check.bad > svg.icon { color: #ff4d5e; }
+.sw-log { margin: 0; padding: 12px; max-height: 220px; overflow: auto; border-radius: 14px; font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; color: var(--text); background: rgba(0, 0, 0, 0.3); }

@@ -226,7 +226,7 @@ const CONSOLE_DOCK = [
 	['home', 'house', 'Accueil', '#e60012'], ['roms', 'disc-3', 'Jeux', '#ff8a00'], ['library', 'library', 'Bibliothèque', '#21a85a'],
 	['friends', 'users', 'Amis', '#e5397a'], ['remote', 'wifi', 'À distance', '#1e88e5'], ['trophies', 'trophy', 'Trophées', '#e6a700'],
 	['dashboard', 'gauge', 'Statistiques', '#00a3a3'], ['multiworld', 'shuffle', 'Multiworld', '#8e5be8'], ['controls', 'gamepad-2', 'Manettes', '#5d6672'],
-	['mods', 'puzzle', 'Mods', '#16a596'], ['shop', 'store', 'Boutique', '#f4b400'], ['settings', 'settings', 'Réglages', '#5d6672'],
+	['mods', 'puzzle', 'Mods', '#16a596'], ['switch', 'gamepad', 'Centre Switch', '#e60012'], ['shop', 'store', 'Boutique', '#f4b400'], ['settings', 'settings', 'Réglages', '#5d6672'],
 ];
 const renderConsoleNav = () => {
 	const r = state.route;
@@ -277,6 +277,7 @@ const renderNav = () => {
 		${navBtn('roms', 'disc-3', 'Jeux')}
 		${navBtn('library', 'library', 'Bibliothèque')}
 		${navBtn('controls', 'gamepad-2', 'Manettes')}
+		${navBtn('switch', 'gamepad', 'Centre Switch')}
 		${navBtn('remote', 'wifi', 'À distance')}
 		${navBtn('friends', 'users', 'Amis', typeof friendsOnline === 'function' ? friendsOnline() : 0)}
 		${navBtn('trophies', 'trophy', 'Trophées')}
