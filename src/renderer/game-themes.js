@@ -1,5 +1,6 @@
-// 40 thèmes de jeux illustrés : couleurs, police, style d'icônes, illustration (motifs dessinés en SVG) et décor
+// 42 thèmes de jeux illustrés : couleurs, police, style d'icônes, illustration (motifs dessinés en SVG) et décor
 // animé (fées pour Zelda, étoiles pour Galaxy, bulles façon Wii…). Choix automatique du thème selon le jeu lancé.
+// Persona 3 Reload et Persona 5 Royal ont en plus un effet plein écran (FX) et leur propre style d'interface.
 // Partagé par la fenêtre principale, les fenêtres de jeu (CSS injecté) et le processus principal (choix du thème).
 (function (root) {
 	// ---------- Motifs (dessins originaux, centrés sur 0,0 dans un carré de 100) ----------
@@ -65,6 +66,17 @@
 		spot: p => `<path d="M-6-44H6L40 44H-40Z" fill="${p.b}" opacity=".18"/><rect x="-14" y="-50" width="28" height="12" rx="3" fill="${p.c}"/>`,
 		note: p => `<path d="M-8 26V-34L30-42V18" stroke="${p.c}" stroke-width="6" fill="none"/><ellipse cx="-18" cy="28" rx="13" ry="10" fill="${p.c}"/><ellipse cx="20" cy="20" rx="13" ry="10" fill="${p.c}"/>`,
 		swordGlow: p => `<path d="M-6 22V-30L0-48 6-30V22Z" fill="${p.a}" opacity=".9"/><path d="M-12-30L0-48 12-30Z" fill="${p.b}" opacity=".4"/><rect x="-22" y="20" width="44" height="8" rx="3" fill="${p.c}"/><rect x="-5" y="28" width="10" height="18" fill="${p.d}"/>`,
+		// Nuit bleue et Heure Sombre (thème p3r) : horloge arrêtée à minuit, papillon, lune, tour en étages.
+		clock: p => `<circle r="40" fill="${p.d}" stroke="${p.a}" stroke-width="4"/><circle r="33" fill="none" stroke="${p.b}" stroke-width="1.5" opacity=".5"/>${Array.from({ length: 12 }, (_, k) => `<rect x="-1.6" y="-38" width="3.2" height="${k % 3 ? 6 : 10}" fill="${p.c}" transform="rotate(${k * 30})"/>`).join('')}<path d="M0 4V-22" stroke="${p.c}" stroke-width="5" stroke-linecap="round"/><path d="M0 4V-32" stroke="${p.a}" stroke-width="3" stroke-linecap="round" transform="rotate(3)"/><circle r="4" fill="${p.a}"/>`,
+		butterfly: p => `<g fill="${p.a}" stroke="${p.c}" stroke-width="2" opacity=".9"><path d="M-2-4C-20-34-46-30-40-8-36 6-16 6-2 0Z"/><path d="M2-4C20-34 46-30 40-8 36 6 16 6 2 0Z"/><path d="M-2 2C-18 8-30 26-18 32-8 36-4 18-2 6Z"/><path d="M2 2C18 8 30 26 18 32 8 36 4 18 2 6Z"/></g><rect x="-2" y="-12" width="4" height="30" rx="2" fill="${p.c}"/>`,
+		fullmoon: () => '<circle r="46" fill="#bff7ff" opacity=".12"/><circle r="36" fill="#e4f8ff"/><circle r="36" fill="#7dff9f" opacity=".2"/><circle cx="-10" cy="-8" r="7" fill="#b9d8e6" opacity=".7"/><circle cx="12" cy="10" r="5" fill="#b9d8e6" opacity=".6"/><circle cx="8" cy="-16" r="3" fill="#b9d8e6" opacity=".6"/>',
+		tower: p => `<path d="M-30 50L-24-6-14-6-12-30-4-30 0-52 4-30 12-30 14-6 24-6 30 50Z" fill="${p.d}" stroke="${p.a}" stroke-width="2"/>${[-18, -2, 14, 30].map(y => `<path d="M-20 ${y}H20" stroke="${p.a}" stroke-width="1.5" opacity=".5"/>`).join('')}<rect x="-3" y="-24" width="6" height="8" fill="${p.b}" opacity=".8"/>`,
+		// Rouge, noir et blanc (thème p5r) : masque, carte de visite, étoile éclatée, chat, rose.
+		domino: p => `<path d="M-46-8Q-40-26-16-20Q0-14 16-20Q40-26 46-8Q44 14 22 16Q8 16 0 4Q-8 16-22 16-44 14-46-8Z" fill="${p.c}" stroke="${p.d}" stroke-width="4" stroke-linejoin="round"/><path d="M-30-6Q-20-12-10-4Q-20 4-30-6ZM30-6Q20-12 10-4Q20 4 30-6Z" fill="${p.d}"/>`,
+		card: p => `<rect x="-30" y="-42" width="60" height="84" rx="4" fill="${p.a}" stroke="${p.d}" stroke-width="4"/><rect x="-24" y="-36" width="48" height="72" fill="none" stroke="${p.d}" stroke-width="2"/><path d="M0-22L5-6 22-6 8 4 13 20 0 10-13 20-8 4-22-6-5-6Z" fill="${p.d}"/><path d="M-16 28H16" stroke="${p.d}" stroke-width="3"/>`,
+		burstStar: p => `<path d="M0-50L9-20 40-34 22-6 50 6 18 14 28 46 2 24-16 50-14 18-48 22-22 0-44-26-12-16Z" fill="${p.a}" stroke="${p.d}" stroke-width="4"/><path d="M0-30L5-12 24-18 12-2 28 6 8 10 14 28 0 14-10 30-8 10-28 12-12 0-26-14-6-8Z" fill="${p.d}"/><path d="M-6-6L6 6M6-6L-6 6" stroke="${p.c}" stroke-width="4"/>`,
+		catHead: p => `<path d="M-34 36Q-44 6-34-14L-38-44-14-26Q0-30 14-26L38-44 34-14Q44 6 34 36Z" fill="${p.d}" stroke="${p.c}" stroke-width="3"/><ellipse cx="-14" cy="0" rx="9" ry="11" fill="${p.b}"/><ellipse cx="14" cy="0" rx="9" ry="11" fill="${p.b}"/><circle cx="-12" cy="2" r="4" fill="${p.d}"/><circle cx="16" cy="2" r="4" fill="${p.d}"/>`,
+		rose: p => `<path d="M0 46V0" stroke="#2c6b2f" stroke-width="5"/><path d="M0 24Q-20 14-24 26Q-10 32 0 24Z" fill="#2c6b2f"/><circle r="20" fill="${p.a}" stroke="${p.d}" stroke-width="3"/><path d="M-10-4Q0-18 12-4Q2 8-10-4ZM-14 4Q0 20 14 4" stroke="${p.d}" stroke-width="3" fill="none"/>`,
 	};
 
 	// ---------- Particules du décor (motif, mouvement, nombre) ----------
@@ -84,6 +96,21 @@
 		warp: { motion: 'warp', count: 18, draw: p => `<rect x="-50" y="-3" width="100" height="6" rx="3" fill="${p.b}" opacity=".8"/>` },
 		confetti: { motion: 'fall', count: 18, draw: (p, k) => `<rect x="-14" y="-8" width="28" height="16" rx="3" fill="${k % 2 ? p.a : p.b}"/>` },
 		moons: { motion: 'twinkle', count: 10, draw: p => M.moon(p) },
+		butterflies: { motion: 'float', count: 8, draw: p => M.butterfly({ ...p, a: p.b }), glow: true },
+		cards: { motion: 'fall', count: 9, draw: p => M.card(p) },
+	};
+
+	// ---------- Effets plein écran propres à un thème (calques animés au-dessus du décor) ----------
+	// Créations originales inspirées des interfaces des jeux (voir docs/THEMES-PERSONA.md).
+	const rnd = (a, b) => (a + Math.random() * (b - a)).toFixed(1);
+	const FX = {
+		// Sous l'eau : dégradé qui ondule, rayons de lumière, bulles qui montent, lune qui verdit à « minuit ».
+		abyss: (p, full) => `<div class="fx fx-abyss"><i class="fx-water"></i><i class="fx-rays"></i><i class="fx-moonglow"></i>${full ? Array.from({ length: 16 }, () => `<b style="left:${rnd(0, 100)}%;--s:${rnd(5, 18)}px;--d:${rnd(9, 20)}s;--w:-${rnd(0, 20)}s"></b>`).join('') : ''}</div>`,
+		// Bandes en diagonale, trame de points, étoile qui tressaute et mot géant en lettres découpées.
+		phantom: (p, full) => {
+			const word = [...'À TOI DE JOUER'].map((c, i) => (c === ' ' ? '<em> </em>' : `<span class="${i % 3 ? 'w' : 'r'}" style="--r:${(i % 2 ? 1 : -1) * (2 + (i * 7) % 6)}deg;--y:${(i * 5) % 9 - 4}px">${c}</span>`)).join('');
+			return `<div class="fx fx-phantom ${full ? 'live' : ''}"><i class="fx-slash s1"></i><i class="fx-slash s2"></i><i class="fx-dots"></i><div class="fx-word">${word}</div><svg class="fx-star" viewBox="-55 -55 110 110" aria-hidden="true">${M.burstStar(p)}</svg></div>`;
+		},
 	};
 
 	// ---------- Les 40 thèmes ----------
@@ -170,6 +197,11 @@
 			[['tank', 80, 56, 0.8], ['flag', 156, 46, 0.44, 6]], 'advance wars'],
 		['stadium', 'Pokémon Stadium', 'Nintendo 64 · Combats Pokémon en 3D.', '#0c0f1a', '#ffb000', '#ee1515', 'Lilita One', 'tech', 'sparks',
 			[['spot', 40, 50, 0.9], ['spot', 160, 50, 0.9], ['ball', 100, 56, 0.6]], 'pokemon stadium|stadium'],
+		// Deux thèmes « maison » plus poussés : effet plein écran (FX) et style d'interface propre (voir FX_OF).
+		['p3r', 'Persona 3 Reload', 'PS2 / PSP / Switch · Nuit bleue, eau et minuit.', '#020b22', '#2fb6ff', '#9ef3ff', 'Orbitron', 'abyss', 'butterflies',
+			[['wave', 100, 98, 2.4], ['tower', 56, 70, 1.05], ['fullmoon', 152, 30, 0.6], ['clock', 108, 60, 0.42], ['butterfly', 26, 26, 0.24, -14], ['butterfly', 184, 76, 0.18, 18]], 'persona ?3|p3r|p3p|p3 fes'],
+		['p5r', 'Persona 5 Royal', 'PS3 / PS4 / Switch · Rouge, noir et blanc, en biais.', '#0b0000', '#e5191c', '#ffffff', 'Bebas Neue', 'phantom', 'cards',
+			[['burstStar', 142, 46, 0.86, 12], ['domino', 70, 52, 0.7, -8], ['card', 178, 76, 0.34, 14], ['catHead', 28, 76, 0.3, -6], ['rose', 28, 24, 0.3, -20]], 'persona ?5|p5r|p5 royal'],
 	];
 
 	const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -177,9 +209,10 @@
 	const mix = (a, b, t) => toHex(hex(a).map((v, i) => v + (hex(b)[i] - v) * t));
 	const lum = (h) => { const [r, g, b] = hex(h).map(v => v / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 
+	const FX_OF = { p3r: 'abyss', p5r: 'phantom' };
 	const THEMES = RAW.map(([id, label, desc, bg, accent, accent2, font, icons, particles, scene, keywords, light]) => {
 		const parts = desc.split(' · ');
-		return { id, label, game: label, console: parts.length > 1 ? parts[0] : '', tagline: parts.length > 1 ? parts.slice(1).join(' · ') : desc, bg, accent, accent2, font, icons, particles, scene, keywords, light: !!light };
+		return { id, label, game: label, console: parts.length > 1 ? parts[0] : '', tagline: parts.length > 1 ? parts.slice(1).join(' · ') : desc, bg, accent, accent2, font, icons, particles, scene, keywords, light: !!light, fx: FX_OF[id] || null };
 	});
 	// Thèmes exclusifs du mode supporter : créations originales (aucun personnage ni logo de jeu).
 	const SUPPORTER = [
@@ -337,7 +370,8 @@
 		}
 		const bgImg = imgOf(t, 'image');
 		const back = bgImg ? `<div class="decor-image" style="background-image:url(&quot;${bgImg}&quot;);filter:blur(${t.imageBlur || 0}px)"></div><div class="decor-dim" style="opacity:${t.imageDim}"></div>` : '';
-		return `${back}<div class="decor-scene ${bgImg ? 'over-image' : ''}">${scene(t.id, { sky: false })}</div><div class="decor-particles">${particles}</div>`;
+		const fx = t.fx && FX[t.fx] ? FX[t.fx](p, mode === 'full') : '';
+		return `${back}${fx}<div class="decor-scene ${bgImg ? 'over-image' : ''}">${scene(t.id, { sky: false })}</div><div class="decor-particles">${particles}</div>`;
 	};
 
 	// ---------- Choix du thème d'un jeu ----------

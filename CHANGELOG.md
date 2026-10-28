@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.3.4
+
+- **Thèmes Persona 3 Reload et Persona 5 Royal**, choisis tout seuls pour ces jeux (Persona 3 FES, Portable et
+  Reload ; Persona 5 et Royal) ou au choix dans l'Apparence. Plus poussés que les autres thèmes : un effet animé
+  sur tout l'écran et un style d'interface propre.
+  - **Persona 3 Reload** : nuit bleue, eau qui ondule, rayons de lumière, bulles qui montent, papillons bleus,
+    horloge arrêtée à minuit, lune qui verdit par moments, cartes en verre et boutons inclinés.
+  - **Persona 5 Royal** : rouge, noir et blanc, bandes en biais, trame de points, étoile éclatée qui tressaute,
+    cartes de visite qui tombent, mot géant en lettres découpées, boutons penchés avec ombre rouge décalée.
+  - Tout est dessiné pour Smash Emu, sans logo, personnage ni image des jeux. Les 56 références étudiées sont
+    dans docs/THEMES-PERSONA.md.
+
 ## 3.3.3
 
 - **Mises sur les courses de speedrun**
