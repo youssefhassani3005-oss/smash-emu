@@ -58,7 +58,7 @@ window.SmashSpeedrun = (() => {
 		const raceLabel = () => {
 			const r = raceView;
 			if (!r) return '';
-			if (r.state === 'accepted') return r.me.ready ? `En attente de ${r.friend.name}…` : `Course contre ${r.friend.name} · Ctrl+Espace : prêt`;
+			if (r.state === 'accepted') return r.me.ready ? `En attente de ${r.friend.name}…` : `Course contre ${r.friend.name}${r.bet ? ` · mise ${r.bet} pièces` : ''} · Ctrl+Espace : prêt`;
 			if (r.state === 'countdown') return `Course contre ${r.friend.name}`;
 			if (r.state === 'running') return r.them.ms != null ? `${r.friend.name} a fini en ${fmt(r.them.ms)} !` : `contre ${r.friend.name}`;
 			if (r.state === 'done') return r.winner === 'me' ? 'Victoire !' : r.winner === 'them' ? `${r.friend.name} gagne` : r.winner === 'tie' ? 'Égalité' : 'Course terminée';
@@ -257,7 +257,8 @@ window.SmashSpeedrun = (() => {
 				// Fenêtre ouverte en pleine course : le chrono reprend au départ réel.
 				if (raceView && raceView.state === 'running' && run.state === 'idle' && raceView.goAt && raceView.me.ms == null && !raceView.me.forfeit) api.start(performance.now() - (Date.now() - raceView.goAt));
 				if (raceView && raceView.state === 'done' && (!before || before.state !== 'done')) {
-					toast(raceView.winner === 'me' ? 'Course gagnée : +100 pièces !' : raceView.winner === 'them' ? `${raceView.friend.name} gagne la course` : raceView.winner === 'tie' ? 'Égalité !' : 'Course terminée');
+					const bet = raceView.bet || 0;
+				toast(raceView.winner === 'me' ? `Course gagnée : +${100 + bet * 2} pièces !` : raceView.winner === 'them' ? `${raceView.friend.name} gagne la course${bet ? ` (mise de ${bet} pièces perdue)` : ''}` : raceView.winner === 'tie' ? `Égalité !${bet ? ' Mise rendue.' : ''}` : 'Course terminée');
 				}
 				render();
 				onChange();

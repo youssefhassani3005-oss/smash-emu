@@ -319,10 +319,10 @@ const handlers = {
 	},
 	// Courses de speedrun entre amis.
 	'race:list': () => race.list(),
-	'race:invite': (code, instanceId) => {
+	'race:invite': (code, instanceId, bet) => {
 		const f = friends.state().friends.find(x => x.code === code);
 		if (!f) throw new Error('Cet ami n’est pas dans ta liste.');
-		return race.invite({ code: f.code, name: f.name }, instanceId);
+		return race.invite({ code: f.code, name: f.name }, instanceId, bet);
 	},
 	'race:accept': (id, instanceId) => race.accept(id, instanceId),
 	'race:decline': id => race.decline(id),

@@ -166,12 +166,25 @@ const pickGame = (title, hint, preferSystem) => modal({
 	setup: (el, close) => el.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) close(b.dataset.id); }),
 });
 
+// Mise de la course : chacun met la même somme, le gagnant prend tout. 0 = course sans mise.
+const BETS = [0, 25, 50, 100, 250, 500, 1000];
+const pickBet = name => modal({
+	title: `Mise contre ${name}`,
+	width: 460,
+	body: `<div class="small muted" style="margin-bottom:10px">Chacun met la même somme de côté. Le gagnant remporte les deux mises en plus de la récompense de victoire ; égalité, refus ou course annulée : chacun récupère la sienne. Tu as <b>${coinsBalance()} pièces</b>.</div>
+		<div class="chips">${BETS.map(b => `<button class="chip" data-bet="${b}" ${b > coinsBalance() ? 'disabled data-tip="Pas assez de pièces"' : ''}>${b ? `${b} pièces` : 'Sans mise'}</button>`).join('')}</div>`,
+	setup: (el, close) => el.addEventListener('click', (e) => { const b = e.target.closest('[data-bet]'); if (b && !b.disabled) close(Number(b.dataset.bet)); }),
+});
+
 ACTIONS['race-challenge'] = async (el) => {
 	const id = await pickGame(`Défier ${el.dataset.name}`, 'Choisis le jeu de la course : ton ami doit l’avoir aussi. Chacun lance son chrono au même moment, le plus rapide gagne des pièces.');
 	if (!id) return;
+	if (!SHOP.st) await loadCoins();
+	const bet = await pickBet(el.dataset.name);
+	if (bet == null) return;
 	try {
-		await api('race:invite', el.dataset.code, id);
-		toast(`Défi envoyé à ${esc(el.dataset.name)} : le jeu se lancera quand il acceptera.`, { type: 'info' });
+		await api('race:invite', el.dataset.code, id, bet);
+		toast(`Défi envoyé à ${esc(el.dataset.name)}${bet ? ` (mise : ${bet} pièces, mises de côté)` : ''} : le jeu se lancera quand il acceptera.`, { type: 'info' });
 	} catch (e) { toastError(e); }
 };
 ACTIONS['race-accept'] = async (el) => {
@@ -179,6 +192,11 @@ ACTIONS['race-accept'] = async (el) => {
 		SHOP.races = await api('race:list');
 		const r = SHOP.races.find(x => x.id === el.dataset.id);
 		if (!r || r.state !== 'invite') throw new Error('Cette invitation n’est plus valable.');
+		if (r.bet) {
+			if (!SHOP.st) await loadCoins();
+			if (coinsBalance() < r.bet) throw new Error(`Cette course a une mise de ${r.bet} pièces : il t’en manque ${r.bet - coinsBalance()}.`);
+			if (!confirm(`Accepter la mise de ${r.bet} pièces ? Le gagnant prend ${r.bet * 2} pièces.`)) return;
+		}
 		let inst = r.instanceId;
 		if (!inst) inst = await pickGame(`Course sur ${r.game.n}`, `Ce jeu n’a pas été trouvé tel quel dans ta bibliothèque : choisis ton exemplaire de « ${esc(r.game.n)} ».`, r.game.s);
 		if (!inst) return;
@@ -190,6 +208,12 @@ ACTIONS['race-accept'] = async (el) => {
 	renderNotifPanel();
 };
 ACTIONS['race-decline'] = async (el) => { try { await api('race:decline', el.dataset.id); } catch (e) { toastError(e); } renderNotifPanel(); };
+ACTIONS['race-cancel'] = async (el) => {
+	try {
+		const r = await api('race:cancel', el.dataset.id);
+		toast(r.bet ? `Défi annulé : ta mise de ${r.bet} pièces est rendue.` : 'Défi annulé.', { type: 'info' });
+	} catch (e) { toastError(e); }
+};
 
 // L'ami a accepté : le jeu se lance aussi chez celui qui a défié.
 window.launcher.on('race:update', (list) => {
@@ -201,7 +225,10 @@ window.launcher.on('race:update', (list) => {
 		}
 	}
 	renderNotifPanel();
+	// Page Amis : bouton « Défier » ou « Annuler le défi ».
+	if (state.route.name === 'friends' && typeof frRender === 'function') frRender();
 });
+api('race:list').then((l) => { SHOP.races = l; }).catch(() => {});
 
 // ---------- Démarrage ----------
 

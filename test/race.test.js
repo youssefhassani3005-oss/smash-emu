@@ -61,6 +61,95 @@ test('Course : invitation reçue, jeu retrouvé par son nom', () => {
 	assert.ok(!race.races.has('zz'), 'identifiant invalide refusé');
 });
 
+// Solde fixé à la main (les tests de mise ne doivent pas changer celui des tests suivants).
+const setBalance = n => store.setSettings({ coins: { ...store.getSettings().coins, balance: n } });
+
+test('Mise : de côté à l’envoi, le gagnant prend les deux mises', async () => {
+	const keep = coins.state().balance;
+	coins.earn(500, 'test mise');
+	const inst = store.createInstance({ name: 'Jeu Mise', type: 'coopdx' });
+	const start = coins.state().balance;
+	const r = await race.invite(friend, inst.id, 100);
+	assert.strictEqual(sent.pop().bet, 100, 'la mise part avec l’invitation');
+	assert.strictEqual(coins.state().balance, start - 100);
+	assert.strictEqual(coins.held(r.id), 100);
+	race.onMessage({ op: 'accept', id: r.id }, friend);
+	const live = race.races.get(r.id);
+	live.state = 'running';
+	await race.finish(inst.id, 30000);
+	race.onMessage({ op: 'finish', id: r.id, ms: 31000 }, friend);
+	assert.strictEqual(live.winner, 'me');
+	assert.strictEqual(coins.state().balance, start - 100 + 200 + coins.REWARDS.raceWin);
+	assert.strictEqual(coins.held(r.id), null);
+	assert.match(notes.pop().text, /\+200 pièces de mise/);
+	setBalance(keep);
+});
+
+test('Mise : perdue en cas de défaite, rendue si refus, égalité ou abandon avant le départ', async (t) => {
+	const inst = store.createInstance({ name: 'Jeu Mise 2', type: 'coopdx' });
+	const keep = coins.state().balance;
+	t.after(() => setBalance(keep));
+	coins.earn(1000, 'test mise');
+	let bal = coins.state().balance;
+	// Défaite : la mise est perdue (la récompense de course terminée reste).
+	const lost = await race.invite(friend, inst.id, 50);
+	race.onMessage({ op: 'accept', id: lost.id }, friend);
+	race.races.get(lost.id).state = 'running';
+	await race.finish(inst.id, 40000);
+	race.onMessage({ op: 'finish', id: lost.id, ms: 39000 }, friend);
+	assert.strictEqual(coins.state().balance, bal - 50 + coins.REWARDS.raceFinish);
+	// Refus : rendue.
+	bal = coins.state().balance;
+	const no = await race.invite(friend, inst.id, 50);
+	race.onMessage({ op: 'decline', id: no.id }, friend);
+	assert.strictEqual(coins.state().balance, bal);
+	// Égalité : rendue.
+	const tie = await race.invite(friend, inst.id, 50);
+	race.onMessage({ op: 'accept', id: tie.id }, friend);
+	race.races.get(tie.id).state = 'running';
+	await race.finish(inst.id, 20000);
+	race.onMessage({ op: 'finish', id: tie.id, ms: 20000 }, friend);
+	assert.strictEqual(coins.state().balance, bal + coins.REWARDS.raceFinish);
+	// Abandon de l'ami avant le départ : course sans gagnant, rendue.
+	bal = coins.state().balance;
+	const early = await race.invite(friend, inst.id, 50);
+	race.onMessage({ op: 'accept', id: early.id }, friend);
+	race.onMessage({ op: 'forfeit', id: early.id }, friend);
+	assert.strictEqual(race.races.get(early.id).winner, 'none');
+	assert.strictEqual(coins.state().balance, bal);
+	// Pas assez de pièces : rien n'est envoyé.
+	const n = sent.length;
+	setBalance(30);
+	await assert.rejects(race.invite(friend, inst.id, 50), /manque/);
+	assert.strictEqual(sent.length, n);
+	assert.strictEqual(coins.state().balance, 30);
+});
+
+test('Mise : invitation reçue, mise prise à l’acceptation, expirée sans réponse = rendue', async (t) => {
+	const inst = store.createInstance({ name: 'Jeu Mise 3', type: 'coopdx' });
+	const keep = coins.state().balance;
+	t.after(() => setBalance(keep));
+	coins.earn(300, 'test mise');
+	const bal = coins.state().balance;
+	race.onMessage({ op: 'invite', id: 'aaaaaaaaaaaaaaaa', at: Date.now(), game: { n: 'Jeu Mise 3' }, bet: 5000 }, friend);
+	const got = race.list().find(x => x.id === 'aaaaaaaaaaaaaaaa');
+	assert.strictEqual(got.bet, coins.MAX_BET, 'mise bornée');
+	race.onMessage({ op: 'invite', id: 'bbbbbbbbbbbbbbbb', at: Date.now(), game: { n: 'Jeu Mise 3' }, bet: 40 }, friend);
+	await race.accept('bbbbbbbbbbbbbbbb', inst.id);
+	assert.strictEqual(coins.state().balance, bal - 40);
+	// Défi envoyé resté sans réponse : expiré, mise rendue.
+	const r = await race.invite(friend, inst.id, 60);
+	race.races.get(r.id).at -= 16 * 60000;
+	assert.strictEqual(race.list().find(x => x.id === r.id).state, 'expired');
+	assert.strictEqual(coins.state().balance, bal - 40);
+	// Acceptation arrivée trop tard : on dit à l'ami d'annuler (il récupère sa mise).
+	race.onMessage({ op: 'accept', id: r.id }, friend);
+	assert.strictEqual(sent.pop().op, 'cancel');
+	// Redémarrage : les mises encore gardées reviennent.
+	coins.refundAll('test');
+	assert.strictEqual(coins.state().balance, bal);
+});
+
 test('Pièces : achat, équipement, solde insuffisant', () => {
 	coins.earn(400, 'test');
 	const bal = coins.state().balance;

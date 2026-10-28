@@ -1,4 +1,4 @@
-/* global state, api, icon, esc, toast, toastError, setMain, PAGES, TITLES, ACTIONS, ago, colorFor, menu, confirmModal, renderNav, $ */
+/* global state, api, icon, esc, toast, toastError, setMain, PAGES, TITLES, ACTIONS, ago, colorFor, menu, confirmModal, renderNav, $, SHOP */
 // Page « Amis » : code ami, demandes reçues, liste des amis avec leur statut en direct (en ligne, en jeu, absent,
 // hors ligne) et leurs statistiques. Rien n'est partagé tant que le joueur n'a pas activé la fonction.
 
@@ -22,11 +22,14 @@ const frCard = (f) => {
 	const top = s && s.top ? s.top : [];
 	const max = Math.max(1, ...top.map(x => x[2]));
 	const letter = esc(String(f.name || '?').trim()[0] || '?').toUpperCase();
+	// Défi déjà envoyé et sans réponse : on peut l'annuler (la mise revient).
+	const sent = typeof SHOP !== 'undefined' ? SHOP.races.find(r => r.role === 'host' && r.state === 'invited' && r.friend.code === f.code) : null;
 	return `<div class="fr-card ${f.status}">
 		<div class="fr-head">
 			<div class="fr-av" style="--c:${colorFor(f.code)}">${letter}<i class="fr-dot ${f.status}"></i></div>
 			<div class="grow"><b class="fr-name">${esc(f.name)}</b>${f.title ? `<span class="fr-title">${esc(f.title)}</span>` : ''}${frStatus(f)}</div>
-			<button class="btn sm primary" data-action="race-challenge" data-code="${esc(f.code)}" data-name="${esc(f.name)}" data-tip="Course de speedrun sur un même jeu : le plus rapide gagne des pièces">${icon('timer')}Défier</button>
+			${sent ? `<button class="btn sm" data-action="race-cancel" data-id="${esc(sent.id)}" data-tip="${sent.bet ? `Ta mise de ${sent.bet} pièces revient` : 'Le défi n’attend plus de réponse'}">${icon('x')}Annuler le défi${sent.bet ? ` (${sent.bet})` : ''}</button>`
+		: `<button class="btn sm primary" data-action="race-challenge" data-code="${esc(f.code)}" data-name="${esc(f.name)}" data-tip="Course de speedrun sur un même jeu : le plus rapide gagne des pièces, avec une mise si tu veux">${icon('timer')}Défier</button>`}
 			<button class="icon-btn" data-action="fr-menu" data-code="${esc(f.code)}" data-tip="Options">${icon('ellipsis-vertical')}</button>
 		</div>
 		${f.status === 'playing' && f.game ? `<div class="fr-now">${icon('gamepad-2')}<div><b>${esc(f.game.n)}</b><small>${esc(f.game.s)} · depuis ${frSince(f.game.t)}</small></div></div>` : ''}

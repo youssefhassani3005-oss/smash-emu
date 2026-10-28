@@ -50,12 +50,13 @@ const REWARDS = { raceWin: 100, raceFinish: 25, personalBest: 30 };
 
 const cfg = () => {
 	const c = store.getSettings().coins || {};
-	return { balance: Math.max(0, Math.floor(c.balance || 0)), history: Array.isArray(c.history) ? c.history : [], owned: Array.isArray(c.owned) ? c.owned : [], equipped: c.equipped || {} };
+	return { balance: Math.max(0, Math.floor(c.balance || 0)), history: Array.isArray(c.history) ? c.history : [], owned: Array.isArray(c.owned) ? c.owned : [], equipped: c.equipped || {}, escrow: c.escrow && typeof c.escrow === 'object' ? c.escrow : {} };
 };
 const save = c => store.setSettings({ coins: c });
 
 let notify = () => {};
-const init = (fn) => { notify = fn; };
+// Au démarrage, les mises de la session précédente sont rendues : les courses ne survivent pas à un redémarrage.
+const init = (fn) => { notify = fn; refundAll('Course interrompue : mise rendue'); };
 
 const state = () => ({ ...cfg(), catalog: CATALOG, kinds: KINDS, rewards: REWARDS });
 
@@ -70,6 +71,40 @@ const earn = (amount, reason) => {
 	notify('coins:update', state());
 	return state();
 };
+
+// Mises des courses : retirées du solde quand le joueur s'engage et gardées à part (escrow) jusqu'au résultat.
+const MAX_BET = 1000;
+const stake = (id, amount, reason) => {
+	const n = Math.floor(amount);
+	if (!(n > 0)) return state();
+	const c = cfg();
+	if (c.escrow[id] != null) return state();
+	if (c.balance < n) throw new Error(`Il te manque ${n - c.balance} pièces pour cette mise.`);
+	c.balance -= n;
+	c.escrow = { ...c.escrow, [id]: n };
+	c.history = [{ at: Date.now(), amount: -n, reason: String(reason).slice(0, 80) }, ...c.history].slice(0, 60);
+	save(c);
+	notify('coins:update', state());
+	return state();
+};
+// Fin d'une course avec mise : la mise gardée disparaît et le joueur reçoit payout (0 s'il a perdu).
+const settle = (id, payout, reason) => {
+	const c = cfg();
+	if (c.escrow[id] == null) return state();
+	const { [id]: _held, ...rest } = c.escrow;
+	c.escrow = rest;
+	const n = Math.max(0, Math.floor(payout));
+	if (n) {
+		c.balance += n;
+		c.history = [{ at: Date.now(), amount: n, reason: String(reason).slice(0, 80) }, ...c.history].slice(0, 60);
+	}
+	save(c);
+	if (n) notify('coins:earned', { amount: n, reason, balance: c.balance });
+	notify('coins:update', state());
+	return state();
+};
+const held = id => cfg().escrow[id] ?? null;
+const refundAll = (reason) => { for (const [id, n] of Object.entries(cfg().escrow)) settle(id, n, reason); };
 
 const buy = (id) => {
 	const item = CATALOG.find(i => i.id === id);
@@ -107,4 +142,4 @@ const equipped = kind => {
 	return id ? CATALOG.find(i => i.id === id) || null : null;
 };
 
-module.exports = { init, state, earn, buy, equip, equipped, CATALOG, REWARDS };
+module.exports = { init, state, earn, buy, equip, equipped, stake, settle, held, refundAll, CATALOG, REWARDS, MAX_BET };

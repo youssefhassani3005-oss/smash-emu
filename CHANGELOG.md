@@ -2,6 +2,13 @@
 
 ## 3.3.3
 
+- **Mises sur les courses de speedrun**
+  - En défiant un ami (page Amis → Défier), tu choisis une mise : sans mise, ou de 25 à 1000 pièces.
+  - Chacun met la même somme de côté, à l'envoi du défi pour toi et à l'acceptation pour ton ami (il voit la mise
+    dans l'invitation). Le gagnant remporte les deux mises, en plus de la récompense de victoire.
+  - Égalité, refus, défi annulé (nouveau bouton « Annuler le défi ») ou resté 15 min sans réponse, abandon avant le
+    départ, Smash Emu fermé pendant la course : chacun récupère sa mise.
+  - Un essai assisté (vitesse modifiée, état chargé…) vaut un abandon, donc la mise est perdue.
 - **Jeu à distance plus simple et plus stable**
   - Nouvelle qualité **Auto**, choisie par défaut. Quand la connexion d'un ami souffre (pertes, latence, débit ou
     processeur saturés), l'image baisse toute seule (images par seconde, résolution, débit), puis remonte après 15 s
