@@ -564,6 +564,7 @@ const chOptions = async () => {
 			<div style="margin-top:10px">
 			${sw('consoleTint', 'Couleurs du jeu', 'Toute l’interface prend les teintes de la jaquette sélectionnée', s.consoleTint !== false)}
 			${sw('consoleSounds', 'Sons de l’interface', 'Petits sons au déplacement et au lancement', s.consoleSounds !== false)}
+			${sw('dancer', 'Danseur', 'Petit personnage bleu qui danse dans le coin de l’accueil', s.dancer !== false)}
 			<div class="row" style="gap:12px;padding:6px 0"><div class="grow"><div class="bold">Ordre des jeux</div></div><select class="select" data-ch-sort>${[['played', 'Dernière partie'], ['name', 'Nom'], ['time', 'Temps de jeu'], ['created', 'Ajout']].map(([v, l]) => `<option value="${v}" ${(s.consoleSort || 'played') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
 			</div>
 			<button class="btn" style="margin-top:10px" data-ch-classic>${icon('layout-grid')}Revenir à l’interface classique</button>`,

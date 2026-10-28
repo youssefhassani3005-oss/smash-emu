@@ -319,6 +319,7 @@ const render = () => {
 	renderNav();
 	state.prevRendered = state.rendered;
 	state.rendered = state.route.name;
+	if (typeof DANCER !== 'undefined') DANCER.update();
 	const page = PAGES[state.route.name] || PAGES.home;
 	page(state.route.params);
 };

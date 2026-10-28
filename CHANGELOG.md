@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.3.2
+
+- **Danseur** : un petit personnage bleu en pixel art danse dans le coin de l'accueil (larmes qui tombent, notes de
+  musique, pirouette quand tu cliques dessus). Il se cache dans Interface Console → « Danseur ».
+
 ## 3.3.1
 
 - **Succès maison pour les jeux Switch** (RetroAchievements ne prend pas en charge la Switch) : 20 succès par jeu,
