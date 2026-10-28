@@ -103,14 +103,39 @@
 	// ---------- Effets plein écran propres à un thème (calques animés au-dessus du décor) ----------
 	// Créations originales inspirées des interfaces des jeux (voir docs/THEMES-PERSONA.md).
 	const rnd = (a, b) => (a + Math.random() * (b - a)).toFixed(1);
+	// Lettres découpées façon lettre anonyme : chaque lettre a sa boîte, sa police, sa taille et son angle
+	// (même tirage pour un même texte, pour que le titre ne change pas à chaque affichage).
+	const ransom = (text) => [...String(text)].map((c, i) => {
+		if (c === ' ') return '<em class="rs-gap"> </em>';
+		const h = ([...c].reduce((a, x) => a + x.charCodeAt(0), 0) * 7 + i * 13) % 97;
+		return `<span class="rs rs${h % 4}" style="--r:${(h % 2 ? 1 : -1) * (2 + (h % 5))}deg;--y:${(h % 7) - 3}px">${c.replace(/[&<>]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[x]))}</span>`;
+	}).join('');
+	// Fond d'étoiles emboîtées en noir et blanc (menus de Persona 5), en motif répété.
+	const starTile = () => {
+		const s = 'M0-42L10-14 40-13 16 6 25 36 0 18-25 36-16 6-40-13-10-14Z';
+		const nest = (x, y, r, k) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})">${[1, 0.68, 0.36].map(f => `<path d="${s}" transform="scale(${f})"/>`).join('')}</g>`;
+		const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="170" height="170"><rect width="170" height="170" fill="#000"/><g fill="none" stroke="#fff" stroke-width="5">${nest(48, 52, -12, 1.05)}${nest(130, 128, 22, 0.85)}${nest(138, 30, 8, 0.45)}${nest(30, 142, -30, 0.5)}</g></svg>`;
+		return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+	};
 	const FX = {
-		// Sous l'eau : dégradé qui ondule, rayons de lumière, bulles qui montent, lune qui verdit à « minuit ».
-		abyss: (p, full) => `<div class="fx fx-abyss"><i class="fx-water"></i><i class="fx-rays"></i><i class="fx-moonglow"></i>${full ? Array.from({ length: 16 }, () => `<b style="left:${rnd(0, 100)}%;--s:${rnd(5, 18)}px;--d:${rnd(9, 20)}s;--w:-${rnd(0, 20)}s"></b>`).join('') : ''}</div>`,
-		// Bandes en diagonale, trame de points, étoile qui tressaute et mot géant en lettres découpées.
-		phantom: (p, full) => {
-			const word = [...'À TOI DE JOUER'].map((c, i) => (c === ' ' ? '<em> </em>' : `<span class="${i % 3 ? 'w' : 'r'}" style="--r:${(i % 2 ? 1 : -1) * (2 + (i * 7) % 6)}deg;--y:${(i * 5) % 9 - 4}px">${c}</span>`)).join('');
-			return `<div class="fx fx-phantom ${full ? 'live' : ''}"><i class="fx-slash s1"></i><i class="fx-slash s2"></i><i class="fx-dots"></i><div class="fx-word">${word}</div><svg class="fx-star" viewBox="-55 -55 110 110" aria-hidden="true">${M.burstStar(p)}</svg></div>`;
-		},
+		// Persona 3 Reload : eau qui ondule, rayons, bulles, grand cercle, lune qui verdit à « minuit » et grand mot
+		// de la page en italique pâle (« MAIL », « TOWNMAP » dans le jeu), rempli par la fenêtre (data-word).
+		abyss: (p, full) => `<div class="fx fx-abyss ${full ? 'live' : ''}"><i class="fx-water"></i><i class="fx-rays"></i><i class="fx-ring"></i><i class="fx-moonglow"></i><div class="fx-bigword"></div><i class="fx-tri"></i>${full ? Array.from({ length: 16 }, () => `<b style="left:${rnd(0, 100)}%;--s:${rnd(5, 18)}px;--d:${rnd(9, 20)}s;--w:-${rnd(0, 20)}s"></b>`).join('') : ''}</div>`,
+		// Persona 5 Royal : bande d'étoiles noir et blanc en biais, bandes rouges, trame, étoile qui tressaute et mot
+		// de la page en lettres découpées.
+		phantom: (p, full) => `<div class="fx fx-phantom ${full ? 'live' : ''}"><i class="fx-stars" style="background-image:${starTile()}"></i><i class="fx-slash s1"></i><i class="fx-slash s2"></i><i class="fx-dots"></i><div class="fx-word"></div><svg class="fx-star" viewBox="-55 -55 110 110" aria-hidden="true">${M.burstStar(p)}</svg></div>`,
+	};
+	// Mot de la page affiché en fond par les effets (titre de la page en cours).
+	const fxWord = (root, word) => {
+		const w = String(word || '').toUpperCase().slice(0, 18);
+		for (const fx of root.querySelectorAll('.fx')) {
+			if (fx.dataset.word === w) continue;
+			fx.dataset.word = w;
+			const big = fx.querySelector('.fx-bigword');
+			if (big) big.textContent = w;
+			const cut = fx.querySelector('.fx-word');
+			if (cut) cut.innerHTML = ransom(w);
+		}
 	};
 
 	// ---------- Les 40 thèmes ----------
@@ -198,9 +223,9 @@
 		['stadium', 'Pokémon Stadium', 'Nintendo 64 · Combats Pokémon en 3D.', '#0c0f1a', '#ffb000', '#ee1515', 'Lilita One', 'tech', 'sparks',
 			[['spot', 40, 50, 0.9], ['spot', 160, 50, 0.9], ['ball', 100, 56, 0.6]], 'pokemon stadium|stadium'],
 		// Deux thèmes « maison » plus poussés : effet plein écran (FX) et style d'interface propre (voir FX_OF).
-		['p3r', 'Persona 3 Reload', 'PS2 / PSP / Switch · Nuit bleue, eau et minuit.', '#020b22', '#2fb6ff', '#9ef3ff', 'Orbitron', 'abyss', 'butterflies',
+		['p3r', 'Persona 3 Reload', 'PS2 / PSP / Switch · Bleu roi, eau et minuit.', '#030a3a', '#2f55ff', '#45e6ff', 'Bebas Neue', 'abyss', 'butterflies',
 			[['wave', 100, 98, 2.4], ['tower', 56, 70, 1.05], ['fullmoon', 152, 30, 0.6], ['clock', 108, 60, 0.42], ['butterfly', 26, 26, 0.24, -14], ['butterfly', 184, 76, 0.18, 18]], 'persona ?3|p3r|p3p|p3 fes'],
-		['p5r', 'Persona 5 Royal', 'PS3 / PS4 / Switch · Rouge, noir et blanc, en biais.', '#0b0000', '#e5191c', '#ffffff', 'Bebas Neue', 'phantom', 'cards',
+		['p5r', 'Persona 5 Royal', 'PS3 / PS4 / Switch · Rouge, noir et blanc, en biais.', '#0b0000', '#e5191c', '#ffffff', 'Bangers', 'phantom', 'cards',
 			[['burstStar', 142, 46, 0.86, 12], ['domino', 70, 52, 0.7, -8], ['card', 178, 76, 0.34, 14], ['catHead', 28, 76, 0.3, -6], ['rose', 28, 24, 0.3, -20]], 'persona ?5|p5r|p5 royal'],
 	];
 
@@ -461,6 +486,8 @@
 		get: id => byId[resolve(id)] || null,
 		fontOf: id => (byId[resolve(id)] ? byId[resolve(id)].font : BASE_FONTS[id] || 'Inter'),
 		iconsOf: id => (byId[resolve(id)] ? byId[resolve(id)].icons : 'default'),
+		ransom,
+		fxWord,
 	};
 	root.SmashThemes = api;
 	if (typeof module !== 'undefined' && module.exports) module.exports = api;

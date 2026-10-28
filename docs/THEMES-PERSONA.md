@@ -66,14 +66,43 @@ couleurs, de formes et de mouvement.
 55. Style fort qui compense un budget plus petit que les grands RPG [N].
 56. Royal : palais de Maruki clair (rouge, blanc, noir) au fond inquiétant [M].
 
+## D'après la vidéo « The Evolution of Persona UI Design » [P]
+
+Parties regardées : Persona 5 (58:38-1:08:48), Persona 5 Royal (1:21:15-1:23:26), Persona 3 Reload
+(1:33:35-1:41:30), 56 images et le commentaire.
+
+- **Persona 5** : rouge dominant avec beaucoup de noir et de blanc, accents cyan, jaune et magenta. Tout est
+  anguleux, en diagonale, décalé plutôt qu'aligné en grille, et toujours en mouvement. Les étoiles sont partout.
+  Le texte imite une lettre anonyme : lettres de tailles et de polices différentes, en boîtes noires ou blanches.
+  L'option choisie grossit et devient un bandeau rouge souligné de cyan. Les étiquettes sont des parallélogrammes
+  noirs bordés de rouge (« Attack »), les panneaux ont un épais bord blanc irrégulier (carte, magasins). Les fonds
+  sont faits d'étoiles emboîtées en noir et blanc.
+- **Persona 5 Royal** : même style, avec en plus un curseur en forme de dague, des icônes de jours spéciaux et des
+  menus très rouges.
+- **Persona 3 Reload** : bleus beaucoup plus saturés que dans FES, plus du blanc, du gris, du cyan, du jaune et du
+  rouge, et du vert pour l'Heure Sombre. Beaucoup de cercles (la lune, le grand cercle du calendrier), des
+  triangles, des capitales grasses en italique. Les boîtes de dialogue reviennent au bleu vif, avec des dégradés.
+  Le nom est en cyan, la touche d'accent en bleu vif. Menu principal aligné à droite avec une bande bleu roi sous
+  l'option choisie. Grands mots pâles en fond (« MAIL », « TOWNMAP », « SOCIAL LINK »). Eau, éclaboussures et
+  bulles. Les transitions montrent des horloges qui s'arrêtent et passent au vert.
+
 ## Ce que les thèmes en reprennent
 
-- **Persona 3 Reload** (`p3r`) : nuit bleue et cyan, eau qui ondule, rayons de lumière, bulles qui montent,
-  papillons bleus, horloge arrêtée à minuit, lune qui verdit par moments (Heure Sombre), tour en étages,
-  boutons inclinés et cartes en verre (style d'icônes `abyss`).
-- **Persona 5 Royal** (`p5r`) : rouge, noir et blanc, bandes en diagonale, trame de points, étoile éclatée
-  qui tressaute, carte de visite qui tombe, masque, mot géant en lettres découpées, boutons penchés avec
-  ombre rouge décalée (style d'icônes `phantom`).
+- **Persona 3 Reload** (`p3r`, style d'interface `abyss`)
+  - Couleurs bleu roi saturé et cyan, triangle magenta.
+  - Titres, onglets et boutons en capitales italiques ; bande bleu roi soulignée de cyan sous l'élément choisi.
+  - Fenêtres en dégradé bleu, arrondies d'un côté.
+  - Tuiles de jeux au cadre bleu roi.
+  - Décor : grand mot pâle de la page en fond, grand cercle, eau qui ondule, rayons, bulles, papillons bleus,
+    horloge arrêtée à minuit et lune qui verdit par moments.
+- **Persona 5 Royal** (`p5r`, style d'interface `phantom`)
+  - Couleurs rouge, noir et blanc, touche cyan.
+  - Titres des pages en lettres découpées.
+  - Boutons noirs bordés de blanc et penchés ; onglet choisi blanc, agrandi et incliné, avec ombre rouge et cyan.
+  - Panneaux et fenêtres à épais bord blanc avec ombre rouge décalée ; tuiles de jeux blanches légèrement de
+    travers.
+  - Décor : bande d'étoiles emboîtées en biais, bandes rouges, trame de points, étoile éclatée qui tressaute et
+    mot de la page en lettres découpées.
 
 ## Sources
 
@@ -92,3 +121,4 @@ couleurs, de formes et de mouvement.
 - [M] [Gfinity, Rebellion by Design (Persona 5 Royal)](https://www.gfinityesports.com/article/rebellion-by-design-the-genius-of-persona-5-royals-visual-storytelling)
 - [N] [New Frame Plus, les All-Out Attacks de Persona 5](https://amara.org/videos/wIZbgZ3Jyy5D/en/3103539)
 - [O] [Étude de l'animation de changement de jour de Persona 5](https://itch.io/blog/533534/making-ui-come-to-life-study-of-persona-5)
+- [P] [MegsSketches, The Evolution of Persona UI Design (vidéo)](https://youtu.be/ofTTtiiUU1c)

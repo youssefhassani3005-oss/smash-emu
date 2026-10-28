@@ -3,14 +3,19 @@
 ## 3.3.4
 
 - **Thèmes Persona 3 Reload et Persona 5 Royal**, choisis tout seuls pour ces jeux (Persona 3 FES, Portable et
-  Reload ; Persona 5 et Royal) ou au choix dans l'Apparence. Plus poussés que les autres thèmes : un effet animé
-  sur tout l'écran et un style d'interface propre.
-  - **Persona 3 Reload** : nuit bleue, eau qui ondule, rayons de lumière, bulles qui montent, papillons bleus,
-    horloge arrêtée à minuit, lune qui verdit par moments, cartes en verre et boutons inclinés.
-  - **Persona 5 Royal** : rouge, noir et blanc, bandes en biais, trame de points, étoile éclatée qui tressaute,
-    cartes de visite qui tombent, mot géant en lettres découpées, boutons penchés avec ombre rouge décalée.
-  - Tout est dessiné pour Smash Emu, sans logo, personnage ni image des jeux. Les 56 références étudiées sont
-    dans docs/THEMES-PERSONA.md.
+  Reload ; Persona 5 et Royal) ou au choix dans l'Apparence. Toute l'interface s'inspire des menus des jeux.
+  - **Persona 3 Reload**
+    - Capitales italiques et bandes bleu roi soulignées de cyan sous l'élément choisi.
+    - Fenêtres en dégradé bleu, tuiles de jeux au cadre bleu roi.
+    - Grand mot pâle de la page en fond, grand cercle, eau, rayons, bulles, papillons bleus.
+    - Horloge arrêtée à minuit et lune qui verdit par moments.
+  - **Persona 5 Royal**
+    - Titres des pages en lettres découpées façon lettre anonyme.
+    - Boutons noirs bordés de blanc, onglet choisi agrandi et penché avec ombre rouge et cyan.
+    - Panneaux à épais bord blanc, tuiles de jeux blanches de travers.
+    - Bande d'étoiles en biais, étoile éclatée qui tressaute.
+  - Tout est dessiné pour Smash Emu, sans logo, personnage ni image des jeux. Les références (56 notes et la
+    vidéo « The Evolution of Persona UI Design ») sont dans docs/THEMES-PERSONA.md.
 
 ## 3.3.3
 

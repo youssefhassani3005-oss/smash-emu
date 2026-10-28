@@ -62,6 +62,7 @@ const applyTheme = (theme) => {
 		decorKey = key;
 		const el = document.getElementById('decor');
 		if (el) el.innerHTML = SmashThemes.decor(id, mode);
+		if (typeof themeDress === 'function') themeDress();
 	}
 };
 // Thème affiché : celui du jeu sur sa page (thème automatique), sinon celui choisi.
@@ -641,6 +642,29 @@ const installLocalFiles = async (id, paths) => {
 
 const setMain = (html, side = '') => {
 	$('#main').innerHTML = `<section class="page" id="page">${html}</section>${side ? `<aside class="side">${side}</aside>` : ''}`;
+	themeDress();
+};
+
+// Thèmes Persona : grand mot de la page en fond (titre de la page) et, pour Persona 5 Royal, titres en lettres
+// découpées. Seul le texte direct du titre est découpé (les compteurs et icônes à l'intérieur restent intacts).
+const themeDress = () => {
+	const icons = document.documentElement.dataset.icons;
+	if (icons !== 'abyss' && icons !== 'phantom') return;
+	const h1 = $('#page h1');
+	const title = h1 ? [...h1.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').trim() : '';
+	const deco = $('#decor');
+	let crumb = '';
+	try { crumb = TITLES[state.route.name] ? (TITLES[state.route.name](state.route.params || {})[0] || {}).label || '' : ''; } catch { /* titre calculé */ }
+	if (deco) SmashThemes.fxWord(deco, title || crumb);
+	if (icons !== 'phantom' || !h1 || h1.dataset.ransom) return;
+	h1.dataset.ransom = '1';
+	for (const n of [...h1.childNodes]) {
+		if (n.nodeType !== 3 || !n.textContent.trim()) continue;
+		const span = document.createElement('span');
+		span.className = 'ransom';
+		span.innerHTML = SmashThemes.ransom(n.textContent.trim());
+		n.replaceWith(span, document.createTextNode(' '));
+	}
 };
 
 // ---------- Accueil ----------
