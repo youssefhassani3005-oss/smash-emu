@@ -1,4 +1,4 @@
-/* global state, api, icon, esc, toast, toastError, render, setMain, PAGES, ACTIONS, fileUrl, SYS_SHORT, sysOf, sysInfo, playTime, ago, isRunning, launchInstance, instanceMenu, romInitials, sortInstances, refreshInstances, consoleUi, modal, go, $, $$ */
+/* global state, api, icon, esc, toast, toastError, render, setMain, PAGES, ACTIONS, fileUrl, SmashThemes, SYS_SHORT, sysOf, sysInfo, playTime, ago, isRunning, launchInstance, instanceMenu, romInitials, sortInstances, refreshInstances, consoleUi, modal, go, $, $$ */
 // Accueil de l'interface « Console », inspiré des menus de salon : rangée de grandes tuiles (style Switch), grille
 // par pages (style Wii U) ou chaînes (style Wii). Création originale, sans élément Nintendo. Le décor de toute
 // l'application prend la couleur et le motif de la console du jeu sélectionné et les teintes de sa jaquette ;
@@ -6,13 +6,16 @@
 
 const CH = { page: 0, sel: 0, palettes: {}, info: {}, pad: { at: 0, held: '' }, loop: false, coverBusy: false };
 // Accueils achetés dans la Boutique : dash, wave, cosmos (rangée), manor (liste), case (grille de mallette).
-const GEOM = { row: { cols: 0, per: 0 }, grid: { cols: 5, per: 15 }, wii: { cols: 4, per: 12 }, dash: { cols: 0, per: 0 }, wave: { cols: 0, per: 0 }, cosmos: { cols: 0, per: 0 }, manor: { cols: 0, per: 0 }, case: { cols: 6, per: 18 }, colorful: { cols: 0, per: 0 } };
-const LINEAR = new Set(['row', 'dash', 'wave', 'cosmos', 'manor', 'colorful']);
+const GEOM = { row: { cols: 0, per: 0 }, grid: { cols: 5, per: 15 }, wii: { cols: 4, per: 12 }, dash: { cols: 0, per: 0 }, wave: { cols: 0, per: 0 }, cosmos: { cols: 0, per: 0 }, manor: { cols: 0, per: 0 }, case: { cols: 6, per: 18 }, colorful: { cols: 0, per: 0 }, persona: { cols: 0, per: 0 } };
+const LINEAR = new Set(['row', 'dash', 'wave', 'cosmos', 'manor', 'colorful', 'persona']);
 // Style d'accueil acheté dans la Boutique (home-skins.js) : il impose sa disposition, ses couleurs et ses tuiles.
 // Accueils fidèles (home-faithful.js) : chaque thème a sa propre mise en page et emprunte la navigation d'une
 // disposition de base : rangée, liste, grille, ou console + jeux (haut / bas ou gauche / droite pour la console).
-const chFaith = () => (state.settings.consoleFaith && window.SmashHomeFaithful ? window.SmashHomeFaithful.get(state.settings.consoleFaith) : null);
-const LISTISH = new Set(['manor']);
+const chFaith = () => (!chPersona() && state.settings.consoleFaith && window.SmashHomeFaithful ? window.SmashHomeFaithful.get(state.settings.consoleFaith) : null);
+const LISTISH = new Set(['manor', 'persona']);
+// Thèmes Persona 3 Reload / Persona 5 Royal : l'accueil devient un menu de choix façon Persona (liste de jeux
+// empilés, jaquette du jeu choisi à côté), à la place de la disposition et des accueils achetés.
+const chPersona = () => ['abyss', 'phantom'].includes(document.documentElement.dataset.icons);
 const CONSOLE_Y = new Set(['colorful']);
 const CONSOLE_X = new Set();
 const CONSOLE_LB = new Set(); // grille filtrée par console, LB / RB pour changer de console
@@ -28,8 +31,8 @@ const faithKey = (fa) => {
 	}
 	return key;
 };
-const chSkin = () => (state.settings.consoleSkin && window.SmashHomeSkins ? window.SmashHomeSkins.get(state.settings.consoleSkin) : null);
-const chLayout = () => { const fa = chFaith(); if (fa) return faithKey(fa); const s = chSkin(); if (s && GEOM[s.layout]) return s.layout; return GEOM[state.settings.consoleLayout] ? state.settings.consoleLayout : 'row'; };
+const chSkin = () => (!chPersona() && state.settings.consoleSkin && window.SmashHomeSkins ? window.SmashHomeSkins.get(state.settings.consoleSkin) : null);
+const chLayout = () => { if (chPersona()) return 'persona'; const fa = chFaith(); if (fa) return faithKey(fa); const s = chSkin(); if (s && GEOM[s.layout]) return s.layout; return GEOM[state.settings.consoleLayout] ? state.settings.consoleLayout : 'row'; };
 const chLinear = () => LINEAR.has(chLayout());
 
 // Couleur d'identité et motif de fond de chaque console.
@@ -239,6 +242,18 @@ const consoleHome = () => {
 	const faith = chFaith();
 	if (faith) {
 		body = faith.render(chCtx(list, coverHint));
+	} else if (layout === 'persona') {
+		// Noms courts (sans régions ni langues) ; P5R en lettres découpées, P3R en capitales italiques.
+		const cut = document.documentElement.dataset.icons === 'phantom';
+		const short = n => String(n).replace(/\s*[([].*?[)\]]/g, '').trim().slice(0, 34) || n;
+		const label = n => (cut ? `<span class="ransom">${SmashThemes.ransom(short(n))}</span>` : esc(short(n)));
+		body = `<div class="ch-persona">
+				<div class="ch-pword">${cut ? `<span class="ransom">${SmashThemes.ransom('Choix du jeu')}</span>` : 'JEUX'}</div>
+				<div class="ch-pcover-wrap"><div class="ch-pcover" id="ch-pcover"></div></div>
+				<div class="ch-mlist-wrap"><div class="ch-mlist ch-plist" id="ch-mlist">${list.map((i, idx) => `<button class="ch-tile ch-mi ch-pi ${idx === CH.sel ? 'sel' : ''} ${isRunning(i.id) ? 'running' : ''}" data-action="ch-tile" data-i="${idx}" style="--k:${idx % 7}">${label(i.name)}</button>`).join('')}<button class="ch-tile ch-mi ch-pi ${list.length === CH.sel ? 'sel' : ''}" data-action="ch-tile" data-i="${list.length}" style="--k:${list.length % 7}">${label('Ajouter des jeux')}</button></div></div>
+			</div>
+			<div class="ch-info" id="ch-info"></div>
+			<footer class="ch-foot"><div class="ch-lbrb">${coverHint}</div>${chHints()}</footer>`;
 	} else if (layout === 'manor') {
 		body = `<div class="ch-manor"><div class="ch-mhead">${icon('chevron-left')}<b>JEUX</b></div>
 			<div class="ch-mlist-wrap"><div class="ch-mlist" id="ch-mlist">${list.map((i, idx) => `<button class="ch-tile ch-mi ${idx === CH.sel ? 'sel' : ''} ${isRunning(i.id) ? 'running' : ''}" data-action="ch-tile" data-i="${idx}">${esc(i.name)}</button>`).join('')}<button class="ch-tile ch-mi ${list.length === CH.sel ? 'sel' : ''}" data-action="ch-tile" data-i="${list.length}">Ajouter des jeux</button></div></div></div>
@@ -350,6 +365,9 @@ const chSelect = (idx, { silent = false } = {}) => {
 	const inst = list[CH.sel];
 	const info = $('#ch-info');
 	const wiiInfo = $('#ch-wii-info');
+	// Menu Persona : grande jaquette du jeu choisi.
+	const pcover = $('#ch-pcover');
+	if (pcover) pcover.innerHTML = inst ? chArt(inst) : `<div class="ch-gen">${icon('plus')}</div>`;
 	uiTint(inst || null);
 	uiWall(inst || null);
 	if (fa && fa.onSelect) fa.onSelect(inst || null, root, chCtx(list));

@@ -14,6 +14,12 @@
     - Boutons noirs bordés de blanc, onglet choisi agrandi et penché avec ombre rouge et cyan.
     - Panneaux à épais bord blanc, tuiles de jeux blanches de travers.
     - Bande d'étoiles en biais, étoile éclatée qui tressaute.
+  - **Menu de choix du jeu façon Persona** : avec l'un de ces thèmes, l'accueil Console devient une liste de jeux
+    empilés à côté de la grande jaquette du jeu choisi.
+    - P3R : liste alignée à droite en capitales italiques, bande bleu roi et triangle magenta sur le jeu choisi,
+      jaquette dans un cercle lumineux.
+    - P5R : noms en lettres découpées et décalés, jeu choisi agrandi sur un bandeau rouge souligné de cyan,
+      jaquette penchée au cadre blanc.
   - Tout est dessiné pour Smash Emu, sans logo, personnage ni image des jeux. Les références (56 notes et la
     vidéo « The Evolution of Persona UI Design ») sont dans docs/THEMES-PERSONA.md.
 

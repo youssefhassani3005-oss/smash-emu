@@ -1259,6 +1259,40 @@ html[data-icons="phantom"] .modal { border-radius: 0; background: #000; border: 
 html[data-icons="phantom"] .modal-head { background: #fff; color: #000; clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%); margin: -1px -1px 8px; padding-bottom: 12px; text-transform: uppercase; }
 html[data-icons="phantom"] .modal-head .icon-btn, html[data-icons="phantom"] .modal-head button { color: #000; }
 html[data-icons="phantom"] .modal-head h2, html[data-icons="phantom"] .modal-head h3 { color: #000; text-shadow: none; }
+/* Menu de choix du jeu façon Persona (accueil Console, disposition « persona » de console-home.js) :
+   jaquette du jeu choisi à gauche, liste de jeux empilés à droite, grand mot en fond. */
+.ch-l-persona { position: relative; }
+body:has(.ch-l-persona) #ui-wall i { filter: brightness(0.32) saturate(0.8) blur(2px); }
+.ch-l-persona .rs3 { text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+.ch-persona { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr); align-items: center; gap: 3vw; padding: 2vh 5vw 0; }
+.ch-pword { position: absolute; left: 3vw; top: 0; font-family: var(--font-display); font-size: clamp(60px, 11vw, 170px); line-height: 0.9; pointer-events: none; opacity: 0.12; white-space: nowrap; }
+.ch-pcover-wrap { display: flex; justify-content: center; align-items: center; min-height: 0; }
+.ch-pcover { position: relative; width: min(30vw, 46vh); aspect-ratio: 1; overflow: hidden; }
+.ch-pcover .ch-blur { display: none; }
+.ch-pcover .ch-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ch-pcover .ch-gen { position: absolute; inset: 0; display: grid; place-items: center; font: 400 clamp(40px, 6vw, 90px) var(--font-display); color: #fff; background: hsl(var(--h, 220) 60% 35%); }
+.ch-pcover .ch-gen svg.icon { width: 30%; height: 30%; }
+.ch-l-persona .ch-mlist-wrap { height: min(62vh, 560px); padding: 8px 0; }
+.ch-l-persona .ch-plist { align-items: flex-end; gap: 2px; padding-right: 3.5vw; }
+html[data-icons][data-icons] .ch-l-persona .ch-tile.ch-pi { aspect-ratio: auto; width: auto; max-width: 100%; background: none; border: 0; box-shadow: none; border-radius: 0; rotate: none; animation: none; padding: 2px 18px; font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 38px); line-height: 1.12; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: visible; transition: transform 0.16s ease, color 0.16s; }
+html[data-icons][data-icons] .ch-l-persona .ch-tile.ch-pi:hover { color: #fff; }
+.ch-l-persona .ch-info { position: absolute; left: 5vw; bottom: 9vh; max-width: 40vw; align-items: flex-start; text-align: left; }
+.ch-l-persona .ch-pi.running::after { content: 'EN JEU'; margin-left: 10px; font: 700 11px Inter, sans-serif; vertical-align: middle; padding: 2px 6px; background: #3fdc7a; color: #000; }
+/* P3R : liste alignée à droite en capitales italiques, bande bleu roi + triangle magenta sur le jeu choisi,
+   jaquette dans un grand cercle. */
+html[data-icons="abyss"] .ch-pword { font-style: italic; transform: skewX(-10deg); color: var(--brand-2); }
+html[data-icons="abyss"] .ch-pcover { border-radius: 50%; box-shadow: 0 0 0 6px var(--brand-2), 0 0 0 16px rgba(var(--brand-rgb), 0.35), 0 0 60px rgba(var(--brand-2-rgb), 0.45); }
+html[data-icons="abyss"][data-icons] .ch-l-persona .ch-tile.ch-pi { font-style: italic; text-transform: uppercase; transform: skewX(-8deg); }
+html[data-icons="abyss"][data-icons] .ch-l-persona .ch-tile.ch-pi.sel { color: #fff; font-size: clamp(28px, 3.6vw, 50px); background: linear-gradient(90deg, transparent 0, var(--brand) 22%, #1a2bc8 100%); box-shadow: inset 0 -4px 0 var(--brand-2); padding-left: 60px; position: relative; }
+html[data-icons="abyss"][data-icons] .ch-l-persona .ch-tile.ch-pi.sel::before { content: ''; position: absolute; left: 18px; top: 50%; margin-top: -13px; border-left: 24px solid #ff3dc8; border-top: 13px solid transparent; border-bottom: 13px solid transparent; filter: drop-shadow(0 0 6px #ff3dc8); animation: fx-breathe 1.8s ease-in-out infinite; }
+/* P5R : jeux en lettres découpées, décalés et penchés ; jeu choisi agrandi sur un bandeau rouge souligné de
+   cyan ; jaquette penchée au cadre blanc et ombre rouge. */
+html[data-icons="phantom"] .ch-pcover { border: 6px solid #fff; transform: rotate(-6deg); box-shadow: 14px 14px 0 var(--brand), -6px -6px 0 #3fe8ff; }
+html[data-icons="phantom"][data-icons] .ch-l-persona .ch-tile.ch-pi { font-size: clamp(18px, 2.2vw, 30px); transform: rotate(calc((var(--k) - 3) * 0.8deg)) translateX(calc((var(--k) - 3) * 6px)); }
+html[data-icons="phantom"][data-icons] .ch-l-persona .ch-tile.ch-pi.sel { font-size: clamp(30px, 3.8vw, 54px); transform: rotate(-4deg) translateX(-14px); position: relative; z-index: 1; }
+html[data-icons="phantom"][data-icons] .ch-l-persona .ch-tile.ch-pi.sel::before { content: ''; position: absolute; inset: 6% -6% 4% -10%; z-index: -1; background: var(--brand); clip-path: polygon(3% 8%, 100% 0, 97% 92%, 0 100%); box-shadow: none; }
+html[data-icons="phantom"][data-icons] .ch-l-persona .ch-tile.ch-pi.sel::after { content: ''; position: absolute; left: -16%; right: 4%; bottom: -2px; height: 4px; background: #3fe8ff; transform: rotate(-2deg); }
+html[data-icons="phantom"][data-icons] .ch-l-persona .ch-tile.ch-pi.running.sel::after { content: ''; }
 /* Tuiles de jeux de l'interface Console : cadre bleu roi arrondi d'un côté (P3R), cadre blanc anguleux (P5R). */
 html[data-icons="abyss"] .ch-tile, html[data-ui="console"]:not([data-ui-style="light"])[data-icons="abyss"] .ch-tile { background: linear-gradient(135deg, #2f55ff, #0b1a8f 60%, #061070); border-radius: 8% 26% 8% 26%; box-shadow: 0 10px 26px rgba(0, 0, 40, 0.55), inset 0 0 0 2px rgba(var(--brand-2-rgb), 0.35); }
 html[data-icons="abyss"] .ch-art { border-radius: 5% 22% 5% 22%; }
