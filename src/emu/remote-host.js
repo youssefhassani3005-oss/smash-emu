@@ -16,7 +16,7 @@
 		return [...Array(Math.max(0, n - 1)).keys()].map(k => k + 1).concat(0);
 	};
 	const SLOT_LABEL = sl => (sl === 0 ? 'Joueur 1 (partagé)' : `Joueur ${sl + 1}`);
-	const R = { guests: [], quality: 'balanced', blockAll: false, micTrack: null, micOn: false, ptt: false, pttDown: false, game: null, panel: null, chat: [], timer: 0, nextId: 1, room: null, roomError: '', friends: null, invited: new Set() };
+	const R = { guests: [], quality: 'auto', blockAll: false, micTrack: null, micOn: false, ptt: false, pttDown: false, game: null, panel: null, chat: [], timer: 0, nextId: 1, room: null, roomError: '', friends: null, invited: new Set() };
 	// Salons (code court) : API du processus principal, exposée par la fenêtre du lecteur intégré ou de l'émulateur externe.
 	const RM = (window.smashEmu && window.smashEmu.room) || (window.smashExt && window.smashExt.room) || null;
 
@@ -104,7 +104,9 @@
 	// ---------- Qualité ----------
 
 	const applyQuality = async (g) => {
-		const q = SmashRemote.QUALITY[R.quality];
+		const base = SmashRemote.QUALITY[R.quality] || SmashRemote.QUALITY.auto;
+		// Auto : marche propre à chaque invité (un ami en 4G ne fait pas baisser l'image des autres).
+		const q = R.quality === 'auto' ? { ...base, ...SmashRemote.LADDER[(g.auto && g.auto.level) || 0] } : base;
 		const sender = g.videoTx && g.videoTx.sender;
 		if (!sender) return;
 		if (A) A.maxWidth = q.maxWidth;
@@ -125,17 +127,19 @@
 
 	// ---------- Invitations ----------
 
-	const freeSlot = () => slotsOf().find(s => !R.guests.some(g => g.slot === s && !['closed', 'failed'].includes(g.state)));
+	// Un invité dont la connexion a lâché (« lost ») rend sa place : il la retrouve en se reconnectant.
+	const GONE = ['closed', 'failed', 'lost'];
+	const freeSlot = () => slotsOf().find(s => !R.guests.some(g => g.slot === s && !GONE.includes(g.state)));
 
 	const full = () => {
-		const live = R.guests.filter(g => !['closed', 'failed'].includes(g.state));
+		const live = R.guests.filter(g => !GONE.includes(g.state));
 		return live.length >= (A ? A.maxGuests : slotsOf().length);
 	};
 
 	// Nouvel invité : connexion WebRTC préparée (image, son, voix, commandes) et offre locale prête.
 	// legacy : ancienne méthode, l'offre devient un long code à copier.
-	const createGuest = async ({ name = 'Invité', gid = null, legacy = false } = {}) => {
-		const slot = freeSlot();
+	const createGuest = async ({ name = 'Invité', gid = null, legacy = false, prefer = null } = {}) => {
+		const slot = prefer != null && !R.guests.some(x => x.slot === prefer && !GONE.includes(x.state)) ? prefer : freeSlot();
 		const pc = new RTCPeerConnection({ iceServers: SmashRemote.ICE });
 		const g = { id: R.nextId++, gid, legacy, name, slot, pc, state: legacy ? 'invite' : 'connecting', allowed: true, keys: new Set(), applied: new Map(), seq: -1, pad: null, code: '', stats: null, prev: {}, muted: false, padName: '' };
 		R.guests.push(g);
@@ -163,8 +167,13 @@
 		pc.onconnectionstatechange = () => {
 			const s = pc.connectionState;
 			if (s === 'connected') { g.state = 'connected'; toast(`🎮 ${esc(g.name)} est connecté (joueur ${g.slot + 1})`); }
-			else if (s === 'failed') { g.state = 'failed'; release(g); toast(`Connexion avec ${esc(g.name)} impossible ou perdue. Derrière certains réseaux stricts, la connexion directe échoue : réessaie avec un nouveau code, ou sur une autre connexion.`, { error: true, ms: 8000 }); }
-			else if (s === 'disconnected') { g.state = 'lost'; release(g); }
+			else if (s === 'failed') { g.state = 'failed'; release(g); try { pc.close(); } catch { /* */ } toast(`Connexion avec ${esc(g.name)} perdue : sa fenêtre se reconnecte toute seule.`, { error: true, ms: 6000 }); }
+			else if (s === 'disconnected') {
+				g.state = 'lost';
+				release(g);
+				// Coupure courte : WebRTC se rétablit tout seul ; sinon on ferme, l'invité revient par le salon.
+				setTimeout(() => { if (g.state === 'lost') { try { pc.close(); } catch { /* */ } g.state = 'closed'; render(); } }, 12000);
+			}
 			else if (s === 'closed') { g.state = 'closed'; release(g); }
 			render();
 		};
@@ -198,9 +207,12 @@
 		if (msg.t === 'join') {
 			if (R.guests.some(g => g.gid === gid && g.state !== 'closed')) return;
 			if (full()) { roomPost({ t: 'full', gid }); return; }
-			const g = await createGuest({ name: String(msg.name || 'Invité').slice(0, 24), gid }).catch((e) => { toast(`Connexion impossible : ${esc(e.message)}`, { error: true }); return null; });
+			const name = String(msg.name || 'Invité').slice(0, 24);
+			// Reconnexion : le joueur retrouve la place qu'il avait (joueur 2 reste joueur 2).
+			const before = [...R.guests].reverse().find(x => x.name === name && x.gid !== gid && GONE.includes(x.state));
+			const g = await createGuest({ name, gid, prefer: before ? before.slot : null }).catch((e) => { toast(`Connexion impossible : ${esc(e.message)}`, { error: true }); return null; });
 			if (!g) return;
-			addChat('•', `${g.name} rejoint la partie…`);
+			addChat('•', before ? `${g.name} se reconnecte…` : `${g.name} rejoint la partie…`);
 			await roomPost({ t: 'offer', gid, sdp: g.pc.localDescription.sdp, game: st.cfg.name, system: st.cfg.systemLabel, host: hostName(), slot: g.slot + 1 });
 			setTimeout(() => { if (g.state === 'connecting') { g.state = 'failed'; release(g); render(); toast(`${esc(g.name)} n’a pas pu se connecter (réseau trop strict ?).`, { error: true, ms: 7000 }); } }, 30000);
 			render();
@@ -281,7 +293,19 @@
 		for (const g of R.guests) {
 			if (g.state !== 'connected') continue;
 			const s = await SmashRemote.stats(g.pc, g.prev);
-			g.prev = { bytes: s.bytes, t: s.t };
+			if (R.quality === 'auto') {
+				const next = SmashRemote.adapt(g.auto || {}, s, g.prev.lost);
+				const changed = next.level !== ((g.auto && g.auto.level) || 0);
+				// Garde la raison de la dernière baisse tant que la qualité n'est pas revenue au maximum.
+				if (!changed && g.auto && g.auto.why) next.why = g.auto.why;
+				g.auto = next;
+				if (changed) {
+					applyQuality(g);
+					const l = SmashRemote.LADDER[next.level];
+					log(`jeu à distance : ${g.name} → ${l.maxFramerate} i/s, ${l.maxWidth} px (${next.why})`);
+				}
+			}
+			g.prev = { bytes: s.bytes, t: s.t, lost: s.lost };
 			g.stats = s;
 		}
 		if (R.panel && !R.panel.classList.contains('hidden')) renderGuests();
@@ -323,6 +347,7 @@
 					<span>Limité par</span><b>${esc({ cpu: 'processeur', bandwidth: 'débit', none: 'rien', other: 'autre' }[s.limit] || '—')}</b>
 					<span>Gigue / pertes</span><b>${s.jitter != null ? `${s.jitter} ms` : '—'} / ${s.lost ?? '—'}</b>
 				</div>
+				${R.quality === 'auto' && g.state === 'connected' ? `<div class="rp-hint">Qualité auto : ${SmashRemote.LADDER[(g.auto && g.auto.level) || 0].maxFramerate} i/s max${g.auto && g.auto.level ? ` · réduite (${esc(g.auto.why || 'connexion faible')})` : ' · pleine'}</div>` : ''}
 				${g.padName ? `<div class="rp-hint">🎮 ${esc(g.padName)}</div>` : ''}
 				${SmashRemote.advice(s) ? `<div class="rp-advice">${esc(SmashRemote.advice(s))}</div>` : ''}
 				<div class="rp-row">

@@ -70,6 +70,7 @@ const renderSpeed = () => {
 const applySpeed = (s) => {
 	const g = gm();
 	if (!g || !st.started) return;
+	if (s !== 1 && window.smashSpeedrunFlag) window.smashSpeedrunFlag(s > 1 ? 'Jeu accéléré' : 'Jeu ralenti');
 	try {
 		if (s > 1) { g.toggleSlowMotion(0); g.setFastForwardRatio(s); g.toggleFastForward(1); }
 		else if (s < 1) { g.toggleFastForward(0); g.setSlowMotionRatio(1 / s); g.toggleSlowMotion(1); }
@@ -130,6 +131,7 @@ const setPaused = async (paused) => {
 		applySpeed(st.turbo ? Math.max(TURBO, st.speed) : st.speed);
 	}
 	st.paused = paused;
+	if (window.smashSpeedrunPause) window.smashSpeedrunPause(paused);
 	renderPauseButton();
 	// L'image figée du jeu, floutée, sert de fond au menu pause.
 	const overlay = $('#pause');
@@ -172,6 +174,7 @@ const loadState = async (slot = st.slot) => {
 		// Garde l'état courant pour pouvoir annuler ce chargement (F8).
 		try { st.undoState = gm().getState().slice(); } catch { st.undoState = null; }
 		gm().loadState(new Uint8Array(data));
+		if (window.smashSpeedrunFlag) window.smashSpeedrunFlag('État chargé');
 		selectSlot(slot);
 		toast(`État chargé · emplacement ${slot}`);
 		if (st.paused) await setPaused(false);

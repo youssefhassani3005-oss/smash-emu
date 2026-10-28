@@ -58,6 +58,8 @@ test('Speedrun : données nettoyées avant d’être écrites', () => {
 	assert.strictEqual(out.attempts, 0);
 	assert.deepStrictEqual(out.runs, [{ at: 5, times: [1, 2], complete: true }]);
 	assert.strictEqual(out.evil, undefined);
-	assert.strictEqual(window.SmashSpeedrun.fmt(3723456), '1:02:03,4');
-	assert.strictEqual(window.SmashSpeedrun.fmt(-1500, true), '−1,5');
+	assert.strictEqual(window.SmashSpeedrun.fmt(3723456), '1:02:03,45');
+	assert.strictEqual(window.SmashSpeedrun.fmt(-1500, true), '−1,50');
+	// Essai assisté : la raison est gardée, bornée.
+	assert.deepStrictEqual(speedrun.clean({ runs: [{ at: 1, times: [3], complete: true, assist: 'Jeu accéléré' }] }).runs, [{ at: 1, times: [3], complete: true, assist: 'Jeu accéléré' }]);
 });

@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.3.3
+
+- **Jeu à distance plus simple et plus stable**
+  - Nouvelle qualité **Auto**, choisie par défaut. Quand la connexion d'un ami souffre (pertes, latence, débit ou
+    processeur saturés), l'image baisse toute seule (images par seconde, résolution, débit), puis remonte après 15 s
+    calmes. Chaque ami a son propre réglage, et le panneau dit pourquoi l'image est réduite.
+  - **Reconnexion automatique** de l'invité : coupure ou connexion qui ne s'établit pas, jusqu'à 3 nouveaux essais
+    tout seuls avant le bouton « Réessayer ».
+  - Le joueur qui se reconnecte **retrouve sa place** (joueur 2 reste joueur 2). Une connexion perdue ne bloque plus
+    une place.
+- **Speedrun selon les règles des classements**
+  - Chrono au **centième**, rafraîchi à chaque image.
+  - La **pause** de Smash Emu arrête le chrono.
+  - Jeu accéléré ou ralenti, retour arrière, image par image ou état chargé pendant un essai : l'essai devient
+    **« assisté »**. Il est chronométré mais ne compte ni pour le record, ni pour les meilleurs segments. En course
+    contre un ami, il vaut un abandon.
+
 ## 3.3.2
 
 - **Danseur** : un petit personnage bleu en pixel art danse dans le coin de l'accueil (larmes qui tombent, notes de

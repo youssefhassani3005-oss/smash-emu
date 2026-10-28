@@ -49,10 +49,16 @@ const connect = async (offer, sendAnswer) => {
 			}
 		};
 		pc.onconnectionstatechange = () => {
+			if (G.pc !== pc) return; // ancienne connexion remplacée par une reconnexion
 			const s = pc.connectionState;
-			if (s === 'connected') { document.body.classList.add('playing'); message(''); $('#conn').classList.remove('hidden'); smashRemote.addRecent({ game: offer.game, host: offer.host }).catch(() => {}); }
-			if (s === 'failed') message(`<b>Connexion impossible ou perdue.</b><br>La connexion directe a échoué : réseau trop strict (4G, réseau d’entreprise…) ou coupure.${G.room ? ' <button class="pbtn primary" data-action="rejoin">Réessayer</button>' : ' Demande un nouveau code à l’hôte, ou essayez une autre connexion.'}`);
-			if (s === 'disconnected') message('Connexion instable… reconnexion en cours.');
+			clearTimeout(G.dropTimer);
+			if (s === 'connected') { G.retries = 0; document.body.classList.add('playing'); message(''); $('#conn').classList.remove('hidden'); smashRemote.addRecent({ game: offer.game, host: offer.host }).catch(() => {}); }
+			if (s === 'failed') autoRejoin();
+			if (s === 'disconnected') {
+				message('Connexion instable… reconnexion en cours.');
+				// WebRTC se rétablit souvent seul ; sinon, nouvel essai dans le salon au bout de 5 s.
+				G.dropTimer = setTimeout(() => { if (G.pc === pc && pc.connectionState !== 'connected') autoRejoin(); }, 5000);
+			}
 		};
 		await pc.setRemoteDescription({ type: 'offer', sdp: offer.sdp });
 		// Voix dans les deux sens : le micro pourra être branché plus tard sans renégocier.
@@ -105,7 +111,8 @@ smashRemote.room.onMessage(async ({ code, msg }) => {
 	$('#room-status').textContent = `Connexion à ${String(msg.host || 'l’hôte')}…`;
 	try {
 		await connect({ sdp: msg.sdp, game: String(msg.game || ''), system: String(msg.system || ''), host: String(msg.host || 'Hôte'), slot: msg.slot }, sdp => smashRemote.room.post(G.room, { t: 'answer', gid: G.gid, sdp, name: G.name }));
-		setTimeout(() => { if (G.pc && G.pc.connectionState !== 'connected') $('#room-status').innerHTML = 'La connexion directe ne s’établit pas : réseau trop strict (4G, réseau d’entreprise…). <button class="pbtn primary" data-action="rejoin">Réessayer</button>'; }, 25000);
+		const pc = G.pc;
+		setTimeout(() => { if (G.pc === pc && pc.connectionState !== 'connected') autoRejoin(); }, 20000);
 	} catch (e) { $('#room-status').textContent = `Connexion impossible : ${e.message}`; }
 });
 
@@ -133,12 +140,35 @@ const join = async () => {
 
 // Nouvel essai dans le même salon (connexion perdue ou réseau capricieux).
 const rejoin = async () => {
+	clearTimeout(G.dropTimer);
 	try { if (G.pc) G.pc.close(); } catch { /* */ }
 	G.pc = null;
 	document.body.classList.remove('playing');
 	message('');
 	$('#room-retry').classList.add('hidden');
 	await joinRoom(G.room);
+};
+
+// Connexion perdue ou qui ne s'établit pas : jusqu'à 3 nouveaux essais tout seuls, puis le bouton « Réessayer ».
+const MAX_RETRIES = 3;
+const autoRejoin = () => {
+	clearTimeout(G.dropTimer);
+	if (!G.room) {
+		message('<b>Connexion perdue.</b><br>Demande un nouveau code à l’hôte, ou essayez une autre connexion.');
+		return;
+	}
+	if (G.rejoining) return;
+	G.retries = (G.retries || 0) + 1;
+	if (G.retries > MAX_RETRIES) {
+		G.retries = 0;
+		const strict = 'La connexion directe échoue : réseau trop strict (4G, réseau d’entreprise…). Essayez une autre connexion (Wi-Fi de la maison, partage de connexion).';
+		message(`<b>Impossible de rejoindre la partie.</b><br>${strict} <button class="pbtn primary" data-action="rejoin">Réessayer</button>`);
+		$('#room-status').innerHTML = `${strict} <button class="pbtn primary" data-action="rejoin">Réessayer</button>`;
+		return;
+	}
+	message(`Connexion perdue… reconnexion automatique (essai ${G.retries}/${MAX_RETRIES}).`);
+	G.rejoining = true;
+	setTimeout(() => { rejoin().catch(() => {}).finally(() => { G.rejoining = false; }); }, 1500);
 };
 
 // ---------- Messages de l'hôte ----------

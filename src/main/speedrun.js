@@ -25,7 +25,8 @@ const clean = (d) => {
 		pb: pb && pb.times.length && pb.times.every(t => t !== null) ? pb : null,
 		best: times(d.best),
 		attempts: Math.max(0, Math.min(1e6, Math.floor(Number(d.attempts) || 0))),
-		runs: (Array.isArray(d.runs) ? d.runs : []).slice(0, MAX_RUNS).map(r => ({ at: ms(r && r.at) || 0, times: times(r && r.times), complete: !!(r && r.complete) })),
+		// assist : raison pour laquelle l'essai ne compte pas (vitesse modifiée, état chargé…).
+		runs: (Array.isArray(d.runs) ? d.runs : []).slice(0, MAX_RUNS).map(r => ({ at: ms(r && r.at) || 0, times: times(r && r.times), complete: !!(r && r.complete), ...(r && typeof r.assist === 'string' && r.assist ? { assist: r.assist.slice(0, 60) } : {}) })),
 		// Écran de fin : signature 32×18 en niveaux de gris (base64), pour arrêter le chrono tout seul.
 		endSig: typeof d.endSig === 'string' && /^[A-Za-z0-9+/=]{1,1024}$/.test(d.endSig) ? d.endSig : null,
 		endAuto: !!d.endAuto,

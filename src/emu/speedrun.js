@@ -3,18 +3,20 @@
 // de quoi lire et enregistrer les données, l'élément où afficher le chrono et ses notifications.
 // En plus : course contre un ami (prêt, compte à rebours, temps envoyé à la fin) et fin automatique quand le jeu
 // affiche l'écran de fin enregistré (signature 32×18 de l'image comparée toutes les 2 s).
+// Règles des classements : la pause de Smash Emu arrête le chrono ; vitesse modifiée, retour arrière ou état chargé
+// rendent l'essai « assisté » : il est chronométré mais ne compte ni pour le record ni pour une course.
 window.SmashSpeedrun = (() => {
 	const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 	const p2 = n => String(n).padStart(2, '0');
 	const fmt = (ms, sign = false) => {
 		const t = Math.abs(ms);
-		const h = Math.floor(t / 3600000), m = Math.floor(t / 60000) % 60, s = Math.floor(t / 1000) % 60, d = Math.floor(t / 100) % 10;
+		const h = Math.floor(t / 3600000), m = Math.floor(t / 60000) % 60, s = Math.floor(t / 1000) % 60, c = Math.floor(t / 10) % 100;
 		const body = h ? `${h}:${p2(m)}:${p2(s)}` : m ? `${m}:${p2(s)}` : `${s}`;
-		return `${sign ? (ms < 0 ? '−' : '+') : ''}${body},${d}`;
+		return `${sign ? (ms < 0 ? '−' : '+') : ''}${body},${p2(c)}`;
 	};
 	const blank = () => ({ on: false, splits: ['Fin'], pb: null, best: [], attempts: 0, runs: [], endSig: null, endAuto: false });
 	const seg = (times, i) => times[i] - (i ? times[i - 1] : 0);
-	const KEYS = '<b>Ctrl+Espace</b> départ / segment suivant · <b>Ctrl+Retour arrière</b> annuler le segment · <b>Ctrl+Maj+Espace</b> remettre à zéro';
+	const KEYS = '<b>Ctrl+Espace</b> départ / segment suivant · <b>Ctrl+Retour arrière</b> annuler le segment · <b>Ctrl+Maj+Espace</b> remettre à zéro<br>La pause de Smash Emu arrête le chrono. Vitesse modifiée, retour arrière ou état chargé : essai « assisté », hors record et hors course.';
 	const SAMPLE_MS = 2000;
 	const MATCH = 10;
 	const MIN_SPREAD = 12;
@@ -31,13 +33,16 @@ window.SmashSpeedrun = (() => {
 
 	const create = ({ load, save, el, toast = () => {}, onToggle = () => {}, onChange = () => {}, race = null, frameSig = null }) => {
 		let data = blank();
-		const run = { state: 'idle', t0: 0, times: [], last: null };
+		const run = { state: 'idle', t0: 0, times: [], last: null, pausedAt: 0, assist: null };
 		let ticker = null;
 		let watcher = null;
 		let raceView = null;
 		let countdown = null;
 		const persist = () => Promise.resolve(save(data)).catch(() => {});
-		const elapsed = () => (run.state === 'running' ? performance.now() - run.t0 : run.state === 'done' ? run.times[run.times.length - 1] : 0);
+		// Temps de l'essai, sans les pauses de Smash Emu.
+		const now = () => (run.pausedAt || performance.now()) - run.t0;
+		const elapsed = () => (run.state === 'running' ? now() : run.state === 'done' ? run.times[run.times.length - 1] : 0);
+		const clearRun = () => Object.assign(run, { state: 'idle', times: [], last: null, pausedAt: 0, assist: null });
 		const racing = () => !!(raceView && ['accepted', 'countdown', 'running'].includes(raceView.state));
 		const visible = () => data.on || racing() || (raceView && raceView.state === 'done');
 
@@ -46,7 +51,7 @@ window.SmashSpeedrun = (() => {
 			if (pb == null) return null;
 			const d = run.times[i] - pb;
 			const s = seg(run.times, i);
-			const gold = s > 0 && (data.best[i] == null || s < data.best[i]);
+			const gold = !run.assist && s > 0 && (data.best[i] == null || s < data.best[i]);
 			return { d, cls: gold ? 'gold' : d <= 0 ? 'ahead' : 'behind' };
 		};
 
@@ -78,10 +83,20 @@ window.SmashSpeedrun = (() => {
 			const label = raceLabel();
 			const name = label && run.state !== 'running' ? label : run.state === 'idle' ? 'Prêt' : run.state === 'done' ? 'Terminé' : data.splits[i];
 			const state = run.state === 'running' ? (pbHere != null && t > pbHere ? 'behind' : 'run') : run.state;
-			el.innerHTML = `${racing() && run.state === 'running' ? `<span class="sr-vs">${esc(label)}</span>` : ''}<span class="sr-name">${esc(name)}${data.splits.length > 1 && run.state === 'running' ? ` <small>${i + 1}/${data.splits.length}</small>` : ''}</span><b class="sr-time ${state}">${fmt(t)}</b>${delta}`;
+			const flags = `${run.pausedAt && run.state === 'running' ? '<i class="sr-flag">⏸ pause</i>' : ''}${run.assist && run.state !== 'idle' ? `<i class="sr-flag assist" title="${esc(run.assist)}">assisté</i>` : ''}`;
+			el.innerHTML = `${racing() && run.state === 'running' ? `<span class="sr-vs">${esc(label)}</span>` : ''}<span class="sr-name">${esc(name)}${data.splits.length > 1 && run.state === 'running' ? ` <small>${i + 1}/${data.splits.length}</small>` : ''}</span><b class="sr-time ${state}">${fmt(t)}</b>${delta}${flags}`;
 			el.dataset.tip = run.state === 'idle' ? 'Speedrun : Ctrl+Espace pour partir' : 'Ctrl+Espace : segment suivant · Ctrl+Maj+Espace : remettre à zéro';
 		};
-		const tick = (on) => { clearInterval(ticker); ticker = on ? setInterval(render, 100) : null; };
+		// Centièmes : affichage rafraîchi à chaque image de l'écran (toutes les 30 ms sans requestAnimationFrame).
+		const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : fn => setTimeout(fn, 30);
+		const caf = typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : clearTimeout;
+		const tick = (on) => {
+			if (ticker) caf(ticker);
+			ticker = null;
+			if (!on) return;
+			const loop = () => { render(); ticker = raf(loop); };
+			ticker = raf(loop);
+		};
 
 		// Fin automatique : l'image du jeu ressemble à l'écran de fin enregistré deux fois de suite.
 		const watch = (on) => {
@@ -102,19 +117,23 @@ window.SmashSpeedrun = (() => {
 		// Fin d'un essai, terminé ou abandonné : meilleurs segments (les segments vides ne comptent pas), record,
 		// historique, et temps envoyé à l'ami pendant une course.
 		const record = (complete) => {
-			run.times.forEach((t, i) => { const s = seg(run.times, i); if (s > 0 && (data.best[i] == null || s < data.best[i])) data.best[i] = s; });
-			data.runs.unshift({ at: Date.now(), times: run.times.slice(), complete });
+			if (!run.assist) run.times.forEach((t, i) => { const s = seg(run.times, i); if (s > 0 && (data.best[i] == null || s < data.best[i])) data.best[i] = s; });
+			data.runs.unshift({ at: Date.now(), times: run.times.slice(), complete, ...(run.assist ? { assist: run.assist } : {}) });
 			data.runs = data.runs.slice(0, 20);
 			const total = run.times[run.times.length - 1];
-			const pb = complete && (!data.pb || total < data.pb.times[data.pb.times.length - 1]);
+			const pb = complete && !run.assist && (!data.pb || total < data.pb.times[data.pb.times.length - 1]);
 			if (pb) data.pb = { times: run.times.slice(), at: Date.now() };
 			persist();
-			if (complete && race && raceView && raceView.state === 'running') race.finish(Math.round(total)).catch(() => {});
+			if (complete && race && raceView && raceView.state === 'running') {
+				// Course : un essai assisté vaut un abandon.
+				if (run.assist) race.forfeit().then(v => v && api.setRace(v)).catch(() => {});
+				else race.finish(Math.round(total)).catch(() => {});
+			}
 			return pb;
 		};
 
 		const begin = (t0 = performance.now()) => {
-			Object.assign(run, { state: 'running', t0, times: [], last: null });
+			Object.assign(run, { state: 'running', t0, times: [], last: null, pausedAt: 0, assist: null });
 			data.attempts += 1;
 			persist();
 			tick(true);
@@ -125,7 +144,8 @@ window.SmashSpeedrun = (() => {
 			tick(false);
 			watch(false);
 			const pb = record(true);
-			toast(pb ? `Nouveau record : ${fmt(run.times[run.times.length - 1])} !` : `Terminé en ${fmt(run.times[run.times.length - 1])}`);
+			const total = fmt(run.times[run.times.length - 1]);
+			toast(pb ? `Nouveau record : ${total} !` : run.assist ? `Terminé en ${total} (essai assisté : ${run.assist}, hors record)` : `Terminé en ${total}`);
 		};
 
 		const api = {
@@ -158,19 +178,33 @@ window.SmashSpeedrun = (() => {
 					begin();
 					toast(`Speedrun : c’est parti ! (essai ${data.attempts})`);
 				} else if (run.state === 'running') {
-					run.times.push(performance.now() - run.t0);
+					run.times.push(now());
 					run.last = deltaOf(run.times.length - 1);
 					if (run.times.length >= data.splits.length) end();
 				} else {
-					Object.assign(run, { state: 'idle', times: [], last: null });
+					clearRun();
 				}
 				render();
 				return true;
 			},
+			// Pause de Smash Emu (menu pause, bouton de la barre) : le chrono s'arrête avec le jeu.
+			pause(on) {
+				if (run.state !== 'running') return;
+				if (on && !run.pausedAt) run.pausedAt = performance.now();
+				else if (!on && run.pausedAt) { run.t0 += performance.now() - run.pausedAt; run.pausedAt = 0; }
+				render();
+			},
+			// Aide qui fausse le temps (vitesse, retour arrière, état chargé) : l'essai continue mais ne compte plus.
+			flag(reason) {
+				if (run.state !== 'running' || run.assist) return;
+				run.assist = String(reason);
+				toast(racing() ? `${reason} : essai assisté, la course sera perdue à l’arrivée` : `${reason} : essai assisté, il ne comptera pas pour le record`);
+				render();
+			},
 			// Fin immédiate (écran de fin reconnu) : les segments restants prennent le temps actuel.
 			finish() {
 				if (run.state !== 'running') return false;
-				const t = performance.now() - run.t0;
+				const t = now();
 				while (run.times.length < data.splits.length) run.times.push(t);
 				run.last = deltaOf(run.times.length - 1);
 				end();
@@ -189,7 +223,7 @@ window.SmashSpeedrun = (() => {
 				if (racing()) { api.forfeit(); return true; }
 				if (!data.on) return false;
 				if (run.state === 'running' && run.times.length) record(false);
-				Object.assign(run, { state: 'idle', times: [], last: null });
+				clearRun();
 				tick(false);
 				watch(false);
 				render();
@@ -200,7 +234,7 @@ window.SmashSpeedrun = (() => {
 				if (!racing()) return false;
 				if (!confirm('Abandonner la course ? Ton ami gagne.')) return false;
 				race.forfeit().then(v => v && api.setRace(v)).catch(e => toast(e.message));
-				if (run.state === 'running') { if (run.times.length) record(false); Object.assign(run, { state: 'idle', times: [], last: null }); tick(false); watch(false); }
+				if (run.state === 'running') { if (run.times.length) record(false); clearRun(); tick(false); watch(false); }
 				render();
 				return true;
 			},
@@ -234,7 +268,7 @@ window.SmashSpeedrun = (() => {
 				const sob = data.best.length === data.splits.length && data.best.every(b => b != null) ? data.best.reduce((a, b) => a + b, 0) : null;
 				const done = data.runs.filter(r => r.complete).length;
 				const rows = data.splits.map((s, i) => `<tr><td>${esc(s)}</td><td>${data.pb && data.pb.times[i] != null ? fmt(data.pb.times[i]) : '—'}</td><td class="gold">${data.best[i] != null ? fmt(data.best[i]) : '—'}</td></tr>`).join('');
-				const runs = data.runs.slice(0, 6).map(r => `<li><span>${new Date(r.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span><b>${r.complete ? fmt(r.times[r.times.length - 1]) : `abandon · ${esc(data.splits[r.times.length] || '')}`}</b></li>`).join('');
+				const runs = data.runs.slice(0, 6).map(r => `<li><span>${new Date(r.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span><b>${r.complete ? fmt(r.times[r.times.length - 1]) : `abandon · ${esc(data.splits[r.times.length] || '')}`}${r.assist ? ` <small title="${esc(r.assist)}">assisté</small>` : ''}</b></li>`).join('');
 				const raceBox = racing() || (raceView && raceView.state === 'done')
 					? `<div class="srp-race"><b>${esc(raceLabel())}</b><span>${esc(raceView.game.n)}</span>${racing() ? '<button class="btn" data-sr="forfeit">Abandonner</button>' : ''}</div>` : '';
 				const endBox = frameSig ? `<div class="srp-end"><div class="srp-lbl">Fin automatique <small>le chrono s’arrête tout seul quand le jeu affiche l’écran de fin enregistré</small></div>
@@ -280,7 +314,7 @@ window.SmashSpeedrun = (() => {
 				if (act === 'endclear') { data.endSig = null; data.endAuto = false; }
 				if (act === 'toggle') {
 					data.on = !data.on;
-					if (!data.on && !racing()) { Object.assign(run, { state: 'idle', times: [], last: null }); tick(false); watch(false); }
+					if (!data.on && !racing()) { clearRun(); tick(false); watch(false); }
 					onToggle(data.on);
 					toast(data.on ? 'Chrono speedrun activé : Ctrl+Espace pour partir' : 'Chrono speedrun désactivé');
 				}
@@ -293,7 +327,7 @@ window.SmashSpeedrun = (() => {
 						data.pb = null; data.best = [];
 					}
 					data.splits = next;
-					Object.assign(run, { state: 'idle', times: [], last: null });
+					clearRun();
 					tick(false);
 					toast('Segments enregistrés');
 				}

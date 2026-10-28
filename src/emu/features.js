@@ -55,12 +55,15 @@ const refreshSpeed = () => { applySpeed(effectiveSpeed()); $('#turbo').classList
 
 const rewind = (on) => {
 	live.rewinding = on;
+	if (on && window.smashSpeedrunFlag) window.smashSpeedrunFlag('Retour arrière');
 	try { gm().functions.toggleRewind(on ? 1 : 0); } catch { if (on) toast('Retour arrière indisponible pour ce cœur.', { error: true }); }
 	refreshSpeed();
 };
 
 const frameAdvance = () => {
 	if (!st.paused) { setPaused(true); return; }
+	// Le jeu avance alors que le chrono est en pause.
+	if (window.smashSpeedrunFlag) window.smashSpeedrunFlag('Image par image');
 	try {
 		gm().toggleMainLoop(1);
 		requestAnimationFrame(() => requestAnimationFrame(() => gm().toggleMainLoop(0)));
@@ -150,6 +153,9 @@ const SR = window.SmashSpeedrun.create({
 	frameSig,
 });
 SR.init();
+// Appelés par le lecteur (player.js) : pause, vitesse et états chargés pendant un essai.
+window.smashSpeedrunPause = on => SR.pause(on);
+window.smashSpeedrunFlag = reason => SR.flag(reason);
 
 const cheatsKey = () => `smash-cheats-${st.cfg.instanceId}`;
 const loadCheats = () => { try { return JSON.parse(localStorage.getItem(cheatsKey())) || []; } catch { return []; } };

@@ -327,22 +327,24 @@ const setSpeedMode = async (mode) => {
 // ---------- Barre ----------
 
 const ACTIONS = {
-	pause: async () => { await smashExt.key('pause'); st.paused = !st.paused; $('#btn-pause').classList.toggle('on', st.paused); toast(st.paused ? 'Pause' : 'Reprise'); },
+	pause: async () => { await smashExt.key('pause'); st.paused = !st.paused; st.sr.pause(st.paused); $('#btn-pause').classList.toggle('on', st.paused); toast(st.paused ? 'Pause' : 'Reprise'); },
 	turbo: async () => {
 		// Citron, Eden : le bouton passe d'une vitesse à l'autre (normale, rapide, illimitée, lente).
 		if (st.cfg.speeds.length) {
 			const modes = speedModes();
 			await setSpeedMode(modes[(modes.indexOf(st.speedMode) + 1) % modes.length]);
+			if (st.speedMode !== 'normal') st.sr.flag(st.speedMode === 'slow' ? 'Jeu ralenti' : 'Jeu accéléré');
 			toast(`Vitesse : ${speedName(st.speedMode)}`);
 			return;
 		}
 		st.turbo = !st.turbo;
+		if (st.turbo) st.sr.flag('Jeu accéléré');
 		await smashExt.key(st.turbo ? 'turboDown' : 'turboUp');
 		$('#btn-turbo').classList.toggle('on', st.turbo);
 		toast(st.turbo ? 'Turbo activé' : 'Turbo désactivé');
 	},
 	save: async () => { st.slotInfo[st.slot] = await smashExt.quickSave(st.slot); toast(`État sauvegardé · emplacement ${st.slot}`); },
-	load: async () => { await smashExt.loadSlot(st.slot); toast(`État chargé · emplacement ${st.slot}`); },
+	load: async () => { await smashExt.loadSlot(st.slot); st.sr.flag('État chargé'); toast(`État chargé · emplacement ${st.slot}`); },
 	undo: async () => { await smashExt.key('undo'); toast('Chargement annulé'); },
 	slot: () => { st.slot = (st.slot % st.cfg.slots) + 1; $('#slot').textContent = st.slot; toast(`Emplacement ${st.slot}`); },
 	screenshot: async () => {

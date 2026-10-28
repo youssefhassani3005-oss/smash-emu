@@ -121,10 +121,41 @@
 	// maxWidth : largeur encodée au plus. Un jeu rétro n'a pas besoin de plus de 960 à 1280 pixels, et une image
 	// plus petite s'encode et se transmet plus vite (moins de retard).
 	const QUALITY = {
+		// Auto : part de « Équilibré » et descend les marches de LADDER quand la connexion souffre, remonte ensuite.
+		auto: { label: 'Auto', maxBitrate: 8000000, maxFramerate: 60, maxWidth: 1280, degradation: 'maintain-framerate' },
 		reactive: { label: 'Réactivité', maxBitrate: 5000000, maxFramerate: 60, maxWidth: 960, degradation: 'maintain-framerate' },
 		balanced: { label: 'Équilibré', maxBitrate: 8000000, maxFramerate: 60, maxWidth: 1280, degradation: 'maintain-framerate' },
 		quality: { label: 'Qualité', maxBitrate: 14000000, maxFramerate: 60, maxWidth: 1920, degradation: 'balanced' },
 		saver: { label: 'Économie', maxBitrate: 2000000, maxFramerate: 30, maxWidth: 854, degradation: 'maintain-framerate' },
+	};
+	const LADDER = [
+		{ maxBitrate: 8000000, maxFramerate: 60, maxWidth: 1280 },
+		{ maxBitrate: 5000000, maxFramerate: 60, maxWidth: 960 },
+		{ maxBitrate: 3000000, maxFramerate: 45, maxWidth: 854 },
+		{ maxBitrate: 1800000, maxFramerate: 30, maxWidth: 720 },
+		{ maxBitrate: 1000000, maxFramerate: 30, maxWidth: 640 },
+	];
+
+	// Marche suivante de la qualité Auto d'après deux mesures successives (stats()) : on descend dès que deux
+	// secondes de suite sont mauvaises (pertes, latence, débit ou processeur saturés), on remonte après 15 s calmes.
+	// Renvoie { level, bad, good, why } ; why dit pourquoi la marche a changé.
+	// Les 6 premières mesures sont ignorées : au démarrage, WebRTC se dit « limité par le débit » le temps d'estimer la
+	// connexion. Débit et processeur ne comptent que si des images partent vraiment.
+	const WARMUP = 6;
+	const adapt = (cur, s, prevLost) => {
+		const out = { level: cur.level || 0, bad: cur.bad || 0, good: cur.good || 0, why: '', n: (cur.n || 0) + 1 };
+		if (out.n <= WARMUP) return out;
+		const lostNow = s.lost != null && prevLost != null ? Math.max(0, s.lost - prevLost) : 0;
+		const sending = (s.kbps || 0) > 0 && (s.fps || 0) > 0;
+		const reasons = [];
+		if (lostNow > 15) reasons.push('pertes de paquets');
+		if (s.rtt != null && s.rtt > 140) reasons.push('latence');
+		if (sending && s.limit === 'bandwidth') reasons.push('débit');
+		if (sending && s.limit === 'cpu') reasons.push('processeur');
+		if (reasons.length) { out.bad += 1; out.good = 0; } else { out.good += 1; out.bad = 0; }
+		if (out.bad >= 2 && out.level < LADDER.length - 1) { out.level += 1; out.bad = 0; out.why = reasons.join(', '); }
+		else if (out.good >= 15 && out.level > 0) { out.level -= 1; out.good = 0; out.why = 'connexion stable'; }
+		return out;
 	};
 
 	// Débit de départ plus haut : sans lui, WebRTC part de 300 kb/s et l'image reste floue plusieurs secondes.
@@ -165,6 +196,6 @@
 		} catch (e) { console.warn('[smash] codecs', e.message); }
 	};
 
-	root.SmashRemote = { ICE, encode, decode, gathered, PAD_LABELS, DEFAULT_PAD, ANALOG, padState, valueFor, stats, advice, QUALITY, preferCodecs, boostStart, lowLatency };
+	root.SmashRemote = { ICE, encode, decode, gathered, PAD_LABELS, DEFAULT_PAD, ANALOG, padState, valueFor, stats, advice, QUALITY, LADDER, adapt, preferCodecs, boostStart, lowLatency };
 	if (typeof module !== 'undefined' && module.exports) module.exports = root.SmashRemote;
 })(typeof window !== 'undefined' ? window : globalThis);
